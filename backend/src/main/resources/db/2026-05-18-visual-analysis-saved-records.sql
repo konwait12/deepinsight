@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS visual_saved_analysis_records (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  user_id BIGINT NOT NULL,
+  batch_id BIGINT NOT NULL,
+  result_id BIGINT NOT NULL,
+  module_key VARCHAR(80) NOT NULL,
+  run_id BIGINT NOT NULL,
+  run_type VARCHAR(30) NOT NULL,
+  run_name VARCHAR(200) NOT NULL,
+  model_name VARCHAR(200) NULL,
+  title VARCHAR(220) NOT NULL,
+  summary TEXT NULL,
+  snapshot_json MEDIUMTEXT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_visual_saved_analysis_user_result (user_id, result_id),
+  KEY idx_visual_saved_analysis_user_created (user_id, created_at),
+  KEY idx_visual_saved_analysis_batch (batch_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

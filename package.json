@@ -1,0 +1,50 @@
+{
+  "name": "deepinsight",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port=3000 --host=0.0.0.0",
+    "dev:frontend": "powershell -ExecutionPolicy Bypass -File scripts/start-frontend.ps1",
+    "dev:backend": "powershell -ExecutionPolicy Bypass -File scripts/start-backend.ps1",
+    "build": "vite build",
+    "preview": "vite preview",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "lint": "tsc --noEmit",
+    "db:backup": "node scripts/db-backup.cjs",
+    "db:rebuild-copy": "node scripts/db-rebuild-copy.cjs"
+  },
+  "dependencies": {
+    "@antv/g6": "^5.1.0",
+    "@element-plus/icons-vue": "^2.3.2",
+    "@google/genai": "^1.29.0",
+    "@tailwindcss/vite": "^4.1.14",
+    "@vueuse/core": "^14.2.1",
+    "axios": "^1.15.2",
+    "dotenv": "^17.2.3",
+    "echarts": "^6.0.0",
+    "echarts-gl": "^2.0.9",
+    "element-plus": "^2.13.7",
+    "gsap": "^3.15.0",
+    "highlight.js": "^11.11.1",
+    "lucide-vue-next": "^1.0.0",
+    "markdown-it": "^14.1.1",
+    "motion": "^12.23.24",
+    "pinia": "^3.0.4",
+    "three": "^0.184.0",
+    "vue": "^3.5.33",
+    "vue-i18n": "^11.3.2",
+    "vue-router": "^4.6.4"
+  },
+  "devDependencies": {
+    "@types/markdown-it": "^14.1.2",
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-vue": "^6.0.6",
+    "autoprefixer": "^10.4.21",
+    "sass-embedded": "^1.99.0",
+    "tailwindcss": "^4.1.14",
+    "tsx": "^4.21.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
+  }
+}

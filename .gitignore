@@ -1,0 +1,59 @@
+# Dependencies
+node_modules/
+deploy/node_modules/
+
+# Build outputs
+dist/
+build/
+coverage/
+backend/target/
+deploy/dist/
+deploy/backend.jar
+*.egg-info/
+__pycache__/
+*.py[cod]
+
+# Local environment and secrets
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+
+# Logs and runtime files
+*.log
+*.pid
+*.tmp
+*.bak
+*.marker
+dump.rdb
+backend/dump.rdb
+uploads/
+backend/uploads/
+.claude/
+code_*.txt
+encoded-probe.txt
+ps-start-marker.txt
+start-probe.txt
+。
+
+# Database exports and local backups
+backups/
+deploy/database*.sql
+deploy/*dump*.sql
+deploy/*backup*.sql
+
+# Browser/test artifacts and screenshots
+artifacts/
+.tmp*/
+.tmp-*
+tmp_*.png
+*.local.png
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.pytest_cache/
+.idea/
+.vscode/

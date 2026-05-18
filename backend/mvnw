@@ -1,0 +1,73 @@
+#!/bin/sh
+# ----------------------------------------------------------------------------
+# Maven Wrapper startup script
+# ----------------------------------------------------------------------------
+
+# Resolve links - $0 may be a softlink
+PRG="$0"
+
+while [ -h "$PRG" ]; do
+  ls=`ls -ld "$PRG"`
+  link=`expr "$ls" : '.*-> \(.*\)$'`
+  if expr "$link" : '/.*' > /dev/null; then
+    PRG="$link"
+  else
+    PRG=`dirname "$PRG"`/"$link"
+  fi
+done
+
+# Get the directory of the wrapper script
+PRGDIR=`dirname "$PRG"`
+PRGDIR=`cd "$PRGDIR" && pwd -P`
+
+# Find the project base dir (the directory containing .mvn)
+if [ -z "$MAVEN_PROJECTBASEDIR" ]; then
+  dir="$PRGDIR"
+  while [ "$dir" != "/" ]; do
+    if [ -d "$dir/.mvn" ]; then
+      MAVEN_PROJECTBASEDIR="$dir"
+      break
+    fi
+    dir=`dirname "$dir"`
+  done
+  if [ -z "$MAVEN_PROJECTBASEDIR" ]; then
+    MAVEN_PROJECTBASEDIR="$PRGDIR"
+  fi
+fi
+
+export MAVEN_PROJECTBASEDIR
+
+# Check for java in JAVA_HOME then PATH
+if [ -n "$JAVA_HOME" ] ; then
+    JAVACMD="$JAVA_HOME/bin/java"
+    if [ ! -x "$JAVACMD" ] ; then
+        JAVACMD=""
+    fi
+fi
+
+if [ -z "$JAVACMD" ] ; then
+    JAVACMD=`which java 2>/dev/null`
+fi
+
+if [ ! -x "$JAVACMD" ] ; then
+    echo "ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH."
+    exit 1
+fi
+
+# Locate the wrapper JAR
+WRAPPER_JAR="$PRGDIR/.mvn/wrapper/maven-wrapper.jar"
+
+if [ ! -f "$WRAPPER_JAR" ]; then
+    echo "ERROR: Could not find maven-wrapper.jar at $WRAPPER_JAR"
+    exit 1
+fi
+
+# Exec maven wrapper
+exec "$JAVACMD" \
+  $MAVEN_OPTS \
+  $MAVEN_DEBUG_OPTS \
+  -classpath "$WRAPPER_JAR" \
+  "-Dmaven.multiModuleProjectDirectory=$MAVEN_PROJECTBASEDIR" \
+  "-Dmaven.wrapper.properties=$PRGDIR/.mvn/wrapper/maven-wrapper.properties" \
+  org.apache.maven.wrapper.MavenWrapperMain \
+  "$@"
