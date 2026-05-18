@@ -4979,16 +4979,14 @@ const componentNodes = computed(() => [
   display: grid;
   grid-template-columns: minmax(300px, 0.82fr) minmax(0, 1.55fr);
   gap: 16px;
-  align-items: stretch;
+  align-items: start;
   min-height: 0;
-  height: min(860px, calc(100vh - 150px));
-  overflow: hidden;
+  overflow: visible;
 }
 
 .module-preview-panel {
   position: relative;
-  min-height: 520px;
-  max-height: 100%;
+  min-height: 0;
   padding: 16px;
   border: 1px solid color-mix(in srgb, var(--active-accent) 22%, var(--border-color));
   border-radius: var(--radius-lg);
@@ -4996,8 +4994,7 @@ const componentNodes = computed(() => [
     linear-gradient(135deg, color-mix(in srgb, var(--active-accent) 12%, transparent), transparent 54%),
     color-mix(in srgb, var(--surface-1) 82%, transparent);
   box-shadow: var(--shadow-soft);
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  overflow: hidden;
 }
 
 .module-preview-panel::before {
@@ -5050,7 +5047,7 @@ const componentNodes = computed(() => [
   border: 1px solid color-mix(in srgb, var(--active-accent) 24%, var(--border-color));
   border-radius: var(--radius-lg);
   background:
-    radial-gradient(circle at var(--probe-x, 28%) var(--probe-y, 24%), color-mix(in srgb, var(--active-accent) 25%, transparent), transparent 36%),
+    radial-gradient(circle at 18% 0%, color-mix(in srgb, var(--active-accent) 14%, transparent), transparent 38%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent),
     rgba(var(--glass-bg-rgb), 0.18);
   overflow: hidden;
@@ -5280,9 +5277,8 @@ const componentNodes = computed(() => [
 .module-grid-panel {
   min-width: 0;
   min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding-right: 4px;
+  overflow: visible;
+  padding-right: 0;
 }
 
 .module-card {
@@ -5458,7 +5454,7 @@ const componentNodes = computed(() => [
   border: 1px solid color-mix(in srgb, var(--active-accent) 28%, var(--border-color));
   border-radius: var(--radius-lg);
   background:
-    radial-gradient(circle at var(--probe-x, 50%) var(--probe-y, 50%), color-mix(in srgb, var(--active-accent) 16%, transparent), transparent 34%),
+    radial-gradient(circle at 16% 0%, color-mix(in srgb, var(--active-accent) 12%, transparent), transparent 40%),
     linear-gradient(180deg, color-mix(in srgb, var(--active-accent) 8%, transparent), transparent 44%),
     color-mix(in srgb, var(--surface-1) 78%, transparent);
   box-shadow: 0 24px 70px color-mix(in srgb, var(--active-accent) 12%, transparent);
@@ -5474,7 +5470,7 @@ const componentNodes = computed(() => [
     linear-gradient(90deg, color-mix(in srgb, var(--active-accent) 12%, transparent) 1px, transparent 1px),
     linear-gradient(180deg, rgba(148, 163, 184, 0.1) 1px, transparent 1px);
   background-size: 30px 30px;
-  mask-image: radial-gradient(circle at var(--probe-x, 50%) var(--probe-y, 50%), black, transparent 78%);
+  mask-image: linear-gradient(180deg, black, transparent 88%);
 }
 
 .module-detail-panel::after {

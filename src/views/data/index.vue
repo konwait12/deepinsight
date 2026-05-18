@@ -472,12 +472,13 @@ onMounted(loadAssets)
 
 <style scoped>
 .data-page {
-  max-width: 1520px;
-  min-height: calc(100vh - 72px);
-  height: calc(100vh - 72px);
+  width: min(1520px, 100%);
+  min-height: calc(100dvh - var(--header-height, 72px));
+  height: calc(100dvh - var(--header-height, 72px));
   margin: 0 auto;
-  padding: 24px;
+  padding: 18px 24px 24px;
   overflow: hidden;
+  overscroll-behavior: contain;
 }
 
 .data-hero,
@@ -516,10 +517,10 @@ onMounted(loadAssets)
   align-items: flex-end;
   justify-content: space-between;
   gap: 18px;
-  min-height: 220px;
-  margin-bottom: 18px;
-  padding: 26px;
-  border-radius: 30px;
+  min-height: 156px;
+  margin-bottom: 12px;
+  padding: 20px 22px;
+  border-radius: 26px;
 }
 
 .hero-copy,
@@ -545,9 +546,9 @@ onMounted(loadAssets)
 }
 
 .hero-copy h1 {
-  margin: 8px 0;
+  margin: 6px 0;
   color: var(--text-primary);
-  font-size: clamp(34px, 5vw, 68px);
+  font-size: clamp(30px, 4vw, 54px);
   font-weight: 950;
   letter-spacing: -0.065em;
 }
@@ -613,20 +614,20 @@ onMounted(loadAssets)
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
-  margin-bottom: 18px;
+  margin-bottom: 12px;
 }
 
 .summary-card {
-  min-height: 126px;
-  padding: 18px;
+  min-height: 94px;
+  padding: 14px 16px;
   border-radius: 22px;
 }
 
 .summary-card strong {
   display: block;
-  margin-top: 10px;
+  margin-top: 7px;
   color: var(--text-primary);
-  font-size: 34px;
+  font-size: 28px;
   font-weight: 950;
 }
 
@@ -641,7 +642,9 @@ onMounted(loadAssets)
   grid-template-columns: 240px minmax(0, 1fr) 320px;
   gap: 14px;
   min-height: 0;
-  height: calc(100vh - 72px - 24px * 2 - 220px - 18px - 126px - 18px);
+  height: calc(100dvh - var(--header-height, 72px) - 18px - 24px - 156px - 12px - 94px - 12px);
+  overflow: hidden;
+  overscroll-behavior: contain;
 }
 
 .asset-sidebar,
@@ -1264,6 +1267,7 @@ onMounted(loadAssets)
   .asset-workbench {
     grid-template-columns: 1fr;
     height: auto;
+    overflow: visible;
   }
 
   .asset-sidebar {

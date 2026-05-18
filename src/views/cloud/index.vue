@@ -64,10 +64,25 @@ const copy = computed(() => {
 
 <style scoped>
 .cloud-center-page {
-  min-height: calc(100vh - 72px);
-  height: calc(100vh - 72px);
-  padding: 96px 24px 42px;
-  overflow: hidden;
+  position: relative;
+  min-height: calc(100dvh - var(--header-height, 72px));
+  padding: 18px 24px 24px;
+  overflow-x: clip;
+  overflow-y: visible;
+  overscroll-behavior-x: contain;
+  touch-action: pan-y;
+}
+
+.cloud-center-page::before {
+  content: "";
+  position: fixed;
+  inset: 72px 0 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 72% 14%, rgba(var(--primary-rgb), 0.11), transparent 34%),
+    radial-gradient(circle at 18% 82%, rgba(66, 230, 164, 0.075), transparent 30%);
+  transform: translateZ(0);
 }
 
 .cloud-center-hero {
@@ -75,10 +90,10 @@ const copy = computed(() => {
   width: min(1240px, 100%);
   display: grid;
   grid-template-columns: minmax(0, 1fr) 260px;
-  gap: 24px;
+  gap: 18px;
   align-items: center;
-  margin: 0 auto 24px;
-  padding: 30px;
+  margin: 0 auto 14px;
+  padding: 20px 24px;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--primary-color) 18%, var(--border-color));
   border-radius: 34px;
@@ -87,6 +102,7 @@ const copy = computed(() => {
     linear-gradient(135deg, rgba(var(--glass-bg-rgb), 0.42), rgba(5, 10, 15, 0.26));
   box-shadow: 0 28px 90px rgba(0, 0, 0, 0.24);
   backdrop-filter: blur(18px);
+  animation: cloudSceneRise 720ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .cloud-center-hero span {
@@ -98,9 +114,9 @@ const copy = computed(() => {
 }
 
 .cloud-center-hero h1 {
-  margin: 8px 0 12px;
+  margin: 6px 0 8px;
   color: var(--text-primary);
-  font-size: clamp(40px, 7vw, 86px);
+  font-size: clamp(32px, 4.6vw, 60px);
   font-weight: 950;
   letter-spacing: -0.07em;
 }
@@ -109,15 +125,15 @@ const copy = computed(() => {
   max-width: 820px;
   margin: 0;
   color: var(--text-secondary);
-  font-size: 15px;
-  line-height: 1.8;
+  font-size: 13px;
+  line-height: 1.65;
 }
 
 .hero-cloud-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 18px;
+  margin-top: 12px;
 }
 
 .hero-cloud-actions button {
@@ -140,8 +156,8 @@ const copy = computed(() => {
 
 .cloud-hero-orbit {
   position: relative;
-  width: 220px;
-  height: 220px;
+  width: 156px;
+  height: 156px;
   display: grid;
   place-items: center;
   justify-self: end;
@@ -153,21 +169,21 @@ const copy = computed(() => {
 
 .cloud-hero-orbit i {
   position: absolute;
-  inset: 18px;
+  inset: 12px;
   border: 1px solid rgba(var(--primary-rgb), 0.24);
   border-radius: 50%;
   animation: orbitSpin 12s linear infinite;
 }
 
 .cloud-hero-orbit i:nth-child(2) {
-  inset: 40px;
+  inset: 30px;
   border-color: rgba(66, 230, 164, 0.22);
   animation-duration: 9s;
   animation-direction: reverse;
 }
 
 .cloud-hero-orbit i:nth-child(3) {
-  inset: 70px;
+  inset: 52px;
   border-color: rgba(103, 232, 249, 0.2);
   animation-duration: 6s;
 }
@@ -186,7 +202,7 @@ const copy = computed(() => {
 
 .cloud-hero-orbit strong {
   color: var(--text-primary);
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 950;
 }
 
@@ -194,14 +210,37 @@ const copy = computed(() => {
   width: min(1240px, 100%);
   margin-left: auto;
   margin-right: auto;
+  animation: cloudSceneRise 820ms 70ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .cloud-center-page :deep(.cloud-workspace) {
-  height: calc(100vh - 72px - 96px - 42px - 268px);
+  height: clamp(720px, calc(100dvh - var(--header-height, 72px) - 120px), 960px);
+  min-height: 720px;
 }
 
 @keyframes orbitSpin {
   to { transform: rotate(360deg); }
+}
+
+@keyframes cloudSceneRise {
+  from {
+    opacity: 0;
+    transform: translateY(32px);
+    filter: blur(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cloud-center-hero,
+  .cloud-center-page :deep(.cloud-portal) {
+    animation: none;
+  }
 }
 
 @media (max-width: 840px) {

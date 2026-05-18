@@ -44,7 +44,6 @@
             <input v-model="query" type="search" :placeholder="copy.searchPlaceholder" />
           </label>
           <div class="display-switch" :class="`is-${displayMode}`">
-            <span />
             <button type="button" :class="{ active: displayMode === 'list' }" @click="displayMode = 'list'">{{ copy.list }}</button>
             <button type="button" :class="{ active: displayMode === 'masonry' }" @click="displayMode = 'masonry'">{{ copy.cover }}</button>
           </div>
@@ -129,34 +128,36 @@
 
             <Transition name="cloud-mode" mode="out-in">
               <div v-if="displayMode === 'masonry'" key="masonry" class="cloud-masonry">
-                <article
-                  v-for="(item, index) in filteredItems"
-                  :key="item.key"
-                  :draggable="canMoveItem(item)"
-                  class="masonry-card"
-                  :class="{ image: !!item.cover, selected: activeItem?.key === item.key, readonly: isReadOnlyItem(item) }"
-                  :style="{ '--card-h': `${cardHeight(item, index)}px`, '--delay': `${Math.min(index, 10) * 36}ms` }"
-                  @click="selectItem(item, index)"
-                  @dragstart="startItemDrag(item)"
-                  @dragend="clearDrag"
-                >
-                  <div v-if="item.cover" class="cover-image" :style="{ backgroundImage: `url(${item.cover})` }"></div>
-                  <div v-else class="text-cover">
-                    <span>{{ item.typeLabel }}</span>
-                    <strong>{{ initials(item.title) }}</strong>
-                    <em>{{ item.format || item.status || 'cloud' }}</em>
-                  </div>
-                  <div class="cover-shade"></div>
-                  <button type="button" class="quick-select" @click.stop="emitSelect(item)">
-                    {{ selectable ? copy.select : copy.preview }}
-                  </button>
-                  <span v-if="isReadOnlyItem(item)" class="readonly-pill">{{ copy.readOnly }}</span>
-                  <div class="cover-caption">
-                    <span>{{ item.typeLabel }}</span>
-                    <strong>{{ item.title }}</strong>
-                    <em>{{ item.summary || item.meta || copy.savedItem }}</em>
-                  </div>
-                </article>
+                <div v-if="filteredItems.length" class="masonry-wall">
+                  <article
+                    v-for="(item, index) in filteredItems"
+                    :key="item.key"
+                    :draggable="canMoveItem(item)"
+                    class="masonry-card"
+                    :class="{ image: !!item.cover, selected: activeItem?.key === item.key, readonly: isReadOnlyItem(item) }"
+                    :style="{ '--card-h': `${cardHeight(item, index)}px`, '--delay': `${Math.min(index, 10) * 36}ms` }"
+                    @click="selectItem(item, index)"
+                    @dragstart="startItemDrag(item)"
+                    @dragend="clearDrag"
+                  >
+                    <div v-if="item.cover" class="cover-image" :style="{ backgroundImage: `url(${item.cover})` }"></div>
+                    <div v-else class="text-cover">
+                      <span>{{ item.typeLabel }}</span>
+                      <strong>{{ initials(item.title) }}</strong>
+                      <em>{{ item.format || item.status || 'cloud' }}</em>
+                    </div>
+                    <div class="cover-shade"></div>
+                    <button type="button" class="quick-select" @click.stop="emitSelect(item)">
+                      {{ selectable ? copy.select : copy.preview }}
+                    </button>
+                    <span v-if="isReadOnlyItem(item)" class="readonly-pill">{{ copy.readOnly }}</span>
+                    <div class="cover-caption">
+                      <span>{{ item.typeLabel }}</span>
+                      <strong>{{ item.title }}</strong>
+                      <em>{{ item.summary || item.meta || copy.savedItem }}</em>
+                    </div>
+                  </article>
+                </div>
                 <div v-if="!filteredItems.length" class="cloud-empty">{{ copy.empty }}</div>
               </div>
 
@@ -571,6 +572,7 @@ function startItemDrag(item: CloudItem) {
 }
 
 function startFolderDrag(folder: CloudFolder) {
+  if (!folder?.id) return
   draggingFolder.value = folder
   draggingItem.value = null
 }
@@ -585,6 +587,10 @@ async function dropOnFolder(folderId: number | null) {
       await aiApi.moveWorkspaceItem(draggingItem.value.id, { folderId })
       ElMessage.success(isZh.value ? '素材已移动' : 'Item moved')
     } else if (draggingFolder.value?.id) {
+      if (draggingFolder.value.id === folderId) {
+        clearDrag()
+        return
+      }
       await aiApi.moveWorkspaceFolder(draggingFolder.value.id, { parentId: folderId })
       ElMessage.success(isZh.value ? '文件夹已移动' : 'Folder moved')
     }
@@ -820,7 +826,7 @@ function cardHeight(item: CloudItem, index: number) {
 }
 
 .cloud-portal--page .cloud-portal-top {
-  padding: 22px;
+  padding: 18px 22px 16px;
 }
 
 .cloud-title {
@@ -844,7 +850,7 @@ function cardHeight(item: CloudItem, index: number) {
 }
 
 .cloud-portal--page .cloud-title strong {
-  font-size: clamp(28px, 4vw, 56px);
+  font-size: clamp(24px, 3vw, 44px);
   letter-spacing: -0.055em;
 }
 
@@ -908,6 +914,8 @@ function cardHeight(item: CloudItem, index: number) {
   gap: 12px;
   min-height: 0;
   padding: 0 16px 16px;
+  overflow: hidden;
+  overscroll-behavior: contain;
 }
 
 .cloud-portal--page .cloud-workspace {
@@ -958,20 +966,28 @@ function cardHeight(item: CloudItem, index: number) {
 
 .cloud-path {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 7px;
   min-width: 0;
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 900;
-  overflow-x: auto;
+  max-height: 58px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scroll-behavior: smooth;
 }
 
 .cloud-path button {
   flex: 0 0 auto;
+  max-width: 180px;
+  overflow: hidden;
   color: var(--text-primary);
   font-size: inherit;
   font-weight: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cloud-search {
@@ -1001,40 +1017,26 @@ function cardHeight(item: CloudItem, index: number) {
 }
 
 .display-switch {
-  position: relative;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  min-width: 122px;
-  padding: 4px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.18);
-}
-
-.display-switch span {
-  position: absolute;
-  top: 4px;
-  bottom: 4px;
-  left: 4px;
-  width: calc(50% - 4px);
-  border-radius: 999px;
-  background: rgba(var(--primary-rgb), 0.18);
-  transition: transform 220ms ease;
-}
-
-.display-switch.is-masonry span {
-  transform: translateX(100%);
+  grid-template-columns: 1fr;
+  gap: 6px;
+  min-width: 92px;
 }
 
 .display-switch button {
-  position: relative;
-  z-index: 1;
   height: 28px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.12);
   color: var(--text-muted);
   font-size: 10px;
   font-weight: 950;
+  transition: background 180ms ease, border-color 180ms ease, color 180ms ease;
 }
 
 .display-switch button.active {
+  border-color: rgba(var(--primary-rgb), 0.32);
+  background: rgba(var(--primary-rgb), 0.14);
   color: var(--primary-color);
 }
 
@@ -1043,14 +1045,16 @@ function cardHeight(item: CloudItem, index: number) {
   grid-template-columns: 260px minmax(0, 1fr) 280px;
   gap: 12px;
   min-height: 0;
-  height: min(700px, calc(100vh - 220px));
+  height: min(760px, calc(100dvh - 220px));
+  min-height: 520px;
   padding: 12px;
   border-radius: 22px;
   overflow: hidden;
 }
 
 .cloud-portal--page .cloud-body {
-  height: min(760px, calc(100vh - 260px));
+  height: 100%;
+  min-height: 0;
   grid-template-columns: 300px minmax(0, 1fr) 320px;
 }
 
@@ -1089,6 +1093,7 @@ function cardHeight(item: CloudItem, index: number) {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+  scroll-behavior: smooth;
   padding: 6px 0;
 }
 
@@ -1257,24 +1262,32 @@ function cardHeight(item: CloudItem, index: number) {
 }
 
 .cloud-masonry {
-  column-count: 3;
-  column-gap: 12px;
   min-height: 0;
+  width: 100%;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding-right: 4px;
+  scroll-behavior: smooth;
+  padding-right: 6px;
+  scrollbar-gutter: stable;
 }
 
-.cloud-portal--page .cloud-masonry {
-  column-count: 4;
+.masonry-wall {
+  width: 100%;
+  column-count: 3;
+  column-gap: 12px;
 }
 
 .masonry-card {
   position: relative;
-  height: var(--card-h);
-  break-inside: avoid;
+  display: inline-block;
+  width: 100%;
+  max-width: 100%;
+  height: clamp(170px, var(--card-h), 320px);
   margin: 0 0 12px;
   overflow: hidden;
+  break-inside: avoid;
+  vertical-align: top;
   border: 1px solid rgba(148, 163, 184, 0.14);
   border-radius: 18px;
   background: rgba(var(--glass-bg-rgb), 0.22);
@@ -1286,7 +1299,7 @@ function cardHeight(item: CloudItem, index: number) {
 
 .masonry-card:hover,
 .masonry-card.selected {
-  transform: translateY(-3px) scale(0.98);
+  transform: translateY(-2px);
   border-color: rgba(var(--primary-rgb), 0.42);
   filter: saturate(1.1);
 }
@@ -1402,6 +1415,7 @@ function cardHeight(item: CloudItem, index: number) {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+  scroll-behavior: smooth;
   padding-right: 4px;
 }
 
@@ -1465,6 +1479,7 @@ function cardHeight(item: CloudItem, index: number) {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+  scroll-behavior: smooth;
   padding: 10px;
 }
 
@@ -1594,7 +1609,11 @@ function cardHeight(item: CloudItem, index: number) {
   }
 
   .cloud-portal--page .cloud-masonry {
-    column-count: 3;
+    width: 100%;
+  }
+
+  .masonry-wall {
+    column-count: 2;
   }
 }
 
@@ -1613,6 +1632,10 @@ function cardHeight(item: CloudItem, index: number) {
   }
 
   .cloud-masonry {
+    width: 100%;
+  }
+
+  .masonry-wall {
     column-count: 2;
   }
 
@@ -1628,7 +1651,7 @@ function cardHeight(item: CloudItem, index: number) {
 }
 
 @media (max-width: 560px) {
-  .cloud-masonry {
+  .masonry-wall {
     column-count: 1;
   }
 }

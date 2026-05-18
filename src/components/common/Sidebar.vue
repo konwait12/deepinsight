@@ -92,6 +92,7 @@ function handleNavClick(item: NavItem) {
   z-index: 90;
   padding: 18px 12px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   border: 1px solid var(--border-color);
   border-radius: 12px;
   background: var(--nav-bg);

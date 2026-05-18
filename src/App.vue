@@ -3,7 +3,7 @@
     <div
       ref="appRootRef"
       class="app-root"
-      :class="['dark', { 'is-public-preview': isPublicPreview }]"
+      :class="['dark', { 'is-public-preview': isPublicPreview, 'is-scroll-isolated': usesIsolatedScroll }]"
       @pointermove="handlePointerMove"
       @pointerleave="handlePointerLeave"
       @pointercancel="handlePointerLeave"
@@ -78,6 +78,7 @@ const handleResize = () => {
   isDesktop.value = window.innerWidth >= 1024
   clearSpotlightState()
 }
+const isolatedScrollRoutes = new Set(['Data', 'AI'])
 let pointerRaf = 0
 let pendingPointerX = window.innerWidth / 2
 let pendingPointerY = window.innerHeight / 2
@@ -536,6 +537,10 @@ function flushPointerVars() {
   }
 
   const nextSpotlightElements = collectGlowTargets(root)
+  applyGlowTargetState(nextSpotlightElements)
+}
+
+const applyGlowTargetState = (nextSpotlightElements: Map<HTMLElement, { rect: DOMRect; strength: number }>) => {
   activeSpotlightElements.forEach((element) => {
     if (!nextSpotlightElements.has(element)) resetSpotlightElement(element)
   })
@@ -653,6 +658,13 @@ const collectGlowTargets = (root: HTMLElement) => {
   return new Map(targets.map(({ element, rect, strength }) => [element, { rect, strength }]))
 }
 
+const syncNearbyEdgeGlow = () => {
+  const root = appRootRef.value
+  if (!root || isLandingPage.value) return
+  const nextSpotlightElements = collectGlowTargets(root)
+  applyGlowTargetState(nextSpotlightElements)
+}
+
 const isPseudoSlotAvailable = (content: string) => ['none', 'normal'].includes(content.trim().toLowerCase())
 
 const resolveGlowPseudoClass = (element: HTMLElement) => {
@@ -679,6 +691,7 @@ const handlePointerLeave = () => {
 const routeName = computed(() => String(route.name || ''))
 const isLandingPage = computed(() => routeName.value === 'Landing')
 const isPublicPreview = computed(() => ['Landing', 'Login'].includes(routeName.value))
+const usesIsolatedScroll = computed(() => isolatedScrollRoutes.has(routeName.value))
 const showFloatingAssistant = computed(() => !isPublicPreview.value)
 const showSidebar = computed(() => {
   if (route.path === '/login') return false
@@ -703,7 +716,7 @@ onMounted(() => {
   sanitizeTransientUiState()
   globalStateCleanupTimer = window.setInterval(sanitizeTransientUiState, 1200)
   window.addEventListener('resize', handleResize)
-  window.addEventListener('scroll', clearSpotlightState, true)
+  window.addEventListener('scroll', syncNearbyEdgeGlow, true)
   window.addEventListener('blur', sanitizeTransientUiState)
   document.addEventListener('visibilitychange', sanitizeTransientUiState)
   window.addEventListener(APP_EVENTS.TOGGLE_LANG, handleLanguageToggleRequest)
@@ -716,7 +729,7 @@ onUnmounted(() => {
   clearLanguageTransition()
   themeStore.clearThemeTransition()
   window.removeEventListener('resize', handleResize)
-  window.removeEventListener('scroll', clearSpotlightState, true)
+  window.removeEventListener('scroll', syncNearbyEdgeGlow, true)
   window.removeEventListener('blur', sanitizeTransientUiState)
   document.removeEventListener('visibilitychange', sanitizeTransientUiState)
   window.removeEventListener(APP_EVENTS.TOGGLE_LANG, handleLanguageToggleRequest)
@@ -724,13 +737,14 @@ onUnmounted(() => {
 </script>
 
 <style>
-    .app-root {
+.app-root {
   width: 100%;
   min-width: 0;
-  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg-color);
   color: var(--text-primary);
   overflow-x: hidden;
+  overscroll-behavior-x: none;
   transition: background 280ms ease, color 280ms ease;
 }
 
@@ -745,18 +759,36 @@ onUnmounted(() => {
 .app-main {
   width: 100%;
   min-width: 0;
-  padding-top: 72px;
+  min-height: 100dvh;
+  padding-top: var(--header-height, 72px);
   display: grid;
   grid-template-columns: var(--sidebar-width, 0px) minmax(0, 1fr);
+  overscroll-behavior: contain;
   transition: grid-template-columns 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .app-main.has-sidebar { grid-template-columns: 240px minmax(0, 1fr); }
 .app-content {
   width: 100%;
   min-width: 0;
-  min-height: calc(100vh - 72px);
+  min-height: calc(100dvh - var(--header-height, 72px));
   position: relative;
   z-index: 2;
+  overscroll-behavior: contain;
+}
+
+.app-root.is-scroll-isolated {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.app-root.is-scroll-isolated .app-main {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.app-root.is-scroll-isolated .app-content {
+  height: calc(100dvh - var(--header-height, 72px));
+  overflow: hidden;
 }
 
 .language-transition-layer {

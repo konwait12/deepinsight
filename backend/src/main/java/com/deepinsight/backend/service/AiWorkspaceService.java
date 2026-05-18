@@ -404,7 +404,7 @@ public class AiWorkspaceService {
             request.imageDataUrl(),
             request.folderId(),
             request.sortOrder(),
-            request.payload() == null ? Map.of() : request.payload()
+            sanitizeUserWorkspacePayload(request.payload())
         );
         return getWorkspaceItem(userId, id);
     }
@@ -648,6 +648,17 @@ public class AiWorkspaceService {
         Number id = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Number.class);
         if (id == null) throw new IllegalStateException("保存素材失败");
         return id.longValue();
+    }
+
+    private Map<String, Object> sanitizeUserWorkspacePayload(Map<String, Object> payload) {
+        if (payload == null || payload.isEmpty()) return Map.of();
+        Map<String, Object> safe = new LinkedHashMap<>(payload);
+        safe.remove("official");
+        safe.remove("isOfficial");
+        safe.remove("readOnly");
+        safe.remove("canManage");
+        safe.remove("canSync");
+        return safe;
     }
 
     private Map<String, Object> getWorkspaceItem(Long userId, Long id) {

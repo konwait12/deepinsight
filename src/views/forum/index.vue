@@ -50,9 +50,9 @@
             @keyup.enter="setPage(1)"
           />
           <div v-if="showPager" class="pager-chip">
-            <button type="button" :disabled="page <= 1" @click="setPage(page - 1)">上一页</button>
-            <span>{{ page }} / {{ totalPages }}</span>
-            <button type="button" :disabled="page >= totalPages" @click="setPage(page + 1)">下一页</button>
+            <button type="button" :disabled="boundedPage <= 1" @click="setPage(boundedPage - 1)">上一页</button>
+            <span>{{ boundedPage }} / {{ totalPages }}</span>
+            <button type="button" :disabled="boundedPage >= totalPages" @click="setPage(boundedPage + 1)">下一页</button>
           </div>
           <div class="mode-switch" :class="`is-${viewMode}`" role="tablist" aria-label="论坛展示模式">
             <span class="mode-thumb" />
@@ -567,9 +567,14 @@ const stripMarkdown = (md: string) =>
     .trim()
 
 const accentForPost = (post: ForumPost, index: number) => {
-  if (post.sourceType === 'MODEL_ARTICLE') return '#10b981'
-  if (post.sourceType === 'KNOWLEDGE_ARTICLE') return '#4dc9f0'
-  return ['#4dc9f0', '#10b981', '#f59e0b', '#ec4899'][index % 4]
+  if (post.sourceType === 'MODEL_ARTICLE') return 'var(--primary-color)'
+  if (post.sourceType === 'KNOWLEDGE_ARTICLE') return 'color-mix(in srgb, var(--primary-color) 72%, #67e8f9)'
+  return [
+    'var(--primary-color)',
+    'color-mix(in srgb, var(--primary-color) 78%, #67e8f9)',
+    'color-mix(in srgb, var(--primary-color) 60%, #f6a15d)',
+    'color-mix(in srgb, var(--primary-color) 56%, #a7f3d0)',
+  ][index % 4]
 }
 
 const hashText = (value: string) => {
@@ -629,16 +634,22 @@ onUnmounted(() => {
 <style scoped>
 .forum-page {
   min-height: 100vh;
-  --forum-deep: #071116;
-  --forum-panel: rgba(9, 20, 27, 0.84);
-  --forum-line: rgba(157, 226, 255, 0.18);
-  --forum-text: #edfaff;
-  --forum-muted: rgba(237, 250, 255, 0.68);
+  --forum-deep: color-mix(in srgb, var(--bg-color) 90%, #02070a);
+  --forum-panel: rgba(var(--glass-bg-rgb), 0.76);
+  --forum-panel-strong: rgba(var(--glass-bg-rgb), 0.9);
+  --forum-line: color-mix(in srgb, var(--primary-color) 18%, var(--border-color));
+  --forum-line-strong: color-mix(in srgb, var(--primary-color) 38%, var(--border-color));
+  --forum-text: var(--text-primary);
+  --forum-muted: var(--text-secondary);
+  --forum-accent: var(--primary-color);
+  --forum-surface: color-mix(in srgb, var(--surface-1) 78%, transparent);
   background:
-    radial-gradient(circle at 16% 12%, rgba(77, 201, 240, 0.28), transparent 34%),
-    radial-gradient(circle at 82% 18%, rgba(16, 185, 129, 0.22), transparent 30%),
-    radial-gradient(circle at 50% 88%, rgba(236, 72, 153, 0.16), transparent 36%),
-    linear-gradient(145deg, #071116 0%, #0b1720 48%, #081016 100%);
+    radial-gradient(circle at 16% 12%, rgba(var(--primary-rgb), 0.18), transparent 34%),
+    radial-gradient(circle at 82% 18%, rgba(var(--primary-rgb), 0.1), transparent 30%),
+    linear-gradient(90deg, rgba(var(--primary-rgb), 0.035) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(var(--primary-rgb), 0.032) 1px, transparent 1px),
+    linear-gradient(145deg, color-mix(in srgb, var(--bg-color) 94%, rgba(var(--primary-rgb), 0.12)) 0%, var(--bg-color) 52%, var(--forum-deep) 100%);
+  background-size: auto, auto, 48px 48px, 48px 48px, auto;
   color: var(--forum-text);
   animation: forum-page-arrive 620ms cubic-bezier(0.16, 1, 0.3, 1) both;
   transform-origin: 50% 0%;
@@ -668,7 +679,7 @@ onUnmounted(() => {
 .eyebrow {
   display: inline-flex;
   margin-bottom: 10px;
-  color: #4dc9f0;
+  color: var(--forum-accent);
   font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.24em;
@@ -706,10 +717,11 @@ onUnmounted(() => {
   border: 1px solid var(--forum-line);
   border-radius: 34px;
   background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px) 0 0 / 72px 72px,
-    linear-gradient(0deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px) 0 0 / 72px 72px,
+    radial-gradient(circle at 8% 0%, rgba(var(--primary-rgb), 0.13), transparent 36%),
+    linear-gradient(90deg, rgba(var(--primary-rgb), 0.06) 1px, transparent 1px) 0 0 / 72px 72px,
+    linear-gradient(0deg, rgba(var(--primary-rgb), 0.045) 1px, transparent 1px) 0 0 / 72px 72px,
     var(--forum-panel);
-  box-shadow: 0 36px 110px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 36px 110px rgba(0, 0, 0, 0.36), 0 0 0 1px rgba(var(--primary-rgb), 0.06);
   animation: forum-panel-in 760ms cubic-bezier(0.16, 1, 0.3, 1) 220ms both;
 }
 
@@ -787,13 +799,13 @@ onUnmounted(() => {
 
 .search-input :deep(.el-input__wrapper) {
   border-radius: 16px;
-  background: rgba(4, 13, 18, 0.72);
-  box-shadow: 0 0 0 1px rgba(157, 226, 255, 0.16);
+  background: rgba(var(--glass-bg-rgb), 0.72);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary-color) 18%, transparent);
   backdrop-filter: blur(16px);
 }
 
 .search-input :deep(.el-input__inner) {
-  color: #edfaff;
+  color: var(--forum-text);
   font-weight: 700;
 }
 
@@ -802,9 +814,9 @@ onUnmounted(() => {
   display: inline-flex;
   gap: 4px;
   padding: 5px;
-  border: 1px solid rgba(157, 226, 255, 0.18);
+  border: 1px solid var(--forum-line);
   border-radius: 16px;
-  background: rgba(4, 13, 18, 0.72);
+  background: rgba(var(--glass-bg-rgb), 0.72);
   backdrop-filter: blur(16px);
   flex: 0 0 auto;
 }
@@ -815,8 +827,8 @@ onUnmounted(() => {
   bottom: 5px;
   width: calc(50% - 5px);
   border-radius: 11px;
-  background: linear-gradient(135deg, rgba(77, 201, 240, 0.3), rgba(16, 185, 129, 0.22));
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14), 0 10px 26px rgba(77, 201, 240, 0.18);
+  background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.32), rgba(var(--primary-rgb), 0.16));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 10px 26px rgba(var(--primary-rgb), 0.18);
   transition: transform 360ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
@@ -835,7 +847,7 @@ onUnmounted(() => {
   border: none;
   border-radius: 11px;
   background: transparent;
-  color: rgba(237, 250, 255, 0.62);
+  color: var(--text-secondary);
   cursor: pointer;
   font-size: 12px;
   font-weight: 950;
@@ -844,12 +856,12 @@ onUnmounted(() => {
 }
 
 .mode-switch button:hover {
-  color: #fff;
+  color: var(--text-primary);
   transform: translateY(-1px);
 }
 
 .mode-switch button.active {
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .pager-chip {
@@ -857,17 +869,17 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   padding: 6px;
-  border: 1px solid rgba(157, 226, 255, 0.18);
+  border: 1px solid var(--forum-line);
   border-radius: 16px;
-  background: rgba(4, 13, 18, 0.7);
+  background: rgba(var(--glass-bg-rgb), 0.7);
   backdrop-filter: blur(16px);
 }
 
 .pager-chip button {
   border: none;
   border-radius: 11px;
-  background: rgba(255, 255, 255, 0.1);
-  color: #edfaff;
+  background: rgba(var(--primary-rgb), 0.08);
+  color: var(--forum-text);
   cursor: pointer;
   font-size: 12px;
   font-weight: 900;
@@ -876,7 +888,7 @@ onUnmounted(() => {
 }
 
 .pager-chip button:hover:not(:disabled) {
-  background: rgba(77, 201, 240, 0.24);
+  background: rgba(var(--primary-rgb), 0.2);
 }
 
 .pager-chip button:disabled {
@@ -886,7 +898,7 @@ onUnmounted(() => {
 
 .pager-chip span {
   min-width: 48px;
-  color: rgba(237, 250, 255, 0.76);
+  color: var(--forum-muted);
   font-size: 12px;
   font-weight: 900;
   text-align: center;
@@ -957,9 +969,9 @@ onUnmounted(() => {
   width: calc(100% - 20px);
   height: calc(100% - 20px);
   padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid color-mix(in srgb, var(--primary-color) 16%, rgba(255, 255, 255, 0.14));
   border-radius: var(--tile-radius);
-  background: #0b1720;
+  background: var(--forum-panel-strong);
   cursor: pointer;
   backface-visibility: hidden;
   --tilt-x: 0deg;
@@ -1026,14 +1038,14 @@ onUnmounted(() => {
 }
 
 .tile-label em {
-  color: color-mix(in srgb, var(--accent), white 18%);
+  color: color-mix(in srgb, var(--accent), var(--text-primary) 18%);
   font-size: 10px;
   font-style: normal;
   font-weight: 900;
 }
 
 .tile-label strong {
-  color: #fff;
+  color: var(--text-primary);
   font-size: 13px;
   line-height: 1.2;
   letter-spacing: -0.03em;
@@ -1045,8 +1057,8 @@ onUnmounted(() => {
   right: 10px;
   padding: 3px 7px;
   border-radius: 999px;
-  background: rgba(4, 13, 18, 0.68);
-  color: #fff;
+  background: rgba(var(--glass-bg-rgb), 0.72);
+  color: var(--text-primary);
   font-size: 9px;
   font-weight: 900;
   backdrop-filter: blur(10px);
@@ -1094,7 +1106,7 @@ onUnmounted(() => {
   z-index: 20;
   display: grid;
   place-items: center;
-  background: rgba(1, 8, 12, 0.46);
+  background: color-mix(in srgb, var(--bg-color) 54%, transparent);
   backdrop-filter: blur(4px);
 }
 
@@ -1106,7 +1118,7 @@ onUnmounted(() => {
   padding: 0;
   border: 1px solid rgba(255, 255, 255, 0.24);
   border-radius: 32px;
-  background: #071116;
+  background: var(--forum-deep);
   cursor: pointer;
   box-shadow: 0 34px 100px rgba(0, 0, 0, 0.62);
 }
@@ -1122,8 +1134,8 @@ onUnmounted(() => {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(180deg, rgba(4, 13, 18, 0.04) 8%, rgba(4, 13, 18, 0.38) 42%, rgba(4, 13, 18, 0.94) 100%),
-    radial-gradient(circle at 20% 12%, rgba(77, 201, 240, 0.35), transparent 38%);
+    linear-gradient(180deg, rgba(var(--glass-bg-rgb), 0.04) 8%, rgba(var(--glass-bg-rgb), 0.42) 42%, rgba(var(--glass-bg-rgb), 0.96) 100%),
+    radial-gradient(circle at 20% 12%, rgba(var(--primary-rgb), 0.32), transparent 38%);
 }
 
 .preview-content {
@@ -1140,7 +1152,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: #4dc9f0;
+  color: var(--forum-accent);
   font-size: 12px;
   font-weight: 950;
   letter-spacing: 0.14em;
@@ -1153,7 +1165,7 @@ onUnmounted(() => {
 }
 
 .preview-content strong {
-  color: #fff;
+  color: var(--text-primary);
   font-size: clamp(28px, 4vw, 46px);
   line-height: 1;
   letter-spacing: -0.07em;
@@ -1163,8 +1175,8 @@ onUnmounted(() => {
   width: fit-content;
   padding: 5px 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
+  background: rgba(var(--primary-rgb), 0.12);
+  color: var(--text-primary);
   font-size: 12px;
   font-style: normal;
   font-weight: 900;
@@ -1182,8 +1194,8 @@ onUnmounted(() => {
   margin-top: 4px;
   padding: 9px 14px;
   border-radius: 14px;
-  background: #fff;
-  color: #071116;
+  background: var(--forum-accent);
+  color: var(--bg-color);
   font-size: 12px;
   font-weight: 950;
 }
@@ -1331,18 +1343,20 @@ onUnmounted(() => {
   position: relative;
   overflow: hidden;
   min-height: 220px;
-  border: 1px solid rgba(157, 226, 255, 0.16);
+  border: 1px solid var(--forum-line);
   border-radius: 24px;
-  background: rgba(4, 13, 18, 0.68);
+  background:
+    radial-gradient(circle at 18% 0%, rgba(var(--primary-rgb), 0.1), transparent 38%),
+    rgba(var(--glass-bg-rgb), 0.64);
   cursor: pointer;
   box-shadow: 0 20px 48px rgba(0, 0, 0, 0.28);
   transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
 }
 
 .normal-card:hover {
-  border-color: rgba(77, 201, 240, 0.58);
+  border-color: var(--forum-line-strong);
   transform: translateY(-5px);
-  box-shadow: 0 28px 66px rgba(0, 0, 0, 0.38), 0 0 34px rgba(77, 201, 240, 0.16);
+  box-shadow: 0 28px 66px rgba(0, 0, 0, 0.34), 0 0 34px rgba(var(--primary-rgb), 0.16);
 }
 
 .normal-card img {
@@ -1367,15 +1381,15 @@ onUnmounted(() => {
 .normal-meta span {
   padding: 3px 7px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(237, 250, 255, 0.7);
+  background: rgba(var(--primary-rgb), 0.08);
+  color: var(--forum-muted);
   font-size: 10px;
   font-weight: 900;
 }
 
 .normal-body h2 {
   margin: 0;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 18px;
   line-height: 1.25;
   letter-spacing: -0.04em;
@@ -1383,7 +1397,7 @@ onUnmounted(() => {
 
 .normal-body p {
   margin: 0;
-  color: rgba(237, 250, 255, 0.66);
+  color: var(--forum-muted);
   font-size: 13px;
   line-height: 1.7;
 }
@@ -1394,8 +1408,8 @@ onUnmounted(() => {
   bottom: 14px;
   padding: 7px 10px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
+  background: rgba(var(--primary-rgb), 0.12);
+  color: var(--text-primary);
   font-size: 11px;
   font-weight: 950;
   opacity: 0;
@@ -1470,8 +1484,8 @@ onUnmounted(() => {
 .uploaded-item {
   padding: 2px 8px;
   border-radius: 8px;
-  background: rgba(77, 201, 240, 0.1);
-  color: #4dc9f0;
+  background: rgba(var(--primary-rgb), 0.1);
+  color: var(--primary-color);
   cursor: pointer;
   font-size: 10px;
   font-weight: 700;

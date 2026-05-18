@@ -20,6 +20,8 @@ const showCloudPortal = computed(() => !['Dashboard'].includes(String(route.name
 
 <style scoped>
 .content-body {
-  min-height: calc(100vh - 56px);
+  min-height: calc(100dvh - var(--header-height, 72px));
+  min-width: 0;
+  overscroll-behavior: contain;
 }
 </style>

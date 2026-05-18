@@ -73,15 +73,15 @@
   --edge-glow-color: rgb(var(--primary-color-rgb) / 0.92);
   --edge-glow-soft: rgb(var(--primary-color-rgb) / calc(var(--edge-glow-strength) * 0.42));
   --edge-glow-hot: rgba(255, 255, 255, 0.88);
-  --edge-glow-radius: 220px;
+  --edge-glow-radius: 190px;
   --edge-glow-border:
     radial-gradient(
       var(--edge-glow-radius) circle at var(--spotlight-x, 50%) var(--spotlight-y, 50%),
-      rgba(255, 255, 255, 0.96) 0%,
-      color-mix(in srgb, var(--primary-color) 88%, white) 16%,
-      rgb(var(--primary-color-rgb) / 0.74) 34%,
-      rgba(var(--primary-rgb), 0.3) 50%,
-      transparent 72%
+      rgb(var(--primary-color-rgb) / 0.9) 0%,
+      rgb(var(--primary-color-rgb) / 0.66) 18%,
+      rgba(var(--primary-rgb), 0.26) 38%,
+      rgba(var(--primary-rgb), 0.08) 56%,
+      transparent 74%
     ) border-box;
   --motion-quick: 220ms;
   --motion-medium: 360ms;
@@ -586,11 +586,11 @@ a {
   background:
     radial-gradient(
       var(--edge-glow-radius, 220px) circle at var(--spotlight-x, 50%) var(--spotlight-y, 50%),
-      rgba(255, 255, 255, 0.96) 0%,
-      color-mix(in srgb, var(--primary-color) 88%, white) 16%,
-      rgb(var(--primary-color-rgb) / 0.74) 34%,
-      rgba(var(--primary-rgb), 0.3) 50%,
-      transparent 72%
+      rgb(var(--primary-color-rgb) / 0.9) 0%,
+      rgb(var(--primary-color-rgb) / 0.66) 18%,
+      rgba(var(--primary-rgb), 0.26) 38%,
+      rgba(var(--primary-rgb), 0.08) 56%,
+      transparent 74%
     );
   filter:
     drop-shadow(0 0 calc(6px + 12px * var(--edge-glow-opacity, 0)) var(--edge-glow-soft))
