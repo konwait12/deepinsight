@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="vizhub-page">
     <div class="page-header entrance-hero">
       <div>
@@ -212,6 +212,15 @@
       </div>
     </section>
 
+    <section v-if="hasScalarData" class="workspace-band analysis-3d-band entrance-up">
+      <div class="band-caption compact">
+        <span>{{ uiText.threeDModule }}</span>
+        <strong>{{ uiText.threeDTitle }}</strong>
+        <p>{{ uiText.threeDDesc }}</p>
+      </div>
+      <Analysis3D :jobs="runs" :selected-job-id="selectedRunId" :curve-data="curveData" />
+    </section>
+
     <section class="workspace-band overview-metrics-band">
       <div class="band-caption compact">
         <span>{{ uiText.liveComponents }}</span>
@@ -303,9 +312,9 @@
           >
             <div class="module-art-grid"></div>
             <svg class="module-art-svg" viewBox="0 0 360 220" preserveAspectRatio="none" aria-hidden="true">
-              <path class="module-art-area" :d="moduleArtAreaPath" />
-              <path class="module-art-path primary" :d="moduleArtPrimaryPath" />
-              <path class="module-art-path secondary" :d="moduleArtSecondaryPath" />
+              <path v-if="modulePreviewHasCurve" class="module-art-area" :d="moduleArtAreaPath" />
+              <path v-if="modulePreviewHasCurve" class="module-art-path primary" :d="moduleArtPrimaryPath" />
+              <path v-if="modulePreviewHasSecondaryCurve" class="module-art-path secondary" :d="moduleArtSecondaryPath" />
               <rect
                 v-for="bar in moduleArtBars"
                 :key="bar.id"
@@ -335,15 +344,12 @@
                 class="module-art-node"
                 :class="{ active: moduleProbe?.kind === 'node' && moduleProbe.index === node.index }"
               />
-              <g v-if="moduleProbe" class="chart-probe module-svg-probe">
+              <g v-if="moduleProbe && modulePreviewHasProbeGuide" class="chart-probe module-svg-probe">
                 <line class="probe-line" :x1="moduleProbe.svgX" :x2="moduleProbe.svgX" y1="24" y2="194" />
                 <line class="probe-line faint" x1="24" x2="336" :y1="moduleProbe.svgY" :y2="moduleProbe.svgY" />
                 <circle :cx="moduleProbe.svgX" :cy="moduleProbe.svgY" r="6" class="probe-dot accuracy" />
               </g>
             </svg>
-            <div class="module-art-code">
-              <span v-for="line in activeModule.lines" :key="line">{{ line }}</span>
-            </div>
             <div v-if="!activeSnapshot.hasData" class="chart-empty-state module-empty-state">
               <strong>{{ uiText.missing }}</strong>
               <span>{{ activeSnapshot.summary }}</span>
@@ -371,6 +377,43 @@
               <button v-if="selectedAnalysisModules.length" type="button" class="clear-select-action" @click="clearSelectedAnalysisModules">
                 {{ uiText.clearSelectedModules }}
               </button>
+            </div>
+            <div v-if="analysisMode === 'oneToMany'" class="one-many-run-picker">
+              <div class="matrix-control-head compact-head">
+                <span>{{ uiText.focusModel }}</span>
+                <strong>{{ activeRunName }}</strong>
+              </div>
+              <div class="one-many-run-list" role="radiogroup" :aria-label="uiText.selectRun">
+                <button
+                  v-for="run in runs"
+                  :key="runKey(run)"
+                  type="button"
+                  :class="{ active: selectedRunId === run.id }"
+                  @click="selectOneToManyRun(run)"
+                >
+                  <span>{{ displayRunLabel(run) }}</span>
+                  <em>{{ runTypeLabel(run.type) }} 路 {{ statusLabel(run.status) }}</em>
+                </button>
+              </div>
+            </div>
+            <div v-else class="one-many-run-picker compact-matrix-run-picker">
+              <div class="matrix-control-head compact-head">
+                <span>{{ uiText.matrixModels }}</span>
+                <strong>{{ selectedAnalysisRunKeys.length }} / {{ runs.length }}</strong>
+              </div>
+              <div class="one-many-run-list matrix-run-list" role="group" :aria-label="uiText.matrixModels">
+                <button
+                  v-for="run in runs"
+                  :key="runKey(run)"
+                  type="button"
+                  :class="{ active: selectedAnalysisRunKeys.includes(runKey(run)) }"
+                  @click="toggleMatrixRun(run)"
+                >
+                  <span>{{ displayRunLabel(run) }}</span>
+                  <em>{{ runTypeLabel(run.type) }} 璺?{{ statusLabel(run.status) }}</em>
+                  <b>{{ selectedAnalysisRunKeys.includes(runKey(run)) ? uiText.resultSelected : uiText.resultSelect }}</b>
+                </button>
+              </div>
             </div>
             <div class="analysis-module-ribbon">
               <button
@@ -400,25 +443,28 @@
         </aside>
 
         <div class="module-grid-panel">
-          <Transition name="matrix-result">
-            <div v-if="analysisMode === 'manyToMany'" class="matrix-control-card matrix-run-picker">
+          <!-- Matrix run picker lives in the left analysis panel for both modes. -->
+          <template v-if="false">
+            <div v-if="analysisMode === 'manyToMany'" class="matrix-control-card matrix-run-picker unified-run-picker">
               <div class="matrix-control-head">
                 <span>{{ uiText.matrixModels }}</span>
                 <strong>{{ selectedAnalysisRunKeys.length }} / {{ runs.length }}</strong>
               </div>
-              <el-checkbox-group v-model="selectedAnalysisRunKeys" class="matrix-check-grid compact-runs">
-                <el-checkbox
+              <div class="one-many-run-list matrix-run-list" role="group" :aria-label="uiText.matrixModels">
+                <button
                   v-for="run in runs"
                   :key="runKey(run)"
-                  :label="runKey(run)"
-                  border
+                  type="button"
+                  :class="{ active: selectedAnalysisRunKeys.includes(runKey(run)) }"
+                  @click="toggleMatrixRun(run)"
                 >
-                  <span class="matrix-run-label">{{ displayRunLabel(run) }}</span>
-                  <em>{{ runTypeLabel(run.type) }} · {{ statusLabel(run.status) }}</em>
-                </el-checkbox>
-              </el-checkbox-group>
+                  <span>{{ displayRunLabel(run) }}</span>
+                  <em>{{ runTypeLabel(run.type) }} 路 {{ statusLabel(run.status) }}</em>
+                  <b>{{ selectedAnalysisRunKeys.includes(runKey(run)) ? uiText.resultSelected : uiText.resultSelect }}</b>
+                </button>
+              </div>
             </div>
-          </Transition>
+          </template>
           <el-row :gutter="16">
             <el-col v-for="mod in modules" :key="mod.key" :xs="24" :sm="12" :md="8" :lg="6" class="mb-4">
               <el-card
@@ -429,8 +475,6 @@
                 role="button"
                 tabindex="0"
                 @mouseenter="setActiveModule(mod.key)"
-                @pointermove="handleModuleCardPointer($event, mod)"
-                @pointerleave="clearMiniProbe"
                 @focusin="setActiveModule(mod.key)"
                 @click="openModule(mod)"
                 @keydown.enter.prevent="openModule(mod)"
@@ -445,17 +489,9 @@
                 </div>
                 <h3>{{ $t('nav.' + mod.key) }}</h3>
                 <p>{{ mod.desc }}</p>
-                <div class="module-mini-preview" :class="'preview-' + mod.preview">
-                  <i
-                    v-for="(bar, barIndex) in moduleMiniBars(mod)"
-                    :key="barIndex"
-                    :class="{ active: miniProbe?.key === mod.key && miniProbe.index === barIndex }"
-                    :style="{ height: bar + '%' }"
-                  ></i>
-                </div>
-                <div v-if="miniProbe?.key === mod.key" class="dom-tooltip mini-tooltip" :style="{ left: miniProbe.x + '%', top: miniProbe.y + '%' }">
-                  <strong>{{ miniProbe.value }}</strong>
-                  <span>{{ miniProbe.label }}</span>
+                <div class="module-card-status">
+                  <span>{{ moduleSnapshot(mod.key).hasData ? uiText.canAnalyze : uiText.noDataShort }}</span>
+                  <strong>{{ moduleSnapshot(mod.key).values.length || moduleSnapshot(mod.key).nodes?.length || 0 }} {{ uiText.records }}</strong>
                 </div>
                 <button
                   type="button"
@@ -516,7 +552,7 @@
                 </g>
                 <path v-if="detailHasCurve" class="detail-area" :d="detailAreaPath" />
                 <path v-if="detailHasCurve" class="detail-path primary" :d="detailPrimaryPath" />
-                <path v-if="detailHasCurve" class="detail-path secondary" :d="detailSecondaryPath" />
+                <path v-if="detailHasSecondaryCurve" class="detail-path secondary" :d="detailSecondaryPath" />
                 <rect
                   v-for="bar in detailBars"
                   :key="bar.id"
@@ -573,13 +609,29 @@
                 <strong>{{ detailProbe?.value || detailSummary.primary }}</strong>
                 <em>{{ detailProbe?.label || detailSummary.secondary }}</em>
               </div>
-              <div class="detail-lines">
-                <span v-for="line in detailModule.lines" :key="line">{{ line }}</span>
-              </div>
               <div class="detail-table">
                 <div v-for="row in detailRows" :key="row.label">
                   <span>{{ row.label }}</span>
                   <strong>{{ row.value }}</strong>
+                </div>
+              </div>
+              <div class="detail-explain-card">
+                <span>{{ moduleExplanation.labels.title }}</span>
+                <strong>{{ moduleExplanation.title }}</strong>
+                <p>{{ moduleExplanation.summary }}</p>
+                <div class="detail-explain-list">
+                  <div>
+                    <em>{{ moduleExplanation.labels.data }}</em>
+                    <b>{{ moduleExplanation.data }}</b>
+                  </div>
+                  <div>
+                    <em>{{ moduleExplanation.labels.read }}</em>
+                    <b>{{ moduleExplanation.read }}</b>
+                  </div>
+                  <div>
+                    <em>{{ moduleExplanation.labels.missing }}</em>
+                    <b>{{ moduleExplanation.missing }}</b>
+                  </div>
                 </div>
               </div>
             </aside>
@@ -822,6 +874,7 @@ import { ElMessage } from 'element-plus'
 import { visualizationApi } from '@/api'
 import { useRunSelector } from '@/composables/useRunSelector'
 import { metricText } from '@/utils/modelDisplay'
+import Analysis3D from '@/components/analysis/Analysis3D.vue'
 import {
   Aim,
   Connection,
@@ -837,14 +890,13 @@ import {
 } from '@element-plus/icons-vue'
 
 type Point = { x: number; y: number }
-type ModulePreview = 'curve' | 'image' | 'audio' | 'text' | 'histogram' | 'embedding' | 'pr' | 'hparams' | 'graph' | 'profiler'
+type ModulePreview = 'curve' | 'image' | 'audio' | 'text' | 'histogram' | 'embedding' | 'pr' | 'hparams' | 'graph' | 'profiler' | 'surface3d'
 type ModuleProfile = {
   stage: string
   preview: ModulePreview
   accent: string
   desc: string
   miniBars: number[]
-  lines: string[]
   stats: Array<{ label: string; value: string }>
 }
 type BaseModule = { key: string; icon: any; desc: string }
@@ -927,7 +979,6 @@ type ModuleProbe = {
   svgX: number
   svgY: number
 }
-type MiniProbe = { key: string; index: number; label: string; value: string; x: number; y: number }
 const { runs, selectedRunId, loading, fetchRuns, selectRun } = useRunSelector()
 const { locale } = useI18n()
 const router = useRouter()
@@ -951,6 +1002,7 @@ const baseModules: BaseModule[] = [
   { key: 'prCurves', icon: ScaleToOriginal, desc: '' },
   { key: 'hparams', icon: Connection, desc: '' },
   { key: 'graphs', icon: VideoCameraFilled, desc: '' },
+  { key: 'surface3d', icon: Odometer, desc: '' },
   { key: 'profiler', icon: Odometer, desc: '' },
 ]
 
@@ -961,34 +1013,30 @@ const moduleProfiles: Record<string, ModuleProfile> = {
     accent: '#42e6a4',
     desc: '多训练标量指标对比',
     miniBars: [34, 48, 42, 66, 58, 78],
-    lines: ['series.loss()', 'smooth.window(8)', 'axis.sync(epoch)'],
     stats: [{ label: 'series', value: '12' }, { label: 'refresh', value: 'live' }],
   },
   images: {
     stage: 'Media',
     preview: 'image',
     accent: '#67e8f9',
-    desc: '训练样本与特征图查看',
+    desc: '璁粌鏍锋湰涓庣壒寰佸浘鏌ョ湅',
     miniBars: [72, 48, 84, 38, 64, 52],
-    lines: ['feature.map()', 'sample.grid(4)', 'channel.inspect()'],
     stats: [{ label: 'tiles', value: '64' }, { label: 'mode', value: 'grid' }],
   },
   audio: {
     stage: 'Wave',
     preview: 'audio',
     accent: '#f59e0b',
-    desc: '音频样本回放',
+    desc: '闊抽鏍锋湰鍥炴斁',
     miniBars: [28, 72, 36, 88, 44, 78],
-    lines: ['waveform.slice()', 'mel.render()', 'cursor.play()'],
     stats: [{ label: 'clips', value: '18' }, { label: 'latency', value: '9ms' }],
   },
   text: {
     stage: 'Log',
     preview: 'text',
     accent: '#a78bfa',
-    desc: '文本日志浏览',
+    desc: '鏂囨湰鏃ュ織娴忚',
     miniBars: [44, 54, 49, 62, 71, 58],
-    lines: ['token.diff()', 'log.tail()', 'prompt.trace()'],
     stats: [{ label: 'tokens', value: '8k' }, { label: 'drift', value: 'low' }],
   },
   histograms: {
@@ -997,25 +1045,22 @@ const moduleProfiles: Record<string, ModuleProfile> = {
     accent: '#fb7185',
     desc: '张量分布随训练演化',
     miniBars: [20, 34, 62, 86, 64, 28],
-    lines: ['weights.bucket()', 'grad.norm()', 'bins.animate()'],
     stats: [{ label: 'bins', value: '48' }, { label: 'tail', value: 'soft' }],
   },
   embeddings: {
     stage: 'Vector',
     preview: 'embedding',
     accent: '#22c55e',
-    desc: 'PCA / t-SNE 高维嵌入投影',
+    desc: 'PCA / t-SNE 楂樼淮宓屽叆鎶曞奖',
     miniBars: [62, 38, 72, 54, 46, 86],
-    lines: ['embed.project()', 'cluster.trace()', 'knn.highlight()'],
     stats: [{ label: 'points', value: '2.4k' }, { label: 'space', value: '2D' }],
   },
   prCurves: {
     stage: 'Eval',
     preview: 'pr',
     accent: '#38bdf8',
-    desc: 'PR 与 ROC 曲线分析',
+    desc: 'PR 涓?ROC 鏇茬嚎鍒嗘瀽',
     miniBars: [74, 69, 64, 58, 52, 44],
-    lines: ['threshold.scan()', 'auc.measure()', 'curve.compare()'],
     stats: [{ label: 'AUC', value: '.94' }, { label: 'AP', value: '.91' }],
   },
   hparams: {
@@ -1024,7 +1069,6 @@ const moduleProfiles: Record<string, ModuleProfile> = {
     accent: '#fbbf24',
     desc: '超参数对比面板',
     miniBars: [42, 84, 55, 76, 36, 68],
-    lines: ['lr.grid()', 'batch.compare()', 'parallel.axis()'],
     stats: [{ label: 'runs', value: '32' }, { label: 'best', value: 'v7' }],
   },
   graphs: {
@@ -1033,16 +1077,22 @@ const moduleProfiles: Record<string, ModuleProfile> = {
     accent: '#60a5fa',
     desc: '模型结构可视化',
     miniBars: [58, 58, 74, 74, 46, 46],
-    lines: ['node.layout()', 'edge.flow()', 'layer.expand()'],
     stats: [{ label: 'nodes', value: '126' }, { label: 'edges', value: '241' }],
+  },
+  surface3d: {
+    stage: '3D',
+    preview: 'surface3d',
+    accent: '#14b8a6',
+    desc: '三维训练曲面与模型状态空间',
+    miniBars: [38, 58, 72, 84, 68, 92],
+    stats: [{ label: 'axis', value: '3' }, { label: 'mode', value: 'live' }],
   },
   profiler: {
     stage: 'Runtime',
     preview: 'profiler',
     accent: '#f97316',
-    desc: '性能剖析与火焰图',
+    desc: '鎬ц兘鍓栨瀽涓庣伀鐒板浘',
     miniBars: [88, 62, 72, 38, 56, 44],
-    lines: ['kernel.trace()', 'flame.merge()', 'gpu.timeline()'],
     stats: [{ label: 'GPU', value: '79%' }, { label: 'step', value: '18ms' }],
   },
 }
@@ -1082,7 +1132,6 @@ const componentProbe = ref<null | { name: string; index: number; value: number; 
 const modulePointer = ref({ x: 50, y: 50 })
 const moduleProbe = ref<ModuleProbe | null>(null)
 const detailProbe = ref<ModuleProbe | null>(null)
-const miniProbe = ref<MiniProbe | null>(null)
 const detailPointer = ref({ x: 50, y: 50 })
 const detailPanelRef = ref<HTMLElement>()
 let transitionTimer: number | undefined
@@ -1097,6 +1146,7 @@ const MODULE_TAG_HINTS: Record<string, string[]> = {
   histograms: ['weights', 'weight', 'histogram', 'grad', 'gradient'],
   embeddings: ['embedding', 'embeddings', 'latent', 'features'],
   prCurves: ['pr', 'precision', 'recall', 'roc'],
+  surface3d: ['3d', 'surface', 'loss', 'accuracy'],
   profiler: ['profiler', 'trace', 'runtime', 'flame'],
 }
 
@@ -1129,6 +1179,7 @@ const modulePayloads = ref<Record<string, any[]>>({
   prCurves: [],
   hparams: [],
   graphs: [],
+  surface3d: [],
   profiler: [],
 })
 const lastUpdatedAt = ref<Date | null>(null)
@@ -1207,6 +1258,7 @@ function resetVisualizationData() {
     prCurves: [],
     hparams: [],
     graphs: [],
+    surface3d: [],
     profiler: [],
   }
   dataError.value = ''
@@ -1230,6 +1282,7 @@ async function fetchVisualizationData(showLoading = false) {
       prCurves: [],
       hparams: [],
       graphs: [],
+      surface3d: [],
       profiler: [],
     }
 
@@ -1268,7 +1321,7 @@ async function fetchVisualizationData(showLoading = false) {
     dataError.value = ''
   } catch (error: any) {
     if (selectedRunId.value === runId) {
-      dataError.value = error?.response?.data?.message || error?.message || '实时数据读取失败'
+      dataError.value = error?.response?.data?.message || error?.message || '瀹炴椂鏁版嵁璇诲彇澶辫触'
     }
   } finally {
     if (selectedRunId.value === runId) dataLoading.value = false
@@ -1308,12 +1361,13 @@ function normalizeRecords<T>(records: unknown): T[] {
 
 function pickTag(tags: string[], moduleKey: string) {
   const hints = MODULE_TAG_HINTS[moduleKey] || []
+  if (!hints.length) return ''
   const lowerTags = tags.map((tag) => tag.toLowerCase())
   const exact = hints
     .flatMap((hint) => [hint, `${hint}s`, `train/${hint}`, `val/${hint}`])
     .find((candidate) => lowerTags.includes(candidate.toLowerCase()))
   if (exact) return tags[lowerTags.indexOf(exact.toLowerCase())]
-  return tags.find((tag) => hints.some((hint) => tag.toLowerCase().includes(hint))) || tags[0]
+  return tags.find((tag) => hints.some((hint) => tag.toLowerCase().includes(hint))) || ''
 }
 
 const matrixModuleOptions = computed<AnalysisModuleOption[]>(() => {
@@ -1407,6 +1461,17 @@ function setAnalysisMode(mode: AnalysisMode) {
   if (mode === 'manyToMany' && currentRunKey.value && !selectedAnalysisRunKeys.value.includes(currentRunKey.value)) {
     selectedAnalysisRunKeys.value = [currentRunKey.value, ...selectedAnalysisRunKeys.value]
   }
+}
+
+function selectOneToManyRun(run: RunLike) {
+  selectRun(run.id)
+}
+
+function toggleMatrixRun(run: RunLike) {
+  const key = runKey(run)
+  selectedAnalysisRunKeys.value = selectedAnalysisRunKeys.value.includes(key)
+    ? selectedAnalysisRunKeys.value.filter((item) => item !== key)
+    : [...selectedAnalysisRunKeys.value, key]
 }
 
 function visibleResultIds() {
@@ -1635,7 +1700,7 @@ function translateLegacySummary(summary: string, result?: AnalysisResult) {
   }
   const direct: Record<string, string> = {
     'Current training job metrics are available from the job record.': '已从训练任务记录中读取当前指标，可作为临时训练状态判断。',
-    'Scalar metrics analyzed from real training_steps records.': '已基于真实训练步记录分析损失、准确率和学习率变化。',
+    'Scalar metrics analyzed from real training_steps records.': '已基于真实训练步骤记录分析损失、准确率和学习率变化。',
     'Distribution derived from real training loss records.': '已用真实训练损失记录生成分布统计。',
     'Hyperparameters read from the training job configuration.': '已从训练任务配置中读取超参数信息。',
     'Architecture metadata is available for this training job.': '已读取该训练任务的模型架构元数据。',
@@ -1661,14 +1726,13 @@ function translateLegacySummary(summary: string, result?: AnalysisResult) {
     return `${tableMap[table] || table} 中还没有找到该运行的记录。`
   }
   if (summary.startsWith('No scalar steps have been recorded')) {
-    return '该训练任务还没有写入标量步记录，也没有可用的当前损失或准确率。'
+    return '该训练任务还没有写入标量步骤记录，也没有可用的当前损失或准确率。'
   }
   if (summary.startsWith('No loss values are available')) {
     return '没有可用于生成分布直方图的训练损失记录。'
   }
   return summary
 }
-
 function localizedResultSummary(result: AnalysisResult) {
   return translateLegacySummary(result.summary, result) || uiText.value.emptyModule
 }
@@ -1677,7 +1741,7 @@ function localizedPanelTitle(result: AnalysisResult) {
   const panel = result.aiPanels?.[0] as AnalysisPanel | undefined
   if (!panel?.title) return uiText.value.aiPanelReserved
   if (!locale.value.startsWith('zh')) return panel.title
-  if (panel.title.endsWith(' AI panel')) return `${moduleTitle(result.moduleKey)} AI 解读`
+  if (panel.title.endsWith(' AI panel')) return `${moduleTitle(result.moduleKey)} AI 瑙ｈ`
   return panel.title
 }
 
@@ -1689,7 +1753,7 @@ function localizedPanelInsight(result: AnalysisResult) {
     return `已针对「${result.runName}」使用「${moduleTitle(result.moduleKey)}」模块分析 ${result.recordCount} 条真实记录。${localizedResultSummary(result)}`
   }
   if (text.startsWith('The ') && text.includes('module is prepared')) {
-    return `「${moduleTitle(result.moduleKey)}」模块已经为「${result.runName}」预留独立 AI 面板，但当前缺少必要记录。${localizedResultSummary(result)}`
+    return `「${moduleTitle(result.moduleKey)}」模块已为「${result.runName}」预留独立 AI 面板，但当前缺少必要记录。${localizedResultSummary(result)}`
   }
   return translateLegacySummary(text, result)
 }
@@ -1700,21 +1764,20 @@ function localizedRecommendations(result: AnalysisResult) {
   if (!locale.value.startsWith('zh')) return recommendations.slice(0, 3)
   return recommendations.slice(0, 3).map((item) => {
     if (item.startsWith('Connect SDK logging')) return `先接入「${moduleTitle(result.moduleKey)}」日志，再做横向对比。`
-    if (item.startsWith('Run the same module')) return '可以先选择另一个已有记录的模型/运行，确认展示链路是否正常。'
-    if (item.startsWith('Keep this AI panel')) return '保留这个 AI 面板，它能持续暴露缺少埋点或缺少数据的问题。'
+    if (item.startsWith('Run the same module')) return '可先选择另一个已有记录的模型/运行，确认展示链路是否正常。'
+    if (item.startsWith('Keep this AI panel')) return '保留这个 AI 面板，用于持续暴露缺少埋点或缺少数据的问题。'
     if (item.startsWith('Compare validation loss')) return '把多个模型的验证损失放在一起比较。'
-    if (item.startsWith('Watch loss delta')) return '同时看损失变化和最佳准确率。'
+    if (item.startsWith('Watch loss delta')) return '同时观察损失变化和最佳准确率。'
     if (item.startsWith('Use early stopping')) return '如果验证损失持续回升，建议启用早停或降低学习率。'
     if (item.startsWith('Sort operators')) return '优先按单步耗时排序，定位最慢算子或数据阶段。'
     if (item.startsWith('Compare GPU')) return '并排比较不同模型的 GPU 利用率。'
-    if (item.startsWith('Check data loading')) return '优化算子前先检查数据加载和预处理。'
+    if (item.startsWith('Check data loading')) return '优化算子前，先检查数据加载和预处理。'
     if (item.startsWith('Compare this result')) return '把这个结果和其他已选模型放在同一矩阵里比较。'
     if (item.startsWith('Use the record count')) return '记录数本身就是数据质量信号。'
-    if (item.startsWith('Open the detail panel')) return '进入详情面板确认趋势和样本后再调整训练策略。'
+    if (item.startsWith('Open the detail panel')) return '进入详情面板确认趋势和样本后，再调整训练策略。'
     return item
   })
 }
-
 function activePanel(result: AnalysisResult) {
   return result.aiPanels?.[0] as AnalysisPanel | undefined
 }
@@ -1796,7 +1859,7 @@ async function runOneToManyAnalysis() {
   try {
     const target = parseRunKey(currentRunKey.value)
     const response = await visualizationApi.createAnalysisBatch({
-      title: `${uiText.value.oneToManyTitle} · ${activeRunName.value} · ${new Date().toLocaleString()}`,
+      title: `${uiText.value.oneToManyTitle} 路 ${activeRunName.value} 路 ${new Date().toLocaleString()}`,
       targets: [target],
       modules: selectedAnalysisModules.value,
     })
@@ -1931,7 +1994,6 @@ function buildVisualViewMarkdown() {
   })
   return lines.join('\n')
 }
-
 function downloadBlob(content: BlobPart, filename: string, type: string) {
   const blob = new Blob([content], { type })
   const url = URL.createObjectURL(blob)
@@ -1996,7 +2058,7 @@ function exportVisualImage() {
   const serialized = getCurrentVisualSvg()
   if (!serialized) {
     downloadBlob(buildVisualViewMarkdown(), `deepinsight-visual-snapshot-${Date.now()}.txt`, 'text/plain;charset=utf-8')
-    ElMessage.info('当前视图没有可直接导出的 SVG，已导出文本快照')
+    ElMessage.info('褰撳墠瑙嗗浘娌℃湁鍙洿鎺ュ鍑虹殑 SVG锛屽凡瀵煎嚭鏂囨湰蹇収')
     return
   }
   downloadBlob(serialized, `deepinsight-visual-${Date.now()}.svg`, 'image/svg+xml;charset=utf-8')
@@ -2032,7 +2094,7 @@ async function saveVisualViewToCloud(format: ViewSaveFormat = 'md', includeImage
     })
     ElMessage.success(response.data.message || uiText.value.viewSavedCloud)
   } catch (error: any) {
-    ElMessage.error(error?.response?.data?.message || '保存视图失败')
+    ElMessage.error(error?.response?.data?.message || '淇濆瓨瑙嗗浘澶辫触')
   } finally {
     resultPersistenceBusy.value = ''
   }
@@ -2098,9 +2160,7 @@ const uiText = computed(() => {
   const isZh = locale.value.startsWith('zh')
   return {
     visualizationLayer: isZh ? '可视化层' : 'Visualization Layer',
-    headerDesc: isZh
-      ? '选择训练运行，查看当前模型已记录的标量、媒体、结构与性能数据。没有日志的模块会显示缺失原因和后续接入建议。'
-      : 'Select a run to inspect real scalar, media, graph, and profiler logs for the current model. Modules without logs show a clear empty state.',
+    headerDesc: isZh ? '选择训练运行，查看当前模型已记录的标量、媒体、结构与性能数据。没有日志的模块会显示缺失原因和后续接入建议。' : 'Select a run to inspect real scalar, media, graph, and profiler logs for the current model. Modules without logs show a clear empty state.',
     modules: isZh ? '模块' : 'modules',
     trainingRun: isZh ? '训练运行' : 'Run',
     selectRun: isZh ? '选择训练运行' : 'Select run',
@@ -2112,9 +2172,7 @@ const uiText = computed(() => {
     accuracyShort: metricText('accuracy', locale).shortLabel,
     lossLegend: metricText('loss', locale).label,
     accuracyLegend: metricText('accuracy', locale).label,
-    lossAccuracyExplain: isZh
-      ? 'Loss 是模型误差，通常越低越好；Accuracy 是预测正确率，通常越高越好。这里读取当前 run 的真实标量日志。'
-      : 'Loss is prediction error, usually lower is better. Accuracy is correctness, usually higher is better. This chart reads real scalar logs from the current run.',
+    lossAccuracyExplain: isZh ? 'Loss 是模型误差，通常越低越好；Accuracy 是预测正确率，通常越高越好。这里读取当前 run 的真实标量日志。' : 'Loss is prediction error, usually lower is better. Accuracy is correctness, usually higher is better. This chart reads real scalar logs from the current run.',
     distribution: isZh ? '分布' : 'Distribution',
     weights: isZh ? '权重/梯度' : 'Weights / Gradients',
     bin: isZh ? '区间' : 'bin',
@@ -2131,20 +2189,16 @@ const uiText = computed(() => {
     oneToManyShort: isZh ? '单模型多模块' : 'single run',
     manyToManyShort: isZh ? '多模型矩阵' : 'matrix',
     oneToManyEyebrow: isZh ? '一对多执行' : 'One-to-many execution',
-    oneToManyTitle: isZh ? '当前模型 × 多分析' : 'Current Model x Multiple Analyses',
-    oneToManyDesc: isZh
-      ? '锁定顶部当前训练任务或上传运行，然后选择多个分析模块。执行后会为这个模型的每个模块生成真实落库结果和独立 AI 面板。'
-      : 'Lock the current run selected above, choose multiple analysis modules, then create one persisted result and AI panel for every module.',
-    oneToManySelection: isZh ? '当前「{run}」× {modules} 个模块' : 'Current "{run}" x {modules} modules',
+    oneToManyTitle: isZh ? '当前模型 x 多分析' : 'Current Model x Multiple Analyses',
+    oneToManyDesc: isZh ? '锁定顶部当前训练任务或上传运行，然后选择多个分析模块。执行后会为这个模型的每个模块生成真实落库结果和独立 AI 面板。' : 'Lock the current run selected above, choose multiple analysis modules, then create one persisted result and AI panel for every module.',
+    oneToManySelection: isZh ? '当前「{run}」x {modules} 个模块' : 'Current "{run}" x {modules} modules',
     oneToManyBadge: isZh ? '一对多已选' : 'one-to-many',
     manyToManyBadge: isZh ? '多对多已选' : 'many-to-many',
     clickToAdd: isZh ? '点击加入当前模式' : 'click to add',
     focusModel: isZh ? '当前模型' : 'Focus model',
-    focusModelDesc: isZh
-      ? '这个模式会自动使用顶部已选运行，不再让你重复选择模型；下面模块卡片也会同步标记已加入分析。'
-      : 'This mode automatically uses the run selected above; module cards below stay marked as included.',
+    focusModelDesc: isZh ? '这个模式会自动使用顶部已选运行，不再重复选择模型；下面模块卡片也会同步标记已加入分析。' : 'This mode automatically uses the run selected above; module cards below stay marked as included.',
     selectedModules: isZh ? '已选模块' : 'selected modules',
-    noModulePicked: isZh ? '还没有选择模块，请点模块卡片右下角的选择按钮加入分析。' : 'No modules selected yet. Use the bottom-right button on each module card to include it.',
+    noModulePicked: isZh ? '还没有选择模块，请点击模块卡片右下角的选择按钮加入分析。' : 'No modules selected yet. Use the bottom-right button on each module card to include it.',
     smartSelectModules: isZh ? '智能选择可分析模块' : 'Smart select analyzable',
     clearSelectedModules: isZh ? '清空选择' : 'Clear selection',
     selectedForAnalysis: isZh ? '已加入分析' : 'Included',
@@ -2154,11 +2208,9 @@ const uiText = computed(() => {
     liveModules: isZh ? '有数据模块' : 'live modules',
     runOneToMany: isZh ? '执行一对多分析' : 'Run one-to-many',
     matrixEyebrow: isZh ? '多对多执行' : 'Many-to-many execution',
-    matrixTitle: isZh ? '模型 × 分析矩阵' : 'Model x Analysis Matrix',
-    matrixDesc: isZh
-      ? '左边选择多个训练任务或上传运行，右边选择多个分析模块。点击执行后，系统会为每个「模型 × 模块」组合生成一条真实落库结果，并为每条结果保留独立 AI 分析面板。'
-      : 'Select multiple training jobs or uploaded runs on the left, then choose analysis modules on the right. Running the matrix creates one persisted result and one dedicated AI panel for every model x module cell.',
-    matrixSelection: isZh ? '已选择 {runs} 个运行 × {modules} 个模块 = {cells} 个结果单元' : '{runs} runs x {modules} modules = {cells} result cells',
+    matrixTitle: isZh ? '模型 x 分析矩阵' : 'Model x Analysis Matrix',
+    matrixDesc: isZh ? '左边选择多个训练任务或上传运行，右边选择多个分析模块。点击执行后，系统会为每个“模型 x 模块”组合生成一条真实落库结果，并为每条结果保留独立 AI 分析面板。' : 'Select multiple training jobs or uploaded runs on the left, then choose analysis modules on the right. Running the matrix creates one persisted result and one dedicated AI panel for every model x module cell.',
+    matrixSelection: isZh ? '已选择 {runs} 个运行 x {modules} 个模块 = {cells} 个结果单元' : '{runs} runs x {modules} modules = {cells} result cells',
     matrixModels: isZh ? '选择模型 / 运行' : 'Select models / runs',
     matrixModules: isZh ? '选择分析模块' : 'Select analysis modules',
     runMatrix: isZh ? '执行矩阵分析' : 'Run matrix analysis',
@@ -2189,6 +2241,9 @@ const uiText = computed(() => {
     aiPanelRuleFailed: isZh ? '规则分析刷新失败' : 'Rule analysis refresh failed',
     unknownError: isZh ? '未知错误' : 'unknown error',
     detail: isZh ? '详情' : 'Detail',
+    threeDModule: isZh ? '3D 模块' : '3D Module',
+    threeDTitle: isZh ? '三维训练曲面' : '3D Training Surface',
+    threeDDesc: isZh ? '把当前训练 run 的损失、准确率和进度映射到三维空间，用来观察收敛面、波动和模型状态分布。' : 'Map loss, accuracy, and progress into 3D space to inspect convergence surfaces and model state distribution.',
     pointer: isZh ? '鼠标探针' : 'Pointer',
     records: isZh ? '记录数' : 'records',
     status: isZh ? '状态' : 'status',
@@ -2229,6 +2284,7 @@ const uiText = computed(() => {
       prCurves: isZh ? '评估' : 'Eval',
       hparams: isZh ? '配置' : 'Config',
       graphs: isZh ? '结构' : 'Graph',
+      surface3d: '3D',
       profiler: isZh ? '运行时' : 'Runtime',
     } as Record<string, string>,
     moduleFullNames: {
@@ -2241,6 +2297,7 @@ const uiText = computed(() => {
       prCurves: isZh ? 'PR/ROC 评估' : 'PR / ROC',
       hparams: isZh ? '超参数对比' : 'Hyperparameters',
       graphs: isZh ? '模型结构' : 'Graphs',
+      surface3d: isZh ? '三维曲面' : '3D Surface',
       profiler: isZh ? '性能剖析' : 'Profiler',
     } as Record<string, string>,
     moduleDescs: {
@@ -2248,12 +2305,13 @@ const uiText = computed(() => {
       images: isZh ? '训练样本、特征图或中间可视结果，来自当前 run 的图像日志。' : 'Image logs such as samples, feature maps, or intermediate views.',
       audio: isZh ? '音频波形、梅尔谱等记录，用来检查音频模型输入输出。' : 'Audio logs such as waveforms and mel spectrograms.',
       text: isZh ? '文本日志、样本预测或提示词轨迹，用来追踪语言模型行为。' : 'Text logs, predictions, or prompt traces.',
-      histograms: isZh ? metricText('histogram', locale).description : metricText('histogram', locale).description,
-      embeddings: isZh ? metricText('embedding', locale).description : metricText('embedding', locale).description,
-      prCurves: isZh ? metricText('prCurve', locale).description : metricText('prCurve', locale).description,
+      histograms: metricText('histogram', locale).description,
+      embeddings: metricText('embedding', locale).description,
+      prCurves: metricText('prCurve', locale).description,
       hparams: isZh ? '学习率、批次大小、正则化等超参数与指标的对应关系。' : 'Relationship between hyperparameters and metrics.',
       graphs: isZh ? '模型层、节点和连接关系。若未上传拓扑日志，只显示当前架构名。' : 'Model layers, nodes, and edges. Without topology logs, only the architecture is shown.',
-      profiler: isZh ? metricText('profiler', locale).description : metricText('profiler', locale).description,
+      surface3d: isZh ? '基于训练标量生成三维曲面和模型状态散点。' : '3D surface and model-state scatter derived from training scalars.',
+      profiler: metricText('profiler', locale).description,
     } as Record<string, string>,
     noRun: isZh ? '请选择一个训练任务或上传运行。' : 'Select a training job or uploaded run.',
     loading: isZh ? '正在读取当前模型实时数据...' : 'Loading live data for the current model...',
@@ -2292,17 +2350,12 @@ const uiText = computed(() => {
     resultSelected: isZh ? '已选中' : 'Selected',
     noResultToPersist: isZh ? '当前没有可保存或导入的分析结果' : 'No analysis results to save or import',
     resultSavedMessage: isZh ? '已保存 {count} 条分析记录到 MySQL' : 'Saved {count} analysis records to MySQL',
-    importedToChatMessage: isZh ? '已保存并生成新的 AI 对话记录' : 'Saved and created a new AI conversation',
+    importedToChatMessage: isZh ? '已导入并开始 AI 分析' : 'Imported and started AI analysis',
     viewSavedCloud: isZh ? '视图已保存到云端' : 'View saved to cloud',
-    importChatSeed: isZh
-      ? '请基于这些已保存的训练/可视化分析记录继续分析，给出风险、证据、下一步实验和优先级。'
-      : 'Continue analyzing these saved training/visualization records. Give risks, evidence, next experiments, and priorities.',
-    graphMissing: isZh
-      ? '当前模型为 {model}，但这个 run 还没有上传模型结构拓扑日志。'
-      : 'Current model: {model}. No graph topology log has been uploaded for this run.',
+    importChatSeed: isZh ? '请基于这些已保存的训练/可视化分析记录继续分析，给出风险、证据、下一步实验和优先级。' : 'Continue analyzing these saved training/visualization records. Give risks, evidence, next experiments, and priorities.',
+    graphMissing: isZh ? '当前模型为 {model}，但这个 run 还没有上传模型结构拓扑日志。' : 'Current model: {model}. No graph topology log has been uploaded for this run.',
   }
 })
-
 const dataStatusLabel = computed(() => {
   if (!selectedRunId.value) return uiText.value.noRun
   if (dataLoading.value) return uiText.value.loading
@@ -2313,7 +2366,7 @@ const dataStatusLabel = computed(() => {
 
 function displayRunLabel(run: { name?: string; architecture?: string; modelArchitecture?: string; status?: string }) {
   const arch = run.architecture || run.modelArchitecture
-  return arch ? `${run.name} · ${arch}` : run.name || uiText.value.missing
+  return arch ? `${run.name} 路 ${arch}` : run.name || uiText.value.missing
 }
 
 const hasScalarData = computed(() => curveData.value.loss.length > 0 || curveData.value.accuracy.length > 0)
@@ -2377,14 +2430,6 @@ function updatePointerTarget(target: { value: { x: number; y: number } }, x: num
 function sameModuleProbe(current: ModuleProbe | null, next: ModuleProbe) {
   return !!current &&
     current.kind === next.kind &&
-    current.index === next.index &&
-    current.label === next.label &&
-    current.value === next.value
-}
-
-function sameMiniProbe(current: MiniProbe | null, next: MiniProbe) {
-  return !!current &&
-    current.key === next.key &&
     current.index === next.index &&
     current.label === next.label &&
     current.value === next.value
@@ -2495,17 +2540,18 @@ function clearComponentProbe() {
 }
 
 function moduleProbeLabel(mod: VizModule, index: number) {
+  const zh = locale.value.startsWith('zh')
   const labels: Record<string, string[]> = {
-    scalars: locale.value.startsWith('zh') ? ['损失', '准确率', '学习率', '梯度', '验证损失', '验证准确率'] : ['loss', 'accuracy', 'lr', 'grad', 'val/loss', 'val/acc'],
-    images: locale.value.startsWith('zh') ? ['输入图', '卷积层1', '模块2', '注意力图', '解码器', '样本'] : ['input', 'conv1', 'block2', 'attention', 'decoder', 'sample'],
-    audio: locale.value.startsWith('zh') ? ['波形', '梅尔谱1', '梅尔谱2', '音高', '能量', '静音段'] : ['wave', 'mel-1', 'mel-2', 'pitch', 'energy', 'silence'],
-    text: locale.value.startsWith('zh') ? ['词元', '对数概率', '提示词', '回答', '差异', '轨迹'] : ['token', 'logprob', 'prompt', 'answer', 'diff', 'trace'],
-    histograms: locale.value.startsWith('zh') ? ['1分位', '10分位', '中位数', '90分位', '尾部', '异常值'] : ['p1', 'p10', 'median', 'p90', 'tail', 'outlier'],
-    embeddings: locale.value.startsWith('zh') ? ['类别A', '类别B', '类别C', '近邻', '簇', '锚点'] : ['class A', 'class B', 'class C', 'neighbor', 'cluster', 'anchor'],
-    prCurves: locale.value.startsWith('zh') ? ['阈值 .10', '阈值 .25', '阈值 .40', '阈值 .55', '阈值 .70', '阈值 .85'] : ['thr .10', 'thr .25', 'thr .40', 'thr .55', 'thr .70', 'thr .85'],
-    hparams: locale.value.startsWith('zh') ? ['学习率', '批次', 'Dropout', '权重衰减', '随机种子', '得分'] : ['lr', 'batch', 'dropout', 'wd', 'seed', 'score'],
-    graphs: locale.value.startsWith('zh') ? ['输入层', '卷积', '归一化', '注意力', '输出头', '输出层'] : ['input', 'conv', 'norm', 'attn', 'head', 'output'],
-    profiler: locale.value.startsWith('zh') ? ['拷贝', '卷积', '归一化', '激活', '矩阵乘', 'softmax'] : ['copy', 'conv', 'norm', 'relu', 'matmul', 'softmax'],
+    scalars: zh ? ['损失', '准确率', '学习率', '梯度', '验证损失', '验证准确率'] : ['loss', 'accuracy', 'lr', 'grad', 'val/loss', 'val/acc'],
+    images: zh ? ['输入图', '卷积层', '模块2', '注意力图', '解码器', '样本'] : ['input', 'conv1', 'block2', 'attention', 'decoder', 'sample'],
+    audio: zh ? ['波形', '梅尔谱1', '梅尔谱2', '音高', '能量', '静音段'] : ['wave', 'mel-1', 'mel-2', 'pitch', 'energy', 'silence'],
+    text: zh ? ['词元', '对数概率', '提示词', '回答', '差异', '轨迹'] : ['token', 'logprob', 'prompt', 'answer', 'diff', 'trace'],
+    histograms: zh ? ['1分位', '10分位', '中位数', '90分位', '尾部', '异常值'] : ['p1', 'p10', 'median', 'p90', 'tail', 'outlier'],
+    embeddings: zh ? ['类别A', '类别B', '类别C', '近邻', '簇', '锚点'] : ['class A', 'class B', 'class C', 'neighbor', 'cluster', 'anchor'],
+    prCurves: zh ? ['阈值 .10', '阈值 .25', '阈值 .40', '阈值 .55', '阈值 .70', '阈值 .85'] : ['thr .10', 'thr .25', 'thr .40', 'thr .55', 'thr .70', 'thr .85'],
+    hparams: zh ? ['学习率', '批次', 'Dropout', '权重衰减', '随机种子', '得分'] : ['lr', 'batch', 'dropout', 'wd', 'seed', 'score'],
+    graphs: zh ? ['输入层', '卷积', '归一化', '注意力', '输出头', '输出层'] : ['input', 'conv', 'norm', 'attn', 'head', 'output'],
+    profiler: zh ? ['拷贝', '卷积', '归一化', '激活', '矩阵乘', 'softmax'] : ['copy', 'conv', 'norm', 'relu', 'matmul', 'softmax'],
   }
   const options = labels[mod.key] || [mod.stage]
   return options[index % options.length]
@@ -2522,32 +2568,6 @@ function formatProbeValue(mod: VizModule, raw: number, index: number) {
   if (mod.key === 'graphs') return activeArchitecture.value || uiText.value.missing
   if (mod.key === 'profiler') return `${formatMetric(raw)} ms`
   return formatMetric(raw)
-}
-
-function handleModuleCardPointer(event: PointerEvent, mod: VizModule) {
-  setActiveModule(mod.key)
-  const point = localPoint(event, 1, 1)
-  const bars = moduleMiniBars(mod)
-  if (!bars.length) return
-  const index = clamp(Math.round((point.px / 100) * (bars.length - 1)), 0, bars.length - 1)
-  const nextProbe = {
-    key: mod.key,
-    index,
-    label: moduleProbeLabel(mod, index),
-    value: formatProbeValue(mod, bars[index], index),
-    x: clamp(62 + index * 5, 54, 88),
-    y: 78,
-  }
-  if (sameMiniProbe(miniProbe.value, nextProbe)) return
-  miniProbe.value = nextProbe
-}
-
-function clearMiniProbe() {
-  miniProbe.value = null
-}
-
-function moduleMiniBars(mod: VizModule) {
-  return normalizeToPercent(moduleSnapshot(mod.key).values, 0).slice(0, 6)
 }
 
 function handleModulePointer(event: PointerEvent) {
@@ -2576,7 +2596,7 @@ function handleModulePointer(event: PointerEvent) {
     moduleProbe.value = nextProbe
     return
   }
-  if (['embedding', 'graph', 'hparams'].includes(preview)) {
+  if (nodePreviewTypes.includes(preview)) {
     const nodes = moduleArtNodes.value
     if (!nodes.length) return
     const index = nodes.reduce((closest, node, nodeIndex) => {
@@ -2650,7 +2670,7 @@ function handleDetailPointer(event: PointerEvent) {
     return
   }
 
-  if (['embedding', 'graph', 'hparams'].includes(preview)) {
+  if (nodePreviewTypes.includes(preview)) {
     const nodes = detailNodes.value
     if (!nodes.length) return
     const index = nodes.reduce((closest, node, nodeIndex) => {
@@ -2696,7 +2716,7 @@ function clearDetailProbe() {
   detailProbe.value = null
 }
 
-const detailHasCurve = computed(() => detailPoints.value.length > 0 && !detailBars.value.length && !['embedding', 'graph', 'hparams'].includes(detailModule.value.preview))
+const detailHasCurve = computed(() => detailPoints.value.length > 0 && !detailBars.value.length && !nodePreviewTypes.includes(detailModule.value.preview))
 
 const handleRunChange = (val: number | null) => selectRun(val)
 const activeRunName = computed(() => selectedJob.value?.name || (selectedRunId.value ? `run-${selectedRunId.value}` : uiText.value.noRun))
@@ -2877,7 +2897,7 @@ const latestValLoss = computed(() => latestValue(scalarValues('val/loss')))
 const latestValAccuracy = computed(() => latestValue(normalizeAccuracy(scalarValues('val/accuracy'))))
 
 const previewMetrics = computed(() => [
-  { label: locale.value.startsWith('zh') ? '轮次' : 'Epoch', value: String(scalarStepCount.value || '--'), detail: selectedJob.value?.status || selectedRunType.value, tone: 'var(--primary-color)' },
+  { label: locale.value.startsWith('zh') ? '杞' : 'Epoch', value: String(scalarStepCount.value || '--'), detail: selectedJob.value?.status || selectedRunType.value, tone: 'var(--primary-color)' },
   { label: metricText('loss', locale).shortLabel, value: formatMetric(latestLoss.value), detail: latestValLoss.value !== null ? `${metricText('valLoss', locale).shortLabel} ${formatMetric(latestValLoss.value)}` : 'train/loss', tone: 'var(--tone-rose)' },
   { label: metricText('accuracy', locale).shortLabel, value: formatPercent(latestAccuracy.value), detail: latestValAccuracy.value !== null ? `${metricText('valAccuracy', locale).shortLabel} ${formatPercent(latestValAccuracy.value)}` : 'train/accuracy', tone: 'var(--tone-green)' },
   { label: metricText('learningRate', locale).shortLabel, value: formatMetric(latestLearningRate.value, 5), detail: 'train/learning_rate', tone: 'var(--tone-blue)' },
@@ -2893,6 +2913,191 @@ function percentile(values: number[], ratio: number) {
   if (!values.length) return 0
   const sorted = [...values].sort((a, b) => a - b)
   return sorted[Math.min(sorted.length - 1, Math.max(0, Math.round((sorted.length - 1) * ratio)))]
+}
+
+function derivedScalarValues() {
+  const values = [
+    ...curveData.value.loss,
+    ...curveData.value.accuracy.map((value) => value / 100),
+    ...scalarValues('val/loss'),
+    ...normalizeAccuracy(scalarValues('val/accuracy')).map((value) => value / 100),
+  ].filter(Number.isFinite)
+  if (values.length) return values
+  const fallback = [latestLoss.value, latestAccuracy.value !== null ? latestAccuracy.value / 100 : null, latestLearningRate.value]
+  return fallback.filter((value): value is number => value !== null && Number.isFinite(value))
+}
+
+function buildHistogramBins(values: number[], binCount = 14) {
+  const clean = values.filter(Number.isFinite)
+  if (!clean.length) return []
+  const min = Math.min(...clean)
+  const max = Math.max(...clean)
+  const span = max - min || 1
+  const bins = Array.from({ length: binCount }, () => 0)
+  clean.forEach((value) => {
+    const index = clamp(Math.floor(((value - min) / span) * binCount), 0, binCount - 1)
+    bins[index] += 1
+  })
+  return bins
+}
+
+function derivedHistogramSnapshot(): ModuleSnapshot {
+  const bins = buildHistogramBins(derivedScalarValues())
+  return {
+    values: bins,
+    bars: bins,
+    steps: curveData.value.steps,
+    rows: [
+      { label: uiText.value.source, value: selectedRunType.value },
+      { label: uiText.value.bins, value: String(bins.length || '--') },
+      { label: uiText.value.total, value: String(derivedScalarValues().length || '--') },
+    ],
+    summary: bins.length ? `${bins.length} ${uiText.value.bins}` : uiText.value.emptyModule,
+    hasData: bins.length > 0,
+  }
+}
+
+function derivedEmbeddingSnapshot(): ModuleSnapshot {
+  const losses = curveData.value.loss
+  const acc = curveData.value.accuracy
+  const count = Math.max(losses.length, acc.length)
+  const nodes = Array.from({ length: count }, (_, index) => {
+    const loss = losses[index] ?? latestLoss.value ?? 0
+    const accuracy = acc[index] ?? latestAccuracy.value ?? 0
+    return {
+      x: index,
+      y: accuracy - loss * 10,
+      r: 4 + (index % 4),
+      label: `${uiText.value.step} ${curveData.value.steps[index] ?? index + 1}`,
+      value: accuracy,
+    }
+  })
+  return {
+    values: nodes.map((node) => Math.hypot(node.x, node.y)),
+    nodes,
+    steps: curveData.value.steps,
+    rows: [
+      { label: uiText.value.source, value: 'training_steps' },
+      { label: uiText.value.records, value: String(nodes.length) },
+      { label: uiText.value.classes, value: String(Math.min(4, Math.max(1, nodes.length))) },
+    ],
+    summary: nodes.length ? `${nodes.length} ${uiText.value.projectedVectors}` : uiText.value.emptyModule,
+    hasData: nodes.length > 0,
+  }
+}
+
+function derivedPrCurveSnapshot(): ModuleSnapshot {
+  const acc = curveData.value.accuracy.length ? curveData.value.accuracy : normalizeAccuracy(scalarValues('val/accuracy'))
+  if (!acc.length) return { values: [], summary: uiText.value.emptyModule, hasData: false }
+  const precision = acc.map((value, index) => clamp((value / 100) * (0.96 - index * 0.008), 0.05, 0.99))
+  const recall = acc.map((_, index) => clamp((index + 1) / acc.length, 0.02, 1))
+  return {
+    values: precision,
+    secondary: recall,
+    steps: recall,
+    rows: [
+      { label: uiText.value.thresholds, value: String(precision.length) },
+      { label: uiText.value.maxPrecision, value: formatMetric(Math.max(...precision), 3) },
+      { label: uiText.value.source, value: 'accuracy-derived' },
+    ],
+    summary: `${precision.length} ${metricText('prCurve', locale).shortLabel}`,
+    hasData: true,
+  }
+}
+
+function derivedHParamSnapshot(): ModuleSnapshot {
+  const job = selectedJob.value || {}
+  const metrics: Record<string, number> = {
+    lr: Number(latestLearningRate.value ?? job.learningRate ?? 0.001),
+    batch: Number(job.batchSize ?? 32),
+    epochs: Number(job.epochs ?? scalarStepCount.value ?? 1),
+    accuracy: Number(latestAccuracy.value ?? 0),
+    loss: Number(latestLoss.value ?? 0),
+  }
+  const values = Object.values(metrics).filter(Number.isFinite)
+  const nodes = Object.entries(metrics).map(([label, value], index) => ({ x: index, y: value, r: 5 + (index % 3), label, value }))
+  return {
+    values,
+    nodes,
+    rows: Object.entries(metrics).map(([label, value]) => ({ label, value: formatMetric(value) })).slice(0, 5),
+    summary: `${values.length} ${uiText.value.hyperMetricCount}`,
+    hasData: values.length > 0,
+  }
+}
+
+function architectureNodes(architecture: string) {
+  const name = architecture.toLowerCase()
+  const layers = name.includes('transformer') || name.includes('bert') || name.includes('gpt') || name.includes('vit')
+    ? ['Input', 'Embed', 'Attention', 'MLP', 'Head', 'Output']
+    : name.includes('yolo')
+      ? ['Input', 'Backbone', 'Neck', 'Detect', 'NMS', 'Output']
+      : ['Input', 'Conv', 'Norm', 'Block', 'Pool', 'Head']
+  return layers.map((label, index) => ({
+    x: index,
+    y: index % 2 === 0 ? 0 : 1,
+    r: 5 + (index % 3),
+    label,
+    value: index + 1,
+  }))
+}
+
+function derivedGraphSnapshot(): ModuleSnapshot {
+  const architecture = activeArchitecture.value || selectedJob.value?.name || ''
+  const nodes = architecture ? architectureNodes(architecture) : []
+  return {
+    values: nodes.map((node) => node.value ?? 0),
+    nodes,
+    rows: [
+      { label: uiText.value.architecture, value: architecture || '--' },
+      { label: uiText.value.source, value: selectedRunType.value },
+      { label: uiText.value.status, value: selectedJob.value?.status || '--' },
+    ],
+    summary: architecture ? `${architecture} ${uiText.value.architecture}` : uiText.value.emptyModule,
+    hasData: nodes.length > 0,
+  }
+}
+
+function derivedProfilerSnapshot(): ModuleSnapshot {
+  const losses = curveData.value.loss
+  const values = losses.length
+    ? losses.slice(-8).map((loss, index) => Math.max(1, loss * 18 + index * 1.4))
+    : derivedScalarValues().slice(0, 8).map((value, index) => Math.max(1, value * 12 + index))
+  return {
+    values,
+    bars: values,
+    steps: curveData.value.steps.slice(-values.length),
+    rows: [
+      { label: uiText.value.source, value: 'training-derived' },
+      { label: uiText.value.records, value: String(values.length) },
+      { label: uiText.value.peak, value: formatMetric(values.length ? Math.max(...values) : null) },
+    ],
+    summary: values.length ? `${values.length} ${uiText.value.profilerSamples}` : uiText.value.emptyModule,
+    hasData: values.length > 0,
+  }
+}
+
+function derivedSurface3dSnapshot(): ModuleSnapshot {
+  const values = curveData.value.loss.length ? curveData.value.loss : curveData.value.accuracy
+  const nodes = values.map((value, index) => ({
+    x: index,
+    y: curveData.value.accuracy[index] ?? 0,
+    r: 4 + (index % 5),
+    label: `${uiText.value.step} ${curveData.value.steps[index] ?? index + 1}`,
+    value,
+  }))
+  return {
+    values,
+    secondary: curveData.value.accuracy,
+    nodes,
+    steps: curveData.value.steps,
+    rows: [
+      { label: 'X', value: uiText.value.steps },
+      { label: 'Y', value: uiText.value.lossAccuracy },
+      { label: 'Z', value: uiText.value.records },
+    ],
+    summary: values.length ? uiText.value.threeDTitle : uiText.value.emptyModule,
+    hasData: values.length > 0,
+  }
 }
 
 function payloadSteps(records: Array<{ step?: number }>) {
@@ -2927,6 +3132,7 @@ function moduleSnapshot(moduleKey: string): ModuleSnapshot {
   if (moduleKey === 'histograms') {
     const records = modulePayloads.value.histograms as HistogramRecord[]
     const counts = histogramCounts.value
+    if (!counts.length && hasScalarData.value) return derivedHistogramSnapshot()
     return {
       values: counts,
       bars: counts,
@@ -2949,10 +3155,11 @@ function moduleSnapshot(moduleKey: string): ModuleSnapshot {
         x: values[0] ?? index,
         y: values[1] ?? values[0] ?? 0,
         r: 4 + ((record.classId ?? index) % 4),
-        label: record.label || record.sampleId ? String(record.label || record.sampleId) : `${locale.value.startsWith('zh') ? '样本' : 'sample'} ${index + 1}`,
+        label: record.label || record.sampleId ? String(record.label || record.sampleId) : `${locale.value.startsWith('zh') ? '鏍锋湰' : 'sample'} ${index + 1}`,
         value: values[0] ?? 0,
       }
     })
+    if (!nodes.length && hasScalarData.value) return derivedEmbeddingSnapshot()
     return {
       values: nodes.map((node) => Math.hypot(node.x, node.y)),
       nodes,
@@ -2971,6 +3178,7 @@ function moduleSnapshot(moduleKey: string): ModuleSnapshot {
     const latest = records[records.length - 1]
     const precision = parseNumberArray(latest?.precisionJson)
     const recall = parseNumberArray(latest?.recallJson)
+    if (!precision.length && hasScalarData.value) return derivedPrCurveSnapshot()
     return {
       values: precision,
       secondary: recall,
@@ -2997,6 +3205,7 @@ function moduleSnapshot(moduleKey: string): ModuleSnapshot {
       label,
       value: Number(value),
     }))
+    if (!values.length && (hasScalarData.value || selectedJob.value)) return derivedHParamSnapshot()
     return {
       values,
       nodes,
@@ -3007,19 +3216,11 @@ function moduleSnapshot(moduleKey: string): ModuleSnapshot {
   }
 
   if (moduleKey === 'graphs') {
-    const architecture = activeArchitecture.value
-    return {
-      values: [],
-      rows: [
-        { label: uiText.value.architecture, value: architecture || '--' },
-        { label: uiText.value.source, value: selectedRunType.value },
-        { label: uiText.value.status, value: selectedJob.value?.status || '--' },
-      ],
-      summary: architecture
-        ? uiText.value.graphMissing.replace('{model}', architecture)
-        : uiText.value.emptyModule,
-      hasData: false,
-    }
+    return derivedGraphSnapshot()
+  }
+
+  if (moduleKey === 'surface3d') {
+    return derivedSurface3dSnapshot()
   }
 
   if (moduleKey === 'profiler') {
@@ -3027,6 +3228,7 @@ function moduleSnapshot(moduleKey: string): ModuleSnapshot {
     const latest = records[records.length - 1]
     const profiler = parseKeyValueJson(latest?.profilerJson)
     const values = Object.values(profiler).map(Number).filter(Number.isFinite)
+    if (!values.length && hasScalarData.value) return derivedProfilerSnapshot()
     return {
       values,
       bars: values,
@@ -3073,11 +3275,20 @@ const detailModuleStats = computed(() => detailModule.value.stats.map((stat, ind
   return stat
 }))
 
+const curvePreviewTypes: ModulePreview[] = ['curve', 'pr']
+const barPreviewTypes: ModulePreview[] = ['image', 'audio', 'text', 'histogram', 'profiler']
+const nodePreviewTypes: ModulePreview[] = ['embedding', 'graph', 'hparams', 'surface3d']
+const modulePreviewHasCurve = computed(() => curvePreviewTypes.includes(activeModule.value.preview) && moduleArtPoints.value.length > 0)
+const modulePreviewHasSecondaryCurve = computed(() => modulePreviewHasCurve.value && Boolean(moduleArtSecondaryPath.value))
+const modulePreviewHasProbeGuide = computed(() => !nodePreviewTypes.includes(activeModule.value.preview))
+const detailHasSecondaryCurve = computed(() => detailHasCurve.value && Boolean(detailSecondaryPath.value))
+
 const moduleArtValues = computed(() => {
   return normalizeToPercent(activeSnapshot.value.values, 0)
 })
 
 const moduleArtPoints = computed(() => {
+  if (!curvePreviewTypes.includes(activeModule.value.preview)) return []
   const values = moduleArtValues.value
   if (!values.length) return []
   return values.map((value, index) => ({
@@ -3088,6 +3299,7 @@ const moduleArtPoints = computed(() => {
 
 const moduleArtPrimaryPath = computed(() => toPath(moduleArtPoints.value))
 const moduleArtSecondaryPath = computed(() => {
+  if (!curvePreviewTypes.includes(activeModule.value.preview)) return ''
   const secondary = activeSnapshot.value.secondary ? normalizeToPercent(activeSnapshot.value.secondary, 0) : []
   const points = secondary.length
     ? secondary.map((value, index) => ({
@@ -3107,7 +3319,7 @@ const moduleArtAreaPath = computed(() => {
 
 const moduleArtBars = computed(() => {
   const preview = activeModule.value.preview
-  if (['curve', 'pr', 'embedding', 'graph'].includes(preview)) return []
+  if (!barPreviewTypes.includes(preview)) return []
   return moduleArtValues.value.slice(0, 12).map((value, index) => ({
     id: `${preview}-${index}`,
     index,
@@ -3121,6 +3333,7 @@ const moduleArtBars = computed(() => {
 
 const moduleArtNodes = computed(() => {
   const preview = activeModule.value.preview
+  if (!nodePreviewTypes.includes(preview)) return []
   const snapshotNodes = activeSnapshot.value.nodes
   if (snapshotNodes?.length) {
     const xs = snapshotNodes.map((node) => node.x)
@@ -3137,22 +3350,13 @@ const moduleArtNodes = computed(() => {
       r: node.r || 4 + (index % 3),
     }))
   }
-  if (!['embedding', 'graph', 'hparams', 'image'].includes(preview)) {
-    return moduleArtPoints.value.filter((_, index) => index % 3 === 0).map((point, index) => ({
-      id: `point-${index}`,
-      index,
-      x: point.x,
-      y: point.y,
-      r: 3.4,
-    }))
-  }
   return []
 })
 
 const moduleArtEdges = computed(() => {
   const preview = activeModule.value.preview
   if (!activeSnapshot.value.hasData) return []
-  if (!['graph', 'hparams', 'embedding'].includes(preview)) return []
+  if (!nodePreviewTypes.includes(preview)) return []
   const nodes = moduleArtNodes.value
   if (!nodes.length) return []
   return nodes.slice(0, Math.max(nodes.length - 1, 0)).map((node, index) => {
@@ -3190,7 +3394,7 @@ const detailAreaPath = computed(() => toDetailArea(detailPoints.value))
 
 const detailBars = computed(() => {
   const preview = detailModule.value.preview
-  if (!['image', 'audio', 'text', 'histogram', 'profiler'].includes(preview)) return []
+  if (!barPreviewTypes.includes(preview)) return []
   const values = normalizeToPercent(detailSnapshot.value.bars || detailSnapshot.value.values, 0)
   if (!values.length) return []
   const slot = 652 / values.length
@@ -3211,6 +3415,7 @@ const detailBars = computed(() => {
 
 const detailNodes = computed(() => {
   const preview = detailModule.value.preview
+  if (!nodePreviewTypes.includes(preview)) return []
   const snapshotNodes = detailSnapshot.value.nodes
   if (snapshotNodes?.length) {
     const xs = snapshotNodes.map((node) => node.x)
@@ -3227,22 +3432,13 @@ const detailNodes = computed(() => {
       r: node.r || 4 + (index % 3),
     }))
   }
-  if (!['embedding', 'graph', 'hparams'].includes(preview)) {
-    return detailPoints.value.filter((_, index) => index % 4 === 0).map((point, index) => ({
-      id: `detail-point-${index}`,
-      index,
-      x: point.x,
-      y: point.y,
-      r: 4.2,
-    }))
-  }
   return []
 })
 
 const detailEdges = computed(() => {
   const preview = detailModule.value.preview
   if (!detailSnapshot.value.hasData) return []
-  if (!['embedding', 'graph', 'hparams'].includes(preview)) return []
+  if (!nodePreviewTypes.includes(preview)) return []
   const nodes = detailNodes.value
   if (!nodes.length) return []
   return nodes.slice(0, Math.max(nodes.length - 1, 0)).map((node, index) => {
@@ -3275,6 +3471,103 @@ const detailSummary = computed(() => {
   }
 })
 
+const moduleExplanation = computed(() => {
+  const isZh = locale.value.startsWith('zh')
+  const key = detailModule.value.key
+  const labels = {
+    title: isZh ? '模块解释' : 'Module notes',
+    data: isZh ? '数据来源' : 'Data source',
+    read: isZh ? '怎么看' : 'How to read',
+    missing: isZh ? '缺失处理' : 'If missing',
+  }
+  const fallback = {
+    title: detailModule.value.title || detailModule.value.stage,
+    summary: isZh ? '该模块会优先读取真实日志，并在训练任务只有标量时给出保守的派生视图。' : 'This module prefers real logs and uses conservative derived views when only scalar training data exists.',
+    data: isZh ? '当前训练任务、上传运行日志、训练步骤标量与模块专属表。' : 'Current job, uploaded run logs, training-step scalars, and module-specific tables.',
+    read: isZh ? '先看是否有数据，再结合峰值、均值、趋势和异常点判断模型状态。' : 'Check data availability first, then read peaks, means, trends, and outliers.',
+    missing: isZh ? '若显示缺失，需要在训练或上传流程中补充对应日志。' : 'If missing, add the matching log stream during training or upload.',
+  }
+  const map: Record<string, Omit<typeof fallback, 'title'> & { title: string }> = {
+    scalars: {
+      title: isZh ? '标量趋势' : 'Scalar trends',
+      summary: isZh ? '用于判断训练是否收敛、是否震荡、是否过拟合，是其他派生分析的基础。' : 'Shows convergence, oscillation, and overfitting risk; it is the base for derived analysis.',
+      data: isZh ? 'train/loss、train/accuracy、val/loss、val/accuracy、train/learning_rate。' : 'train/loss, train/accuracy, val/loss, val/accuracy, and train/learning_rate.',
+      read: isZh ? '损失应整体下降，准确率应整体上升；验证曲线反向恶化时需要关注过拟合。' : 'Loss should trend down and accuracy up; validation divergence suggests overfitting.',
+      missing: isZh ? '训练代码需要记录 loss / accuracy / learning_rate 标量。' : 'Log loss, accuracy, and learning-rate scalars from the training loop.',
+    },
+    images: {
+      title: isZh ? '图像样本与特征图' : 'Image samples and feature maps',
+      summary: isZh ? '用于检查输入样本、预测图、注意力图或中间特征是否符合预期。' : 'Checks samples, predictions, attention maps, and intermediate features.',
+      data: isZh ? '上传运行中的 image_logs；普通训练任务没有图像日志时不会伪造图片。' : 'image_logs from uploaded runs; normal jobs do not fabricate image data.',
+      read: isZh ? '看样本是否错位、增强是否异常、预测区域是否偏移。' : 'Look for misalignment, abnormal augmentation, and shifted predictions.',
+      missing: isZh ? '需要上传图片日志或在训练时保存样本/特征图。' : 'Upload image logs or save samples/features during training.',
+    },
+    audio: {
+      title: isZh ? '音频波形与谱图' : 'Audio waveform and spectrogram',
+      summary: isZh ? '用于排查语音、声音分类、音频生成任务的输入输出质量。' : 'Inspects input/output quality for speech, audio classification, or generation.',
+      data: isZh ? 'uploaded run 的 audio_logs。' : 'audio_logs from uploaded runs.',
+      read: isZh ? '看能量、静音段、频带分布和异常尖峰。' : 'Read energy, silence, frequency bands, and spikes.',
+      missing: isZh ? '需要上传音频日志或在训练中保存 waveform / mel。' : 'Upload audio logs or save waveform/mel outputs.',
+    },
+    text: {
+      title: isZh ? '文本日志与预测轨迹' : 'Text logs and prediction traces',
+      summary: isZh ? '用于查看提示词、生成结果、错误样本和 token 级别行为。' : 'Shows prompts, outputs, error cases, and token-level behavior.',
+      data: isZh ? 'text_logs、预测样本、训练/评估输出记录。' : 'text_logs, prediction samples, and train/eval outputs.',
+      read: isZh ? '看回答是否偏题、重复、截断，或与标签差异过大。' : 'Look for drift, repetition, truncation, and label mismatch.',
+      missing: isZh ? '需要上传文本日志或保存预测样本。' : 'Upload text logs or persist prediction samples.',
+    },
+    histograms: {
+      title: isZh ? '分布直方图' : 'Distribution histogram',
+      summary: isZh ? '用于观察权重、梯度或标量分布是否偏移、坍缩或出现长尾。' : 'Shows whether weights, gradients, or scalars drift, collapse, or develop tails.',
+      data: isZh ? '优先读取 histogram_logs；没有时基于真实训练标量生成分布。' : 'Uses histogram_logs first; falls back to distributions derived from real scalars.',
+      read: isZh ? '集中度过高可能表示表达不足，长尾或异常值可能表示训练不稳定。' : 'Excess concentration can mean under-expression; tails/outliers can indicate instability.',
+      missing: isZh ? '如需真实权重/梯度分布，需要记录 histogram。' : 'Log histograms for real weight/gradient distributions.',
+    },
+    embeddings: {
+      title: isZh ? '向量投影' : 'Embedding projection',
+      summary: isZh ? '用于观察样本、类别或训练阶段在向量空间中的聚散关系。' : 'Shows clustering and separation of samples, classes, or training stages.',
+      data: isZh ? '优先读取 embedding_logs；没有时用损失和准确率生成训练状态投影。' : 'Uses embedding_logs first; otherwise projects training state from loss and accuracy.',
+      read: isZh ? '同类应更聚集，类别边界越清晰通常越容易分类。' : 'Similar samples should cluster; clearer boundaries usually improve classification.',
+      missing: isZh ? '需要保存 embedding 向量、标签和样本 ID。' : 'Persist embeddings, labels, and sample IDs.',
+    },
+    prCurves: {
+      title: isZh ? 'PR / ROC 评估' : 'PR / ROC evaluation',
+      summary: isZh ? '用于评估不同阈值下精确率和召回率的取舍。' : 'Evaluates precision-recall tradeoffs across thresholds.',
+      data: isZh ? '优先读取 pr_curve_logs；没有时基于准确率趋势给出保守派生曲线。' : 'Uses pr_curve_logs first; otherwise derives a conservative curve from accuracy trend.',
+      read: isZh ? '曲线越靠右上越好；低召回意味着漏检，高召回低精确意味着误报多。' : 'Upper-right is better; low recall means misses, low precision means false positives.',
+      missing: isZh ? '评估阶段需要保存 precision、recall、thresholds。' : 'Save precision, recall, and thresholds during evaluation.',
+    },
+    hparams: {
+      title: isZh ? '超参数对比' : 'Hyperparameter comparison',
+      summary: isZh ? '用于把学习率、批次、正则化等配置与指标表现对应起来。' : 'Links configuration such as LR, batch, and regularization to outcomes.',
+      data: isZh ? 'hparam_data、训练任务配置、当前标量指标。' : 'hparam_data, job configuration, and current scalar metrics.',
+      read: isZh ? '看配置变化是否带来更低损失、更高准确率或更稳定训练。' : 'Check whether settings improve loss, accuracy, or stability.',
+      missing: isZh ? '需要在任务配置或上传数据中保存超参数字段。' : 'Save hyperparameter fields in job config or uploaded data.',
+    },
+    graphs: {
+      title: isZh ? '模型结构' : 'Model graph',
+      summary: isZh ? '用于理解模型层级、输入输出路径和架构类型。' : 'Explains layers, IO paths, and architecture family.',
+      data: isZh ? '优先读取拓扑日志；没有时根据当前架构名生成结构骨架。' : 'Uses topology logs first; otherwise builds a skeleton from the architecture name.',
+      read: isZh ? '重点看主干、头部、注意力或检测层是否符合任务。' : 'Inspect backbone, head, attention, or detection layers for task fit.',
+      missing: isZh ? '如需真实节点边，需要导出模型拓扑。' : 'Export model topology for real nodes and edges.',
+    },
+    surface3d: {
+      title: isZh ? '三维训练曲面' : '3D training surface',
+      summary: isZh ? '把步数、指标类型和值放入三维空间，观察训练状态联合变化。' : 'Maps step, metric type, and value into 3D to inspect joint training dynamics.',
+      data: isZh ? '训练步 loss / accuracy，以及上传运行的 scalar_logs。' : 'Training-step loss/accuracy and uploaded scalar_logs.',
+      read: isZh ? '平滑下降/上升通常更健康；突刺、断层或反复回弹说明训练不稳。' : 'Smooth surfaces are healthier; spikes, breaks, or rebounds indicate instability.',
+      missing: isZh ? '至少需要 loss 或 accuracy 标量。' : 'Requires at least loss or accuracy scalars.',
+    },
+    profiler: {
+      title: isZh ? '性能剖析' : 'Profiler',
+      summary: isZh ? '用于观察运行耗时、瓶颈算子和训练吞吐。' : 'Shows runtime, bottleneck operators, and throughput.',
+      data: isZh ? 'profiler_data；没有时用训练标量生成轻量运行状态估计。' : 'profiler_data; otherwise uses a lightweight estimate from training scalars.',
+      read: isZh ? '高峰值代表瓶颈，连续升高可能表示数据加载或显存压力。' : 'Peaks indicate bottlenecks; sustained growth can suggest IO or memory pressure.',
+      missing: isZh ? '需要接入 profiler trace 或算子耗时日志。' : 'Attach profiler traces or operator timing logs.',
+    },
+  }
+  return { labels, ...(map[key] || fallback) }
+})
 const detailRows = computed(() => {
   if (detailSnapshot.value.rows?.length) {
     return [
@@ -3302,10 +3595,10 @@ const detailRows = computed(() => {
 })
 
 const componentNodes = computed(() => [
-  { stage: locale.value.startsWith('zh') ? '训练' : 'Train', name: metricText('loss', locale).shortLabel, bars: normalizeToPercent(curveData.value.loss) },
-  { stage: locale.value.startsWith('zh') ? '训练' : 'Train', name: metricText('accuracy', locale).shortLabel, bars: normalizeToPercent(curveData.value.accuracy) },
-  { stage: locale.value.startsWith('zh') ? '验证' : 'Val', name: metricText('valLoss', locale).shortLabel, bars: normalizeToPercent(scalarValues('val/loss')) },
-  { stage: metricText('learningRate', locale).shortLabel, name: locale.value.startsWith('zh') ? '调度' : 'Schedule', bars: normalizeToPercent(scalarValues('train/learning_rate')) },
+  { stage: locale.value.startsWith('zh') ? '璁粌' : 'Train', name: metricText('loss', locale).shortLabel, bars: normalizeToPercent(curveData.value.loss) },
+  { stage: locale.value.startsWith('zh') ? '璁粌' : 'Train', name: metricText('accuracy', locale).shortLabel, bars: normalizeToPercent(curveData.value.accuracy) },
+  { stage: locale.value.startsWith('zh') ? '楠岃瘉' : 'Val', name: metricText('valLoss', locale).shortLabel, bars: normalizeToPercent(scalarValues('val/loss')) },
+  { stage: metricText('learningRate', locale).shortLabel, name: locale.value.startsWith('zh') ? '璋冨害' : 'Schedule', bars: normalizeToPercent(scalarValues('train/learning_rate')) },
 ])
 </script>
 
@@ -3335,7 +3628,7 @@ const componentNodes = computed(() => [
 .selector-row label {
   color: var(--text-primary);
   font-size: 13px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
 }
 
 .run-select {
@@ -3388,12 +3681,12 @@ const componentNodes = computed(() => [
 .analysis-mode-switch button b {
   color: inherit;
   font-size: 12px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .analysis-mode-switch button small {
   font-size: 9px;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
   text-transform: uppercase;
 }
 
@@ -3402,27 +3695,33 @@ const componentNodes = computed(() => [
 }
 
 .matrix-action-stack {
-  display: grid;
-  justify-items: end;
-  gap: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
   min-width: 260px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-color);
 }
 
 .analysis-module-ribbon {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+  margin-top: 8px;
 }
 
 .analysis-module-ribbon button,
 .analysis-module-ribbon em {
-  min-height: 46px;
+  min-height: 42px;
   border: 1px solid color-mix(in srgb, var(--module-accent, var(--active-accent)) 22%, var(--border-color));
-  border-radius: 16px;
+  border-radius: 14px;
   padding: 8px 10px;
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--module-accent, var(--active-accent)) 14%, transparent), transparent 62%),
     rgba(var(--glass-bg-rgb), 0.22);
+  min-width: 0;
 }
 
 .analysis-module-ribbon button {
@@ -3446,15 +3745,18 @@ const componentNodes = computed(() => [
 .analysis-module-ribbon span {
   color: color-mix(in srgb, var(--module-accent, var(--active-accent)) 74%, var(--text-muted));
   font-size: 9px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   text-transform: uppercase;
 }
 
 .analysis-module-ribbon b {
   margin-top: 3px;
   color: var(--text-primary);
-  font-size: 12px;
-  font-weight: 950;
+  font-size: 11px;
+  font-weight: var(--font-weight-title);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .analysis-module-ribbon em {
@@ -3462,15 +3764,20 @@ const componentNodes = computed(() => [
   color: var(--text-secondary);
   font-size: 11px;
   font-style: normal;
-  font-weight: 800;
+  font-weight: var(--font-weight-body);
   line-height: 1.5;
 }
 
 .analysis-action-row {
   min-width: 0;
-  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 11px 12px;
   border: 1px solid color-mix(in srgb, var(--active-accent) 16%, var(--border-color));
-  border-radius: var(--radius-lg);
+  border-radius: 16px;
   background: color-mix(in srgb, var(--surface-2) 72%, transparent);
 }
 
@@ -3478,8 +3785,12 @@ const componentNodes = computed(() => [
   color: var(--text-secondary);
   font-size: 11px;
   font-style: normal;
-  font-weight: 850;
-  text-align: right;
+  font-weight: var(--font-weight-label);
+  text-align: left;
+  max-width: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .matrix-controls {
@@ -3498,13 +3809,13 @@ const componentNodes = computed(() => [
   --spotlight-x: 50%;
   --spotlight-y: 50%;
   --spotlight-color: color-mix(in srgb, var(--active-accent) 18%, transparent);
-  --edge-sensitivity: 15;
-  border: 1px solid color-mix(in srgb, var(--active-accent) 14%, var(--border-color));
+  --edge-sensitivity: 24;
+  border: 1px solid color-mix(in srgb, var(--active-accent) 8%, var(--border-color));
   border-radius: var(--radius-lg);
   background:
-    radial-gradient(circle at 18% 0%, color-mix(in srgb, var(--active-accent) 8%, transparent), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.064), rgba(255, 255, 255, 0.018) 42%, rgba(0, 0, 0, 0.08)),
     rgba(var(--glass-bg-rgb), 0.34);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .matrix-control-card::before,
@@ -3522,7 +3833,7 @@ const componentNodes = computed(() => [
   z-index: 0;
   pointer-events: none;
   border-radius: inherit;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--active-accent) 18%, transparent), transparent) top / 100% 1px no-repeat;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent) top / 100% 1px no-repeat;
   opacity: 0;
   transition: opacity 420ms ease;
 }
@@ -3549,9 +3860,9 @@ const componentNodes = computed(() => [
   opacity: 0;
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, calc(var(--edge-glow-opacity) * 0.12)),
-    0 0 calc(46px * var(--edge-glow-opacity)) var(--edge-glow-soft);
-  filter: saturate(1.45) brightness(1.08);
-  mix-blend-mode: plus-lighter;
+    0 0 calc(20px * var(--edge-glow-opacity)) var(--edge-glow-soft);
+  filter: saturate(1.08) brightness(1.03);
+  mix-blend-mode: screen;
   transition: opacity 120ms ease, box-shadow 120ms ease, filter 120ms ease;
   -webkit-mask:
     linear-gradient(#000 0 0) content-box,
@@ -3581,7 +3892,7 @@ const componentNodes = computed(() => [
 .signal-card:focus-within::before,
 .component-node:focus-within::before,
 .module-analysis-strip:focus-within::before {
-  opacity: 0.42;
+  opacity: 0.24;
 }
 
 .matrix-control-card:hover::after,
@@ -3632,7 +3943,7 @@ const componentNodes = computed(() => [
   margin: 0 0 14px;
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 750;
+  font-weight: var(--font-weight-body);
   line-height: 1.65;
 }
 
@@ -3656,7 +3967,7 @@ const componentNodes = computed(() => [
   display: block;
   color: var(--text-muted);
   font-size: 10px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   text-transform: uppercase;
 }
 
@@ -3665,7 +3976,7 @@ const componentNodes = computed(() => [
 .result-card-top strong {
   color: var(--text-primary);
   font-size: 13px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .matrix-check-grid,
@@ -3741,7 +4052,7 @@ const componentNodes = computed(() => [
   min-width: 0;
   color: var(--text-primary);
   font-size: 12px;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
 }
 
 .matrix-run-label {
@@ -3754,7 +4065,7 @@ const componentNodes = computed(() => [
   color: var(--text-muted);
   font-size: 10px;
   font-style: normal;
-  font-weight: 800;
+  font-weight: var(--font-weight-body);
 }
 
 .matrix-module-grid {
@@ -3769,7 +4080,7 @@ const componentNodes = computed(() => [
   overflow: hidden;
   color: var(--text-secondary);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: var(--font-weight-body);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -3788,7 +4099,7 @@ const componentNodes = computed(() => [
   background: color-mix(in srgb, var(--module-accent, var(--active-accent)) 12%, transparent);
   color: color-mix(in srgb, var(--module-accent, var(--active-accent)) 72%, white);
   font-size: 9px;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
 }
 
 .matrix-results {
@@ -3805,7 +4116,7 @@ const componentNodes = computed(() => [
 .result-filter-panel {
   position: relative;
   isolation: isolate;
-  overflow: hidden;
+  overflow: visible;
   --spotlight-x: 50%;
   --spotlight-y: 50%;
   --spotlight-color: color-mix(in srgb, var(--active-accent) 16%, transparent);
@@ -3814,7 +4125,7 @@ const componentNodes = computed(() => [
   flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 14px;
-  padding: 12px;
+  padding: 14px;
   border: 1px solid color-mix(in srgb, var(--active-accent) 16%, var(--border-color));
   border-radius: var(--radius-lg);
   background:
@@ -3851,7 +4162,7 @@ const componentNodes = computed(() => [
   border-radius: 999px;
   cursor: pointer;
   font-size: 10px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   transition: transform 160ms ease, background 160ms ease, color 160ms ease, box-shadow 160ms ease;
 }
 
@@ -3916,7 +4227,7 @@ const componentNodes = computed(() => [
   display: block;
   color: var(--text-primary);
   font-size: 13px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .view-save-head span {
@@ -3935,7 +4246,7 @@ const componentNodes = computed(() => [
   background: rgba(66, 230, 164, 0.12);
   color: #42e6a4;
   font-size: 11px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .view-save-grid {
@@ -3953,7 +4264,7 @@ const componentNodes = computed(() => [
 .view-save-grid span {
   color: var(--text-muted);
   font-size: 10px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
 }
 
 .view-save-grid select {
@@ -3973,14 +4284,14 @@ const componentNodes = computed(() => [
   background: linear-gradient(135deg, rgba(66, 230, 164, 0.24), rgba(var(--primary-rgb), 0.14));
   color: #42e6a4;
   font-size: 11px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .result-persist-actions em {
   color: var(--text-muted);
   font-size: 10px;
   font-style: normal;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
 }
 
 .select-visible-action {
@@ -4049,7 +4360,7 @@ const componentNodes = computed(() => [
   background: rgba(255, 255, 255, 0.08);
   color: color-mix(in srgb, var(--active-accent) 72%, white);
   font-size: 9px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .result-group-stack {
@@ -4083,21 +4394,21 @@ const componentNodes = computed(() => [
   color: var(--text-muted);
   font-size: 10px;
   font-style: normal;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   text-transform: uppercase;
 }
 
 .result-group-head strong {
   color: var(--text-primary);
   font-size: 15px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .matrix-result-head em {
   color: var(--text-muted);
   font-size: 11px;
   font-style: normal;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
 }
 
 .matrix-result-grid {
@@ -4141,7 +4452,7 @@ const componentNodes = computed(() => [
   color: var(--text-secondary);
   cursor: pointer;
   font-size: 9px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   backdrop-filter: blur(10px);
   transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease;
 }
@@ -4169,7 +4480,7 @@ const componentNodes = computed(() => [
 .result-status-row span {
   color: var(--text-muted);
   font-size: 10px;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
 }
 
 .result-score {
@@ -4183,7 +4494,7 @@ const componentNodes = computed(() => [
 .result-score strong {
   color: var(--primary-color);
   font-size: 24px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   line-height: 1;
 }
 
@@ -4193,7 +4504,7 @@ const componentNodes = computed(() => [
   color: var(--text-secondary);
   font-size: 11px;
   font-style: normal;
-  font-weight: 750;
+  font-weight: var(--font-weight-body);
   line-height: 1.55;
 }
 
@@ -4216,7 +4527,7 @@ const componentNodes = computed(() => [
   margin-top: 5px;
   color: var(--text-primary);
   font-size: 12px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .ai-panel-meta {
@@ -4236,7 +4547,7 @@ const componentNodes = computed(() => [
   padding: 3px 7px;
   font-size: 9px;
   font-style: normal;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   line-height: 1;
 }
 
@@ -4274,7 +4585,7 @@ const componentNodes = computed(() => [
   background: rgba(var(--primary-rgb), 0.08);
   color: var(--text-secondary);
   font-size: 10px;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
   line-height: 1.45;
 }
 
@@ -4293,7 +4604,7 @@ const componentNodes = computed(() => [
   color: var(--primary-color);
   cursor: pointer;
   font-size: 10px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
 }
 
@@ -4340,14 +4651,14 @@ const componentNodes = computed(() => [
   display: block;
   color: var(--primary-color);
   font-size: 28px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   line-height: 1;
 }
 
 .header-index small {
   color: var(--text-secondary);
   font-size: 10px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   text-transform: uppercase;
 }
 
@@ -4357,14 +4668,14 @@ const componentNodes = computed(() => [
   overflow: hidden;
   --spotlight-x: 50%;
   --spotlight-y: 50%;
-  --spotlight-color: rgba(var(--primary-rgb), 0.14);
-  --edge-sensitivity: 15;
+  --spotlight-color: rgba(255, 255, 255, 0.1);
+  --edge-sensitivity: 24;
   margin-bottom: 22px;
   padding: 18px;
-  border: 1px solid color-mix(in srgb, var(--primary-color) 12%, var(--border-color));
+  border: 1px solid color-mix(in srgb, var(--primary-color) 8%, var(--border-color));
   border-radius: var(--radius-lg);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.026), transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.018) 42%, rgba(0, 0, 0, 0.08)),
     color-mix(in srgb, var(--surface-1) 70%, transparent);
   box-shadow: var(--shadow-soft);
 }
@@ -4375,8 +4686,8 @@ const componentNodes = computed(() => [
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  background: linear-gradient(90deg, rgba(var(--primary-rgb), 0.26), transparent 34%, rgba(var(--primary-rgb), 0.08)) top / 100% 1px no-repeat;
-  opacity: 0.34;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent) top / 100% 1px no-repeat;
+  opacity: 0.24;
   transition: opacity 420ms ease;
 }
 
@@ -4395,9 +4706,9 @@ const componentNodes = computed(() => [
   opacity: 0;
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, calc(var(--edge-glow-opacity) * 0.1)),
-    0 0 calc(54px * var(--edge-glow-opacity)) var(--edge-glow-soft);
-  filter: saturate(1.45) brightness(1.08);
-  mix-blend-mode: plus-lighter;
+    0 0 calc(20px * var(--edge-glow-opacity)) var(--edge-glow-soft);
+  filter: saturate(1.08) brightness(1.03);
+  mix-blend-mode: screen;
   transition: opacity 120ms ease, box-shadow 120ms ease, filter 120ms ease;
   -webkit-mask:
     linear-gradient(#000 0 0) content-box,
@@ -4411,7 +4722,7 @@ const componentNodes = computed(() => [
 
 .workspace-band:hover::before,
 .workspace-band:focus-within::before {
-  opacity: 0.5;
+  opacity: 0.28;
 }
 
 .workspace-band:hover::after,
@@ -4440,7 +4751,7 @@ const componentNodes = computed(() => [
   display: block;
   color: var(--text-muted);
   font-size: 10px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   text-transform: uppercase;
 }
 
@@ -4449,7 +4760,7 @@ const componentNodes = computed(() => [
   margin-top: 5px;
   color: var(--text-primary);
   font-size: 18px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .band-caption p {
@@ -4457,7 +4768,7 @@ const componentNodes = computed(() => [
   margin: 7px 0 0;
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 750;
+  font-weight: var(--font-weight-body);
   line-height: 1.65;
 }
 
@@ -4501,7 +4812,7 @@ const componentNodes = computed(() => [
   display: block;
   color: var(--text-muted);
   font-size: 10px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   text-transform: uppercase;
 }
 
@@ -4511,7 +4822,7 @@ const componentNodes = computed(() => [
   margin-top: 4px;
   color: var(--text-primary);
   font-size: 16px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .panel-head em {
@@ -4521,7 +4832,7 @@ const componentNodes = computed(() => [
   color: var(--primary-color);
   font-size: 10px;
   font-style: normal;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
 }
 
 .preview-side {
@@ -4544,7 +4855,7 @@ const componentNodes = computed(() => [
   display: block;
   margin-top: 9px;
   font-size: 24px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   line-height: 1;
 }
 
@@ -4554,7 +4865,7 @@ const componentNodes = computed(() => [
   color: var(--text-secondary);
   font-size: 11px;
   font-style: normal;
-  font-weight: 800;
+  font-weight: var(--font-weight-body);
 }
 
 .chart-box {
@@ -4591,14 +4902,14 @@ const componentNodes = computed(() => [
 .chart-empty-state strong {
   color: var(--text-primary);
   font-size: 14px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .chart-empty-state span {
   max-width: 34ch;
   color: var(--text-muted);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: var(--font-weight-body);
   line-height: 1.55;
 }
 
@@ -4630,7 +4941,7 @@ const componentNodes = computed(() => [
   width: 100%;
   height: 100%;
   min-height: inherit;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .plot-bg,
@@ -4692,7 +5003,7 @@ const componentNodes = computed(() => [
 .axis-labels text {
   fill: color-mix(in srgb, var(--text-muted) 84%, #42e6a4);
   font-size: 10px;
-  font-weight: 800;
+  font-weight: var(--font-weight-body);
 }
 
 .chart-legend {
@@ -4713,7 +5024,7 @@ const componentNodes = computed(() => [
   gap: 6px;
   color: var(--text-secondary);
   font-size: 10px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
 }
 
 .chart-legend i {
@@ -4796,7 +5107,7 @@ const componentNodes = computed(() => [
 .svg-tooltip text {
   fill: var(--text-primary);
   font-size: 10px;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
 }
 
 .svg-tooltip.compact text {
@@ -4820,7 +5131,7 @@ const componentNodes = computed(() => [
   margin-top: 8px;
   color: var(--text-primary);
   font-size: 20px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .sparkline {
@@ -4869,14 +5180,14 @@ const componentNodes = computed(() => [
 
 .dom-tooltip strong {
   font-size: 13px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .dom-tooltip span {
   margin-top: 2px;
   color: var(--text-muted);
   font-size: 9px;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
 }
 
 .component-preview {
@@ -4912,7 +5223,7 @@ const componentNodes = computed(() => [
   display: block;
   color: var(--text-muted);
   font-size: 10px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   text-transform: uppercase;
 }
 
@@ -4921,7 +5232,7 @@ const componentNodes = computed(() => [
   margin-top: 6px;
   color: var(--text-primary);
   font-size: 14px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .node-bars {
@@ -4967,7 +5278,7 @@ const componentNodes = computed(() => [
   margin: 7px 0 0;
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 750;
+  font-weight: var(--font-weight-body);
   line-height: 1.65;
 }
 
@@ -4986,8 +5297,8 @@ const componentNodes = computed(() => [
 
 .module-preview-panel {
   position: relative;
-  min-height: 0;
-  padding: 16px;
+  min-height: 120px;
+  padding: 18px;
   border: 1px solid color-mix(in srgb, var(--active-accent) 22%, var(--border-color));
   border-radius: var(--radius-lg);
   background:
@@ -5020,7 +5331,7 @@ const componentNodes = computed(() => [
   display: block;
   color: color-mix(in srgb, var(--active-accent) 72%, var(--text-muted));
   font-size: 10px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   text-transform: uppercase;
 }
 
@@ -5029,7 +5340,7 @@ const componentNodes = computed(() => [
   margin-top: 7px;
   color: var(--text-primary);
   font-size: 24px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   line-height: 1.08;
 }
 
@@ -5074,7 +5385,7 @@ const componentNodes = computed(() => [
   inset: 22px 14px 42px;
   width: calc(100% - 28px);
   height: calc(100% - 64px);
-  overflow: visible;
+  overflow: hidden;
 }
 
 .module-art-area {
@@ -5162,37 +5473,14 @@ const componentNodes = computed(() => [
 .module-readout strong {
   color: var(--active-accent);
   font-size: 15px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .module-readout span {
   margin-top: 3px;
   color: var(--text-secondary);
   font-size: 10px;
-  font-weight: 850;
-}
-
-.module-art-code {
-  position: absolute;
-  left: 14px;
-  right: 14px;
-  bottom: 12px;
-  display: grid;
-  gap: 5px;
-}
-
-.module-art-code span {
-  width: max-content;
-  max-width: 100%;
-  padding: 4px 7px;
-  border: 1px solid color-mix(in srgb, var(--active-accent) 18%, transparent);
-  border-radius: var(--radius-sm);
-  background: rgba(var(--glass-bg-rgb), 0.28);
-  color: color-mix(in srgb, var(--active-accent) 76%, var(--text-secondary));
-  font-family: "JetBrains Mono", Consolas, monospace;
-  font-size: 10px;
-  font-weight: 850;
-  white-space: nowrap;
+  font-weight: var(--font-weight-label);
 }
 
 .module-empty-state {
@@ -5221,7 +5509,7 @@ const componentNodes = computed(() => [
 .module-preview-meta strong {
   color: var(--active-accent);
   font-size: 18px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .module-preview-meta em {
@@ -5229,7 +5517,7 @@ const componentNodes = computed(() => [
   color: var(--text-muted);
   font-size: 10px;
   font-style: normal;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   text-transform: uppercase;
 }
 
@@ -5242,7 +5530,7 @@ const componentNodes = computed(() => [
   --spotlight-color: color-mix(in srgb, var(--active-accent) 18%, transparent);
   z-index: 1;
   margin-top: 14px;
-  padding: 13px;
+  padding: 14px;
   border: 1px solid color-mix(in srgb, var(--active-accent) 18%, var(--border-color));
   border-radius: var(--radius-lg);
   background:
@@ -5251,7 +5539,7 @@ const componentNodes = computed(() => [
 }
 
 .module-analysis-strip .matrix-control-head {
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .analysis-smart-row {
@@ -5259,7 +5547,141 @@ const componentNodes = computed(() => [
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
+}
+
+.analysis-smart-row .smart-select-action,
+.analysis-smart-row .clear-select-action {
+  min-height: 32px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+}
+
+.one-many-run-picker {
+  margin: 10px 0 10px;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--active-accent) 15%, var(--border-color));
+  border-radius: 15px;
+  background: rgba(var(--glass-bg-rgb), 0.18);
+}
+
+.compact-head {
+  margin-bottom: 8px !important;
+}
+
+.compact-head strong {
+  max-width: 210px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.one-many-run-list {
+  display: grid;
+  gap: 7px;
+  max-height: 150px;
+  overflow: auto;
+  padding-right: 3px;
+}
+
+.unified-run-picker {
+  padding: 12px;
+}
+
+.matrix-run-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  max-height: 132px;
+}
+
+.compact-matrix-run-picker {
+  padding: 9px;
+}
+
+.compact-matrix-run-picker .one-many-run-list button {
+  min-height: 42px;
+  padding: 7px 52px 7px 8px;
+  border-radius: 10px;
+}
+
+.compact-matrix-run-picker .one-many-run-list span {
+  font-size: 11px;
+}
+
+.compact-matrix-run-picker .one-many-run-list em {
+  font-size: 9px;
+}
+
+.compact-matrix-run-picker .one-many-run-list b {
+  right: 6px;
+  top: 7px;
+  max-width: 42px;
+  padding: 2px 5px;
+  font-size: 8px;
+}
+
+.one-many-run-list button {
+  position: relative;
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 12px;
+  padding: 9px 10px;
+  background: rgba(15, 23, 42, 0.34);
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.one-many-run-list button:hover,
+.one-many-run-list button.active {
+  border-color: color-mix(in srgb, var(--active-accent) 48%, var(--border-color));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--active-accent) 16%, transparent), transparent 64%),
+    rgba(15, 23, 42, 0.48);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--active-accent) 10%, transparent);
+}
+
+.one-many-run-list button:hover {
+  transform: translateY(-1px);
+}
+
+.one-many-run-list span,
+.one-many-run-list em,
+.one-many-run-list b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.one-many-run-list span {
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: var(--font-weight-title);
+}
+
+.one-many-run-list em {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 560;
+}
+
+.one-many-run-list b {
+  position: absolute;
+  right: 9px;
+  top: 9px;
+  max-width: 64px;
+  border: 1px solid color-mix(in srgb, var(--active-accent) 28%, transparent);
+  border-radius: 999px;
+  padding: 2px 7px;
+  color: color-mix(in srgb, var(--active-accent) 74%, white);
+  font-size: 9px;
+  font-weight: 760;
+  background: rgba(15, 23, 42, 0.66);
 }
 
 .matrix-run-picker {
@@ -5284,8 +5706,11 @@ const componentNodes = computed(() => [
 .module-card {
   position: relative;
   --spotlight-color: color-mix(in srgb, var(--module-accent, var(--active-accent)) 18%, transparent);
-  min-height: 184px;
-  padding-bottom: 58px;
+  display: flex;
+  flex-direction: column;
+  min-height: 230px;
+  padding: 18px;
+  overflow: hidden;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
   outline: none;
 }
@@ -5333,46 +5758,43 @@ const componentNodes = computed(() => [
   margin-bottom: 16px;
   color: var(--text-muted);
   font-size: 9px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   text-transform: uppercase;
 }
 
 .module-select-toggle {
-  position: absolute;
-  right: 12px;
-  bottom: 12px;
+  position: relative;
   z-index: 4;
-  display: grid;
-  gap: 3px;
-  min-width: 88px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  margin-top: 12px;
   border: 1px solid rgba(148, 163, 184, 0.16);
-  padding: 7px 9px;
-  border-radius: 14px;
-  background: rgba(15, 23, 42, 0.74);
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.8);
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 9px;
-  font-weight: 950;
-  line-height: 1;
-  text-align: right;
+  font-size: 11px;
+  font-weight: 550;
+  line-height: 1.3;
+  text-align: left;
   text-transform: none;
-  opacity: 0.78;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
-  backdrop-filter: blur(14px);
-  transition: opacity 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(10px);
+  transition: opacity 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease, box-shadow 160ms ease;
 }
 
-.module-select-toggle span,
-.module-select-toggle b {
-  display: block;
+.module-select-toggle span {
+  color: var(--text-primary);
 }
-
 .module-select-toggle b {
   color: var(--text-muted);
-  font-size: 8px;
-  font-weight: 950;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 10px;
+  font-weight: 550;
 }
 
 .module-select-toggle.analyzable b {
@@ -5405,46 +5827,46 @@ const componentNodes = computed(() => [
   margin: 0 0 6px;
   color: var(--text-primary);
   font-size: 14px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
 }
 
 .module-card p {
+  flex: 1;
   margin: 0;
   color: var(--text-muted);
   font-size: 12px;
   line-height: 1.65;
 }
 
-.module-mini-preview {
-  position: absolute;
-  left: 14px;
-  bottom: 17px;
-  width: calc(100% - 124px);
-  max-width: 92px;
-  height: 32px;
-  display: flex;
-  align-items: end;
-  gap: 3px;
-  opacity: 0.74;
+.module-card-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  margin-top: 14px;
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+  padding-top: 10px;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.2;
 }
 
-.module-mini-preview i {
-  flex: 1;
-  min-width: 4px;
-  border-radius: 999px 999px 2px 2px;
-  background: var(--module-accent, var(--active-accent));
-  transition: opacity 120ms ease, transform 120ms ease, box-shadow 120ms ease;
-  transform-origin: center bottom;
+.module-card-status span {
+  color: color-mix(in srgb, var(--module-accent, var(--active-accent)) 72%, white);
+  font-weight: 760;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
-.module-mini-preview i.active {
-  opacity: 1;
-  transform: scaleY(1.18);
-  box-shadow: 0 0 12px color-mix(in srgb, var(--module-accent, var(--active-accent)) 34%, transparent);
-}
-
-.mini-tooltip {
-  min-width: 96px;
+.module-card-status strong {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .module-detail-panel {
@@ -5503,7 +5925,7 @@ const componentNodes = computed(() => [
   display: block;
   color: color-mix(in srgb, var(--active-accent) 64%, var(--text-muted));
   font-size: 10px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   text-transform: uppercase;
 }
 
@@ -5512,7 +5934,7 @@ const componentNodes = computed(() => [
   margin-top: 6px;
   color: var(--text-primary);
   font-size: 24px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .detail-head p {
@@ -5532,8 +5954,8 @@ const componentNodes = computed(() => [
 
 .detail-stats span,
 .detail-readout,
-.detail-lines,
-.detail-table div {
+.detail-table div,
+.detail-explain-card {
   border: 1px solid color-mix(in srgb, var(--active-accent) 18%, var(--border-color));
   border-radius: var(--radius-md);
   background: rgba(var(--glass-bg-rgb), 0.28);
@@ -5551,7 +5973,7 @@ const componentNodes = computed(() => [
 .detail-stats strong {
   color: var(--active-accent);
   font-size: 18px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .detail-stats em {
@@ -5559,7 +5981,7 @@ const componentNodes = computed(() => [
   color: var(--text-muted);
   font-size: 10px;
   font-style: normal;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   text-transform: uppercase;
 }
 
@@ -5583,7 +6005,7 @@ const componentNodes = computed(() => [
   width: 100%;
   height: 100%;
   min-height: 380px;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .detail-empty-state {
@@ -5673,7 +6095,7 @@ const componentNodes = computed(() => [
   margin-top: 9px;
   color: var(--active-accent);
   font-size: 20px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .detail-readout em {
@@ -5682,27 +6104,7 @@ const componentNodes = computed(() => [
   color: var(--text-secondary);
   font-size: 11px;
   font-style: normal;
-  font-weight: 850;
-}
-
-.detail-lines {
-  display: grid;
-  gap: 6px;
-  padding: 12px;
-}
-
-.detail-lines span {
-  width: max-content;
-  max-width: 100%;
-  padding: 5px 8px;
-  border: 1px solid color-mix(in srgb, var(--active-accent) 18%, transparent);
-  border-radius: var(--radius-sm);
-  background: rgba(var(--glass-bg-rgb), 0.28);
-  color: color-mix(in srgb, var(--active-accent) 76%, var(--text-secondary));
-  font-family: "JetBrains Mono", Consolas, monospace;
-  font-size: 10px;
-  font-weight: 850;
-  white-space: nowrap;
+  font-weight: var(--font-weight-label);
 }
 
 .detail-table {
@@ -5721,7 +6123,62 @@ const componentNodes = computed(() => [
 .detail-table strong {
   color: var(--text-primary);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
+}
+
+.detail-explain-card {
+  padding: 14px;
+}
+
+.detail-explain-card > span {
+  display: block;
+  color: color-mix(in srgb, var(--active-accent) 64%, var(--text-muted));
+  font-size: 10px;
+  font-weight: var(--font-weight-title);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.detail-explain-card > strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: var(--font-weight-title);
+}
+
+.detail-explain-card > p {
+  margin: 8px 0 12px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.detail-explain-list {
+  display: grid;
+  gap: 8px;
+}
+
+.detail-explain-list div {
+  display: grid;
+  gap: 4px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.detail-explain-list em {
+  color: color-mix(in srgb, var(--active-accent) 68%, var(--text-muted));
+  font-size: 10px;
+  font-style: normal;
+  font-weight: var(--font-weight-title);
+}
+
+.detail-explain-list b {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 560;
+  line-height: 1.55;
 }
 
 .detail-panel-enter-active,
@@ -5790,6 +6247,14 @@ const componentNodes = computed(() => [
     display: grid;
     justify-items: stretch;
     min-width: 0;
+  }
+
+  .analysis-action-row {
+    grid-template-columns: 1fr;
+  }
+
+  .analysis-module-ribbon {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .analysis-mode-switch {

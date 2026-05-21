@@ -121,14 +121,14 @@ const formatTime = (value: string) => {
   background: rgba(var(--primary-rgb), 0.08);
   color: var(--primary-color);
   font-size: 10px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
 }
 
 .reader-header h2 {
   margin: 0;
   color: var(--text-primary);
   font-size: 28px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   line-height: 1.18;
 }
 
@@ -139,7 +139,7 @@ const formatTime = (value: string) => {
   margin-top: 12px;
   color: var(--text-muted);
   font-size: 12px;
-  font-weight: 750;
+  font-weight: var(--font-weight-body);
 }
 
 .reader-meta a {
@@ -213,7 +213,7 @@ const formatTime = (value: string) => {
 .reader-body :deep(th) {
   background: var(--bg-input);
   color: var(--text-primary);
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
 }
 
 .reader-state {
@@ -222,7 +222,7 @@ const formatTime = (value: string) => {
   place-items: center;
   color: var(--text-muted);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: var(--font-weight-body);
 }
 
 .reader-drawer-enter-active,

@@ -132,8 +132,12 @@ const handleLangToggle = (event: MouseEvent) => window.dispatchEvent(new CustomE
   detail: { x: event.clientX, y: event.clientY },
 }))
 
-onMounted(() => window.addEventListener('scroll', handleScroll, { passive: true }))
-onUnmounted(() => window.removeEventListener('scroll', handleScroll))
+onMounted(() => {
+  window.addEventListener('scroll', handleScroll, { passive: true })
+})
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll)
+})
 </script>
 
 <style scoped>
@@ -150,10 +154,14 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
   align-items: center;
   padding: 0 10px 0 14px;
   border: 1px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: 14px;
   background: var(--nav-bg);
-  backdrop-filter: blur(24px) saturate(180%);
-  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(14px) saturate(115%);
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.08),
+    0 4px 12px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.06);
   transition: background 240ms ease, border-color 240ms ease, transform 240ms ease;
 }
 
@@ -179,9 +187,9 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
   border-left: 1px solid var(--border-color);
   color: var(--text-muted);
   font-size: 11px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   text-transform: uppercase;
-  letter-spacing: 0;
+  letter-spacing: var(--tracking-label);
   white-space: nowrap;
 }
 
@@ -198,7 +206,7 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
   padding: 4px;
   border: 1px solid var(--border-color);
   border-radius: 10px;
-  background: var(--surface-3);
+  background: rgba(255, 255, 255, 0.055);
 }
 
 .nav-item-wrap {
@@ -220,12 +228,12 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 0 12px;
+  padding: 0 14px;
   border-radius: 8px;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 850;
+  font-size: 14px;
+  font-weight: 600;
   transition: background 180ms ease, color 180ms ease, transform 180ms ease;
 }
 
@@ -241,9 +249,9 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
 
 .top-nav button:hover,
 .top-nav button.active {
-  background: rgba(var(--primary-rgb), 0.13);
+  background: rgba(255, 255, 255, 0.08);
   color: var(--text-primary);
-  transform: translateY(-1px);
+  transform: translateY(-0.5px);
 }
 
 .top-nav button.active {
@@ -259,9 +267,13 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
   padding: 8px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  background: rgba(var(--glass-bg-rgb), 0.94);
-  backdrop-filter: blur(22px) saturate(170%);
-  box-shadow: var(--shadow-soft);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.035) 38%, rgba(0, 0, 0, 0.18)),
+    rgba(var(--glass-bg-rgb), 0.86);
+  backdrop-filter: blur(14px) saturate(115%);
+  box-shadow:
+    0 22px 60px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
   transform: translate(-50%, 8px);
   opacity: 0;
   pointer-events: none;
@@ -306,7 +318,7 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
   padding: 0 8px;
   border: 1px solid var(--border-color);
   border-radius: 10px;
-  background: var(--surface-3);
+  background: rgba(255, 255, 255, 0.055);
 }
 
 .palette-switcher button {
@@ -315,18 +327,19 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
   border-radius: 999px;
   background: var(--swatch);
   box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,0.5),
-    0 0 16px color-mix(in srgb, var(--swatch) 32%, transparent);
+    inset 0 0 0 1px rgba(255,255,255,0.56),
+    inset 0 -6px 10px rgba(0, 0, 0, 0.2);
   transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
 }
 
 .palette-switcher button.active {
-  filter: saturate(1.18) brightness(1.16);
-  transform: scale(1.22);
+  filter: saturate(1.08) brightness(1.08);
+  transform: scale(1.14);
   box-shadow:
-    0 0 0 3px rgba(var(--primary-rgb), 0.28),
-    0 0 22px rgba(var(--primary-rgb), 0.42),
-    inset 0 0 0 1px rgba(255,255,255,0.78);
+    0 0 0 3px rgba(255, 255, 255, 0.12),
+    0 0 0 5px rgba(var(--primary-rgb), 0.12),
+    inset 0 0 0 1px rgba(255,255,255,0.72),
+    inset 0 -6px 10px rgba(0, 0, 0, 0.18);
 }
 
 .icon-btn,
@@ -335,7 +348,7 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
   height: 38px;
   border-radius: 10px;
   color: var(--text-primary);
-  background: var(--surface-3);
+  background: rgba(255, 255, 255, 0.055);
   border: 1px solid var(--border-color);
   display: inline-flex;
   align-items: center;
@@ -348,23 +361,23 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
 }
 
 .lang-btn {
-  padding: 0 10px;
-  font-size: 12px;
-  font-weight: 900;
+  padding: 0 12px;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .avatar-btn {
   gap: 8px;
-  padding: 0 12px;
-  font-size: 12px;
-  font-weight: 850;
+  padding: 0 14px;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .icon-btn:hover,
 .lang-btn:hover,
 .avatar-btn:hover {
-  transform: translateY(-1px);
-  border-color: rgba(var(--primary-rgb), 0.38);
+  transform: translateY(-0.5px);
+  border-color: rgba(255, 255, 255, 0.22);
 }
 
 @media (max-width: 1180px) {

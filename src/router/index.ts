@@ -139,8 +139,9 @@ const router = createRouter({
       path: '/admin',
       component: () => import('@/layout/AdminLayout.vue'),
       meta: { requiresAuth: true, requiresAdmin: true },
-      redirect: '/admin/users',
+      redirect: '/admin/overview',
       children: [
+        { path: 'overview', name: 'AdminOverview', component: () => import('@/views/admin/OverviewPage.vue') },
         { path: 'users', name: 'AdminUsers', component: () => import('@/views/admin/UsersPage.vue') },
         { path: 'models', name: 'AdminModels', component: () => import('@/views/admin/ModelsPage.vue') },
         { path: 'ai', name: 'AdminAi', component: () => import('@/views/admin/AiPage.vue') },

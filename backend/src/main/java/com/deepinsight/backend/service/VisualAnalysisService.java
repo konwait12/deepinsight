@@ -43,7 +43,7 @@ public class VisualAnalysisService {
     public record ImportToChatRequest(Long batchId, List<Long> resultIds, String message) {}
 
     private static final Set<String> SUPPORTED_MODULES = Set.of(
-        "scalars", "images", "audio", "text", "histograms", "embeddings", "prCurves", "hparams", "graphs", "profiler"
+        "scalars", "images", "audio", "text", "histograms", "embeddings", "prCurves", "hparams", "graphs", "surface3d", "profiler"
     );
     private static final DateTimeFormatter PANEL_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -258,12 +258,67 @@ public class VisualAnalysisService {
         chatSessionService.appendMessage(conversationId, Map.of("role", "assistant", "content", assistantIntro));
         chatSessionService.appendMessage(conversationId, Map.of("role", "user", "content", userMessage));
 
+        Map<String, Object> aiResponse = runImportedAnalysis(userMessage, context);
+        String aiReply = text(aiResponse.get("content")).trim();
+        String aiRole = text(aiResponse.getOrDefault("role", "assistant"));
+        if (aiRole.isBlank() || "model".equalsIgnoreCase(aiRole)) {
+            aiRole = "assistant";
+        }
+        if (aiReply.isBlank()) {
+            aiReply = "已收到导入的可视化分析结果，但当前 AI 服务没有返回可用内容。你可以在该对话中继续追问，或检查后台 AI 配置后重新导入。";
+        }
+        chatSessionService.appendMessage(conversationId, Map.of("role", aiRole, "content", aiReply));
+
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("conversationId", conversationId);
         payload.put("savedCount", savedCount);
         payload.put("importedCount", results.size());
         payload.put("title", title);
+        payload.put("analysisStarted", true);
+        payload.put("reply", aiReply);
         return payload;
+    }
+
+    private Map<String, Object> runImportedAnalysis(String userMessage, String context) {
+        String prompt = """
+            [可视化分析结果上下文]
+            %s
+
+            [用户请求]
+            %s
+
+            [输出要求]
+            请直接开始分析，不要只说“已导入”。按以下结构输出：
+            1. 总体判断：说明当前训练、模型或模块的主要状态。
+            2. 关键证据：列出来自数据的指标、模块结果或异常信号。
+            3. 风险与优先级：指出最值得先处理的问题。
+            4. 下一步实验：给出可执行的验证或调参建议。
+            """.formatted(context, userMessage);
+        Map<String, Object> response = aiConfigService.chat(
+            prompt,
+            List.of(),
+            new AiConfigService.ChatOptions(false, "off", 0.35)
+        );
+        String content = text(response.get("content")).trim();
+        if (content.isBlank() || isAiCallFailure(content)) {
+            return Map.of(
+                "role", "assistant",
+                "content", "已导入这些可视化分析结果，但自动分析没有成功完成。\n\n原因：" + (content.isBlank() ? "AI 服务返回空内容" : content) + "\n\n你可以检查管理员后台的 AI 配置，或在当前对话里继续发送问题触发分析。"
+            );
+        }
+        return response;
+    }
+
+    private boolean isAiCallFailure(String content) {
+        String lower = content == null ? "" : content.toLowerCase();
+        return lower.contains("调用失败")
+            || lower.contains("call failed")
+            || lower.contains("api error")
+            || lower.contains("api调用失败")
+            || lower.contains("api璋冪敤澶辫触")
+            || lower.contains("ai璋冪敤澶辫触")
+            || lower.contains("ai助手尚未配置")
+            || lower.contains("ai鍔╂墜灏氭湭閰嶇疆");
     }
 
     private PanelContext loadPanelContext(Principal principal, Long resultId) {
@@ -533,6 +588,7 @@ public class VisualAnalysisService {
             case "histograms" -> analyzeTrainingDistribution(steps);
             case "hparams" -> analyzeTrainingHParams(job);
             case "graphs" -> analyzeTrainingGraph(job);
+            case "surface3d" -> analyzeTrainingSurface3d(job, steps);
             default -> noData(module, "该训练任务还没有记录「" + moduleLabel(module) + "」模块需要的日志。");
         };
     }
@@ -598,6 +654,26 @@ public class VisualAnalysisService {
             Long.valueOf(job.getCurrentEpoch() == null ? 0 : job.getCurrentEpoch()), "已读取该训练任务的模型架构元数据，可用于结构对比和官方模型匹配。", metrics);
     }
 
+    private AnalysisOutcome analyzeTrainingSurface3d(TrainingJob job, List<TrainingStep> steps) {
+        Map<String, Object> metrics = new LinkedHashMap<>();
+        List<Double> losses = steps.stream().map(TrainingStep::getTrainLoss).filter(v -> v != null).toList();
+        List<Double> accuracies = steps.stream().map(TrainingStep::getTrainAccuracy).filter(v -> v != null).toList();
+        if (steps.isEmpty() && job.getCurrentLoss() == null && job.getCurrentAccuracy() == null) {
+            return noData("surface3d", "该训练任务还没有可用于三维曲面分析的损失、准确率或进度记录。");
+        }
+        metrics.put("lossPoints", losses.size());
+        metrics.put("accuracyPoints", accuracies.size());
+        metrics.put("currentLoss", job.getCurrentLoss());
+        metrics.put("currentAccuracy", job.getCurrentAccuracy());
+        metrics.put("surfaceAxes", List.of("epoch", "metric", "value"));
+        Long latest = steps.isEmpty()
+            ? Long.valueOf(job.getCurrentEpoch() == null ? 0 : job.getCurrentEpoch())
+            : Long.valueOf(steps.get(steps.size() - 1).getEpoch());
+        long count = Math.max(1, losses.size() + accuracies.size());
+        return new AnalysisOutcome("ready", scoreFromAccuracy(job.getCurrentAccuracy(), job.getCurrentLoss()), count, latest,
+            "已基于训练标量生成三维训练曲面，可观察损失、准确率和训练进度的联合变化。", metrics);
+    }
+
     private AnalysisOutcome analyzeUpload(ResolvedRun run, String module) {
         return switch (module) {
             case "scalars" -> analyzeTable(run.id(), "scalar_logs", "已从上传运行数据中分析标量日志。");
@@ -609,6 +685,7 @@ public class VisualAnalysisService {
             case "prCurves" -> analyzeEvalCurves(run.id());
             case "hparams" -> analyzeTable(run.id(), "hparam_data", "已从上传运行数据中分析超参数记录。");
             case "profiler" -> analyzeTable(run.id(), "profiler_data", "已从上传运行数据中分析性能剖析记录。");
+            case "surface3d" -> analyzeTable(run.id(), "scalar_logs", "已从上传运行数据的标量日志生成三维训练曲面。");
             case "graphs" -> noData("graphs", "上传运行暂未接入模型拓扑表，当前无法生成结构图分析。");
             default -> noData(module, "暂不支持该分析模块。");
         };
@@ -852,6 +929,7 @@ public class VisualAnalysisService {
         defs.put("prCurves", new ModuleDefinition("prCurves", "PR/ROC 评估", "比较阈值、精确率、召回率和 ROC 表现。", List.of("YOLOv8n", "YOLOv8s", "DeepLabV3-RN50")));
         defs.put("hparams", new ModuleDefinition("hparams", "超参数对比", "比较学习率、批次大小、优化器和配置差异。", List.of("MobileNetV3-L", "EfficientNet-B4", "ResNet-50")));
         defs.put("graphs", new ModuleDefinition("graphs", "模型结构", "分析架构、层级和拓扑关系。", List.of("ResNet-50", "Swin-T", "LLaMA-7B")));
+        defs.put("surface3d", new ModuleDefinition("surface3d", "三维曲面", "分析损失、准确率和训练进度构成的三维状态空间。", List.of("ResNet-50", "ViT-B/16", "YOLOv8n")));
         defs.put("profiler", new ModuleDefinition("profiler", "性能剖析", "分析运行时、算子耗时和吞吐瓶颈。", List.of("YOLOv8n", "MobileNetV3-L", "Whisper-Tiny")));
         return defs;
     }

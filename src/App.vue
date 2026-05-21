@@ -3,7 +3,7 @@
     <div
       ref="appRootRef"
       class="app-root"
-      :class="['dark', { 'is-public-preview': isPublicPreview, 'is-scroll-isolated': usesIsolatedScroll }]"
+      :class="{ 'is-public-preview': isPublicPreview, 'is-scroll-isolated': usesIsolatedScroll }"
       @pointermove="handlePointerMove"
       @pointerleave="handlePointerLeave"
       @pointercancel="handlePointerLeave"
@@ -78,50 +78,45 @@ const handleResize = () => {
   isDesktop.value = window.innerWidth >= 1024
   clearSpotlightState()
 }
-const isolatedScrollRoutes = new Set(['Data', 'AI'])
+const isolatedScrollRoutes = new Set(['AI'])
 let pointerRaf = 0
 let pendingPointerX = window.innerWidth / 2
 let pendingPointerY = window.innerHeight / 2
 let activeSpotlightElements = new Set<HTMLElement>()
-const EDGE_GLOW_REACH = 128
+const EDGE_GLOW_REACH = 100
 const spotlightTargetSelector = [
   'button',
   '[role="button"]',
   '[data-edge-glow]',
   '.edge-glow-surface',
-  '.spotlight-card',
+  '.el-card',
+  '.glass-panel',
+  '.glass-panel-light',
+  '.glass-panel-heavy',
+  '.surface-hover',
+  '.toolbar',
+  '.control-bar',
+  '.control-card',
+  '.table-card',
+  '.chart-card',
+  '.config-card',
+  '.result-card',
+  '.job-card',
+  '.section-card',
+  '.ai-insight-card',
+  '.model-chip',
+  '.result-item',
+  '.progress-item',
+  '.perf-item',
+  '.module-card',
   '.data-hero',
-  '.asset-sidebar',
-  '.asset-main',
-  '.asset-detail',
   '.summary-card',
   '.asset-card',
-  '.asset-tab',
   '.cloud-brief',
+  '.step-section',
   '.el-button',
-  'button.primary-action',
-  'button.secondary-action',
-  'button.text-action',
-  'button.back-btn',
-  'button.ctrl-toggle',
-  'button.focus-btn',
-  'button.msg-btn',
-  'button.send-btn',
-  'button.stop-btn',
-  'button.model-action',
-  'button.rule-action',
-  '.mode-switch button',
-  '.pager-chip button',
-  '.hero-actions button',
-  '.panel-expand button',
-  '.quick-chips button',
-  '.assistant-actions button',
-  '.ai-panel-actions button',
-  '.result-view-switch button',
-  '.result-filter-chips button',
-  '.smart-select-action',
-  '.clear-select-action',
-  '.module-select-toggle',
+  '.el-input__wrapper',
+  '.el-select__wrapper',
   '.icon-btn',
   '.lang-btn',
   '.avatar-btn',
@@ -132,30 +127,37 @@ const spotlightTargetSelector = [
   '.app-icon-tile',
 ].join(',')
 const nativeGlowSurfaceSelector = [
-  'button.primary-action',
-  'button.secondary-action',
-  'button.text-action',
-  'button.back-btn',
-  'button.ctrl-toggle',
-  'button.focus-btn',
-  'button.msg-btn',
-  'button.send-btn',
-  'button.stop-btn',
-  'button.model-action',
-  'button.rule-action',
-  '.mode-switch button',
-  '.pager-chip button',
-  '.hero-actions button',
-  '.panel-expand button',
-  '.quick-chips button',
-  '.assistant-actions button',
-  '.ai-panel-actions button',
-  '.result-view-switch button',
-  '.result-filter-chips button',
-  '.smart-select-action',
-  '.clear-select-action',
-  '.module-select-toggle',
+  'button',
+  '.el-card',
+  '.glass-panel',
+  '.glass-panel-light',
+  '.glass-panel-heavy',
+  '.surface-hover',
+  '.toolbar',
+  '.control-bar',
+  '.control-card',
+  '.table-card',
+  '.chart-card',
+  '.config-card',
+  '.result-card',
+  '.job-card',
+  '.section-card',
+  '.ai-insight-card',
+  '.model-chip',
+  '.result-item',
+  '.progress-item',
+  '.perf-item',
+  '.module-card',
+  '.step-section',
   '.el-button',
+  '.el-input__wrapper',
+  '.icon-btn',
+  '.lang-btn',
+  '.avatar-btn',
+  '.palette-switcher button',
+  '.module-icon',
+  '.tut-icon',
+  '.app-icon-tile',
 ].join(',')
 const textEntrySurfaceSelector = [
   'input',
@@ -549,7 +551,15 @@ const applyGlowTargetState = (nextSpotlightElements: Map<HTMLElement, { rect: DO
     const { rect, strength } = edgeState
     const x = pendingPointerX - rect.left
     const y = pendingPointerY - rect.top
-    const radius = Math.max(176, Math.min(320, EDGE_GLOW_REACH + Math.max(rect.width, rect.height) * 0.38))
+    const cx = rect.width / 2
+    const cy = rect.height / 2
+    const dx = x - cx
+    const dy = y - cy
+    const radians = Math.atan2(dy, dx)
+    let angleDeg = radians * (180 / Math.PI) + 90
+    if (angleDeg < 0) angleDeg += 360
+
+    const radius = Math.max(148, Math.min(260, EDGE_GLOW_REACH + Math.max(rect.width, rect.height) * 0.24))
     const pseudoClass = resolveGlowPseudoClass(element)
 
     element.classList.add('edge-glow-active')
@@ -559,6 +569,7 @@ const applyGlowTargetState = (nextSpotlightElements: Map<HTMLElement, { rect: DO
     element.style.setProperty('--mx', `${x}px`)
     element.style.setProperty('--my', `${y}px`)
     element.style.setProperty('--edge-proximity', `${(strength * 100).toFixed(3)}`)
+    element.style.setProperty('--cursor-angle', `${angleDeg.toFixed(3)}deg`)
     element.style.setProperty('--edge-glow-strength', strength.toFixed(3))
     element.style.setProperty('--edge-glow-opacity', strength.toFixed(3))
     element.style.setProperty('--edge-glow-radius', `${radius.toFixed(1)}px`)
@@ -609,12 +620,10 @@ const isGlowCandidate = (element: HTMLElement) => {
 const hasVisibleBorder = (style: CSSStyleDeclaration) => {
   const widths = [style.borderTopWidth, style.borderRightWidth, style.borderBottomWidth, style.borderLeftWidth]
   const styles = [style.borderTopStyle, style.borderRightStyle, style.borderBottomStyle, style.borderLeftStyle]
-  const colors = [style.borderTopColor, style.borderRightColor, style.borderBottomColor, style.borderLeftColor]
   return widths.some((width, index) => {
     const px = Number.parseFloat(width)
     if (!Number.isFinite(px) || px <= 0) return false
-    if (styles[index] === 'none' || styles[index] === 'hidden') return false
-    return !/rgba?\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0\s*\)|transparent/i.test(colors[index])
+    return styles[index] !== 'none' && styles[index] !== 'hidden'
   })
 }
 

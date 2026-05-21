@@ -138,24 +138,24 @@ onMounted(async () => {
 .profile-hero { text-align: center; margin-bottom: 40px; }
 .avatar-circle {
   width: 72px; height: 72px; border-radius: 50%; background: var(--primary-color);
-  color: #fff; font-size: 32px; font-weight: 900; display: flex;
+  color: #fff; font-size: 32px; font-weight: var(--font-weight-title); display: flex;
   align-items: center; justify-content: center; margin: 0 auto 16px;
 }
-.profile-hero h1 { font-size: 24px; font-weight: 900; color: var(--text-primary); margin: 0 0 8px; }
+.profile-hero h1 { font-size: 24px; font-weight: var(--font-weight-title); color: var(--text-primary); margin: 0 0 8px; }
 .profile-hero .email { font-size: 13px; color: var(--text-secondary); margin: 8px 0 0; }
 
 .stats-row { margin-bottom: 24px; }
 .stat-card { text-align: center; border-radius: 16px; }
-.stat-val { font-size: 28px; font-weight: 900; }
+.stat-val { font-size: 28px; font-weight: var(--font-weight-title); }
 .stat-label { font-size: 11px; color: var(--text-secondary); margin-top: 4px; text-transform: uppercase; }
 
 .section-card { border-radius: 16px; margin-bottom: 24px; }
-.section-title { font-size: 14px; font-weight: 800; color: var(--text-primary); }
+.section-title { font-size: 14px; font-weight: var(--font-weight-body); color: var(--text-primary); }
 
 .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .info-item { padding: 10px 16px; background: var(--bg-input); border-radius: 10px; display: flex; justify-content: space-between; }
 .info-key { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
-.info-val { font-size: 13px; color: var(--text-primary); font-weight: 700; }
+.info-val { font-size: 13px; color: var(--text-primary); font-weight: var(--font-weight-body); }
 .account-actions {
   margin-top: 18px;
   padding: 14px 16px;
@@ -171,7 +171,7 @@ onMounted(async () => {
   display: block;
   color: var(--text-primary);
   font-size: 13px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
 }
 .account-actions span {
   display: block;

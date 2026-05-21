@@ -46,7 +46,7 @@ const copy = computed(() => {
       aiEntry: 'AI workspace',
       vizEntry: 'Visualization',
       portalTitle: 'Research cloud library',
-      portalSubtitle: 'Images use visual covers; documents, models, matrix records, and views receive readable text covers. Use folders, drag-and-drop, upload, download, and AI selection from the same workspace.',
+      portalSubtitle: 'Use a clean list workspace for folders, drag-and-drop, upload, download, and AI selection.',
     }
   }
   return {
@@ -57,7 +57,7 @@ const copy = computed(() => {
     aiEntry: 'AI 工作室',
     vizEntry: '可视化分析',
     portalTitle: '研究素材云端库',
-    portalSubtitle: '图片以封面呈现；文档、模型、矩阵记录和视图生成文字封面。这里支持文件夹、拖动归档、上传下载，以及导入 AI 分析。',
+    portalSubtitle: '以清单工作区整理文件夹、拖动归档、上传下载和导入 AI 分析。',
   }
 })
 </script>
@@ -79,9 +79,7 @@ const copy = computed(() => {
   inset: 72px 0 0;
   z-index: -1;
   pointer-events: none;
-  background:
-    radial-gradient(circle at 72% 14%, rgba(var(--primary-rgb), 0.11), transparent 34%),
-    radial-gradient(circle at 18% 82%, rgba(66, 230, 164, 0.075), transparent 30%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 44%);
   transform: translateZ(0);
 }
 
@@ -95,20 +93,20 @@ const copy = computed(() => {
   margin: 0 auto 14px;
   padding: 20px 24px;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--primary-color) 18%, var(--border-color));
-  border-radius: 34px;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 8%, var(--border-color));
+  border-radius: var(--radius-lg);
   background:
-    radial-gradient(circle at 8% 0%, rgba(var(--primary-rgb), 0.2), transparent 34%),
-    linear-gradient(135deg, rgba(var(--glass-bg-rgb), 0.42), rgba(5, 10, 15, 0.26));
-  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.24);
-  backdrop-filter: blur(18px);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.018) 42%, rgba(0, 0, 0, 0.08)),
+    color-mix(in srgb, var(--surface-1) 70%, transparent);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(18px) saturate(128%);
   animation: cloudSceneRise 720ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .cloud-center-hero span {
   color: var(--primary-color);
   font-size: 12px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
@@ -117,7 +115,7 @@ const copy = computed(() => {
   margin: 6px 0 8px;
   color: var(--text-primary);
   font-size: clamp(32px, 4.6vw, 60px);
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   letter-spacing: -0.07em;
 }
 
@@ -140,11 +138,11 @@ const copy = computed(() => {
   height: 38px;
   padding: 0 15px;
   border: 1px solid rgba(var(--primary-rgb), 0.24);
-  border-radius: 999px;
-  background: rgba(var(--glass-bg-rgb), 0.32);
+  border-radius: var(--radius-md);
+  background: var(--workbench-control-bg);
   color: var(--text-primary);
   font-size: 12px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
 }
 
@@ -161,18 +159,20 @@ const copy = computed(() => {
   display: grid;
   place-items: center;
   justify-self: end;
-  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 8%, var(--border-color));
+  border-radius: var(--radius-lg);
   background:
-    radial-gradient(circle, rgba(var(--primary-rgb), 0.18), transparent 60%),
-    rgba(255, 255, 255, 0.025);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012) 46%, rgba(0, 0, 0, 0.04)),
+    color-mix(in srgb, var(--surface-1) 82%, transparent);
+  box-shadow: var(--shadow-soft);
 }
 
 .cloud-hero-orbit i {
   position: absolute;
   inset: 12px;
   border: 1px solid rgba(var(--primary-rgb), 0.24);
-  border-radius: 50%;
-  animation: orbitSpin 12s linear infinite;
+  border-radius: var(--radius-md);
+  animation: none;
 }
 
 .cloud-hero-orbit i:nth-child(2) {
@@ -195,15 +195,15 @@ const copy = computed(() => {
   left: 50%;
   width: 8px;
   height: 8px;
-  border-radius: 999px;
+  border-radius: 50%;
   background: var(--primary-color);
-  box-shadow: 0 0 18px rgba(var(--primary-rgb), 0.7);
+  box-shadow: none;
 }
 
 .cloud-hero-orbit strong {
   color: var(--text-primary);
   font-size: 22px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .cloud-center-page :deep(.cloud-portal) {

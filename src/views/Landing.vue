@@ -620,7 +620,7 @@ onUnmounted(() => {
 .feed-header {
   font-size: 12px;
   line-height: 1;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
   letter-spacing: 0;
   text-transform: uppercase;
   color: var(--text-secondary);
@@ -655,7 +655,7 @@ p {
   overflow: visible;
   font-size: 96px;
   line-height: 1.08;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   letter-spacing: 0;
 }
 
@@ -700,7 +700,7 @@ p {
   color: var(--text-secondary);
   font-family: "JetBrains Mono", Consolas, monospace;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: var(--font-weight-body);
   white-space: nowrap;
   backdrop-filter: blur(12px);
 }
@@ -731,7 +731,7 @@ p {
   border: 1px solid var(--border-strong);
   font: inherit;
   font-size: 14px;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
   color: var(--text-primary);
   background: var(--surface-2);
   cursor: pointer;
@@ -935,7 +935,7 @@ p {
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.35;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
   overflow-wrap: anywhere;
 }
 
@@ -955,7 +955,7 @@ p {
   margin-top: 14px;
   font-size: 46px;
   line-height: 1.08;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   letter-spacing: 0;
 }
 
@@ -1099,7 +1099,7 @@ p {
   margin-bottom: 14px;
   color: var(--text-muted);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
 }
 
 .work-card-copy h3 {
@@ -1147,7 +1147,7 @@ p {
 
 .flow-index {
   color: var(--text-muted);
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
 }
 
 .flow-step h3 {

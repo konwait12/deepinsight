@@ -96,8 +96,13 @@ public class AdminController {
     @Transactional
     public Result<String> deleteModel(@PathVariable Long id, Principal p) {
         Result<?> check = adminOnly(p); if (check != null) return (Result<String>) check;
+        var model = modelRepo.findById(id).orElse(null);
+        if (model == null) return Result.error(404, "模型不存在");
+        if (Boolean.TRUE.equals(model.getIsOfficial())) {
+            return Result.error(403, "官方模型资产受保护，只能通过后端种子数据或专用迁移维护");
+        }
         modelArticleRepo.findByModelId(id).ifPresent(modelArticleRepo::delete);
-        modelRepo.deleteById(id);
+        modelRepo.delete(model);
         return Result.success("已删除");
     }
 

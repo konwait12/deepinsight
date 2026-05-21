@@ -69,11 +69,6 @@
             <option value="pending">待处理</option>
             <option value="error">异常</option>
           </select>
-          <div class="view-switch" :class="`is-${viewMode}`">
-            <i />
-            <button type="button" :class="{ active: viewMode === 'cards' }" @click="viewMode = 'cards'">封面</button>
-            <button type="button" :class="{ active: viewMode === 'table' }" @click="viewMode = 'table'">清单</button>
-          </div>
         </div>
 
         <div class="selection-bar">
@@ -87,78 +82,30 @@
           <button type="button" :disabled="!selectedKeys.length" @click="selectedKeys = []">清空选择</button>
         </div>
 
-        <Transition name="asset-mode" mode="out-in">
-          <div v-if="viewMode === 'cards'" key="cards" class="asset-cards" v-loading="loading">
-            <article
-              v-for="(asset, index) in filteredAssets"
-              :key="asset.key"
-              class="asset-card"
-              :class="{ active: activeAsset?.key === asset.key, selected: selectedKeys.includes(asset.key), saved: asset.cloudSaved, readonly: isReadOnly(asset) }"
-              :style="{ '--delay': `${Math.min(index, 10) * 42}ms` }"
-              @click="activeAsset = asset"
-            >
-              <button
-                type="button"
-                class="select-dot"
-                :disabled="!canSyncAsset(asset)"
-                :aria-label="`选择 ${asset.title}`"
-                @click.stop="toggleSelect(asset)"
-              >
-                <el-icon v-if="selectedKeys.includes(asset.key)"><Select /></el-icon>
-              </button>
-              <span v-if="isReadOnly(asset)" class="readonly-badge">官方只读</span>
-              <div class="asset-cover">
-                <span>{{ asset.typeLabel }}</span>
-                <strong>{{ coverText(asset) }}</strong>
-                <em>{{ asset.subtype }}</em>
-              </div>
-              <div class="asset-card-copy">
-                <div>
-                  <span>{{ asset.format }}</span>
-                  <b :class="statusClass(asset)">{{ statusText(asset) }}</b>
-                </div>
-                <h3>{{ asset.title }}</h3>
-                <p>{{ asset.summary }}</p>
-              </div>
-              <div class="asset-card-foot">
-                <small>{{ asset.readiness }}</small>
-                <button type="button" :disabled="!canSyncAsset(asset) || syncing" @click.stop="syncOne(asset)">
-                  {{ syncActionText(asset) }}
-                </button>
-              </div>
-            </article>
-            <div v-if="!filteredAssets.length" class="empty-state">暂无匹配的数据资产</div>
-          </div>
-
-          <div v-else key="table" class="asset-table" v-loading="loading">
-            <button
-              v-for="asset in filteredAssets"
-              :key="asset.key"
-              type="button"
-              class="asset-row"
-              :class="{ active: activeAsset?.key === asset.key, selected: selectedKeys.includes(asset.key), readonly: isReadOnly(asset) }"
-              @click="activeAsset = asset"
-            >
-              <span class="row-type">{{ typeCode(asset) }}</span>
-              <strong>{{ asset.title }}</strong>
-              <em>{{ asset.typeLabel }}</em>
-              <i>{{ asset.readiness }}</i>
-              <small>{{ isReadOnly(asset) ? '官方只读' : asset.cloudSaved ? '已同步' : '未同步' }}</small>
-              <b :class="{ disabled: !canSyncAsset(asset) }" @click.stop="toggleSelect(asset)">
-                {{ selectedKeys.includes(asset.key) ? '已选' : canSyncAsset(asset) ? '选择' : '只读' }}
-              </b>
-            </button>
-            <div v-if="!filteredAssets.length" class="empty-state">暂无匹配的数据资产</div>
-          </div>
-        </Transition>
+        <div class="asset-table" v-loading="loading">
+          <button
+            v-for="asset in filteredAssets"
+            :key="asset.key"
+            type="button"
+            class="asset-row"
+            :class="{ active: activeAsset?.key === asset.key, selected: selectedKeys.includes(asset.key), readonly: isReadOnly(asset) }"
+            @click="activeAsset = asset"
+          >
+            <span class="row-type">{{ typeCode(asset) }}</span>
+            <strong>{{ asset.title }}</strong>
+            <em>{{ asset.typeLabel }}</em>
+            <i>{{ asset.readiness }}</i>
+            <small>{{ isReadOnly(asset) ? '官方只读' : asset.cloudSaved ? '已同步' : '未同步' }}</small>
+            <b :class="{ disabled: !canSyncAsset(asset) }" @click.stop="toggleSelect(asset)">
+              {{ selectedKeys.includes(asset.key) ? '已选' : canSyncAsset(asset) ? '选择' : '只读' }}
+            </b>
+          </button>
+          <div v-if="!filteredAssets.length" class="empty-state">暂无匹配的数据资产</div>
+        </div>
       </main>
 
       <aside class="asset-detail entrance-up">
         <template v-if="activeAsset">
-          <div class="detail-cover">
-            <span>{{ activeAsset.typeLabel }}</span>
-            <strong>{{ coverText(activeAsset) }}</strong>
-          </div>
           <div class="detail-title">
             <span>{{ activeAsset.subtype }}</span>
             <h2>{{ activeAsset.title }}</h2>
@@ -228,7 +175,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Refresh, Search, Select, Upload } from '@element-plus/icons-vue'
+import { Refresh, Search, Upload } from '@element-plus/icons-vue'
 import { datasetApi } from '@/api'
 import type { DataAsset, DataAssetOverview } from '@/api/modules/data.api'
 
@@ -241,7 +188,6 @@ const uploading = ref(false)
 const search = ref('')
 const activeTab = ref('all')
 const statusFilter = ref('')
-const viewMode = ref<'cards' | 'table'>('cards')
 const selectedKeys = ref<string[]>([])
 const overview = ref<DataAssetOverview | null>(null)
 const activeAsset = ref<DataAsset | null>(null)
@@ -366,16 +312,6 @@ function statusText(asset: DataAsset) {
   return labels[asset.status] || asset.status || '未知'
 }
 
-function coverText(asset: DataAsset) {
-  const compact = asset.typeLabel || asset.type || '数据'
-  if (compact.length <= 2) return compact
-  if (asset.type === 'run_log') return 'LOG'
-  if (asset.type === 'analysis_result') return 'AI'
-  if (asset.type === 'saved_view') return 'VIEW'
-  if (asset.type === 'cloud_item') return '云'
-  return compact.slice(0, 2)
-}
-
 function typeCode(asset: DataAsset) {
   const codes: Record<string, string> = {
     dataset: 'DATA',
@@ -474,11 +410,11 @@ onMounted(loadAssets)
 .data-page {
   width: min(1520px, 100%);
   min-height: calc(100dvh - var(--header-height, 72px));
-  height: calc(100dvh - var(--header-height, 72px));
   margin: 0 auto;
   padding: 18px 24px 24px;
-  overflow: hidden;
-  overscroll-behavior: contain;
+  overflow-x: hidden;
+  overflow-y: visible;
+  overscroll-behavior-x: contain;
 }
 
 .data-hero,
@@ -488,18 +424,19 @@ onMounted(loadAssets)
 .asset-detail {
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(var(--primary-rgb), 0.18);
-  background:
-    radial-gradient(circle at 10% 0%, rgba(var(--primary-rgb), 0.18), transparent 34%),
-    radial-gradient(circle at 100% 16%, rgba(66, 230, 164, 0.1), transparent 30%),
-    rgba(var(--glass-bg-rgb), 0.34);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(18px);
+  border: 1px solid color-mix(in srgb, var(--primary-color) 8%, rgba(255, 255, 255, 0.16));
+  background: var(--workbench-shell-bg);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -18px 44px rgba(0, 0, 0, 0.18),
+    var(--workbench-shadow),
+    0 0 0 1px rgba(var(--primary-rgb), 0.035);
+  backdrop-filter: blur(24px) saturate(135%);
+  -webkit-backdrop-filter: blur(24px) saturate(135%);
 }
 
 .data-hero::before,
 .summary-card::before,
-.asset-card::before,
 .asset-sidebar::before,
 .asset-main::before,
 .asset-detail::before {
@@ -507,8 +444,8 @@ onMounted(loadAssets)
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: radial-gradient(circle at var(--mx, 18%) var(--my, 0%), rgba(var(--primary-rgb), 0.2), transparent 42%);
-  opacity: 0.34;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.16), transparent) top / 100% 1px no-repeat;
+  opacity: 0.28;
   pointer-events: none;
 }
 
@@ -540,7 +477,7 @@ onMounted(loadAssets)
 .detail-title span {
   color: var(--primary-color);
   font-size: 11px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
@@ -549,7 +486,7 @@ onMounted(loadAssets)
   margin: 6px 0;
   color: var(--text-primary);
   font-size: clamp(30px, 4vw, 54px);
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   letter-spacing: -0.065em;
 }
 
@@ -571,7 +508,6 @@ onMounted(loadAssets)
 .primary-btn,
 .ghost-btn,
 .selection-bar button,
-.asset-card-foot button,
 .cloud-brief button {
   display: inline-flex;
   align-items: center;
@@ -579,22 +515,21 @@ onMounted(loadAssets)
   gap: 7px;
   min-height: 38px;
   padding: 0 15px;
-  border: 1px solid rgba(var(--primary-rgb), 0.24);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 999px;
   color: var(--text-primary);
   font-size: 12px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
 }
 
 .primary-btn {
-  background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.32), rgba(66, 230, 164, 0.18));
+  background: rgba(var(--primary-rgb), 0.13);
   color: var(--primary-color);
 }
 
 .ghost-btn,
 .selection-bar button,
-.asset-card-foot button,
 .cloud-brief button {
   background: rgba(var(--glass-bg-rgb), 0.26);
   color: var(--text-secondary);
@@ -603,11 +538,10 @@ onMounted(loadAssets)
 .primary-btn:hover,
 .ghost-btn:hover,
 .selection-bar button:not(:disabled):hover,
-.asset-card-foot button:hover,
 .cloud-brief button:hover {
   transform: translateY(-1px);
-  border-color: rgba(var(--primary-rgb), 0.45);
-  background: rgba(var(--primary-rgb), 0.14);
+  border-color: rgba(255, 255, 255, 0.24);
+  background: rgba(var(--primary-rgb), 0.1);
 }
 
 .asset-command-grid {
@@ -628,7 +562,7 @@ onMounted(loadAssets)
   margin-top: 7px;
   color: var(--text-primary);
   font-size: 28px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .summary-card em {
@@ -638,13 +572,14 @@ onMounted(loadAssets)
 }
 
 .asset-workbench {
+  --asset-workbench-height: clamp(680px, 74dvh, 780px);
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr) 320px;
   gap: 14px;
   min-height: 0;
-  height: calc(100dvh - var(--header-height, 72px) - 18px - 24px - 156px - 12px - 94px - 12px);
-  overflow: hidden;
-  overscroll-behavior: contain;
+  height: var(--asset-workbench-height);
+  overflow: visible;
+  overscroll-behavior: none;
 }
 
 .asset-sidebar,
@@ -655,24 +590,25 @@ onMounted(loadAssets)
 
 .asset-sidebar,
 .asset-detail {
-  max-height: 100%;
-  padding: 14px;
+  height: 100%;
+  max-height: none;
+  padding: 12px;
   align-self: start;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 .side-head {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .side-head strong {
   color: var(--text-primary);
   font-size: 18px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .asset-tab {
@@ -680,20 +616,20 @@ onMounted(loadAssets)
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
-  padding: 11px 12px;
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  margin-bottom: 7px;
+  padding: 10px 11px;
+  border: 1px solid var(--border-color);
   border-radius: 15px;
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--workbench-panel-bg);
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   text-align: left;
 }
 
 .asset-tab.active {
-  border-color: rgba(var(--primary-rgb), 0.42);
-  background: rgba(var(--primary-rgb), 0.13);
+  border-color: rgba(255, 255, 255, 0.24);
+  background: rgba(var(--primary-rgb), 0.1);
   color: var(--primary-color);
 }
 
@@ -702,58 +638,60 @@ onMounted(loadAssets)
 }
 
 .cloud-brief {
-  margin-top: 16px;
-  padding: 14px;
-  border: 1px solid rgba(var(--primary-rgb), 0.18);
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 18px;
-  background: rgba(0, 0, 0, 0.15);
+  background: var(--workbench-panel-bg-strong);
 }
 
 .cloud-brief strong {
   display: block;
-  margin-top: 7px;
+  margin-top: 6px;
   color: var(--text-primary);
-  font-size: 16px;
+  font-size: 15px;
 }
 
 .cloud-brief p {
-  margin: 8px 0 12px;
+  margin: 7px 0 10px;
   color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.6;
+  font-size: 11px;
+  line-height: 1.55;
 }
 
 .readonly-note {
-  margin-top: 12px;
-  padding: 12px;
+  margin-top: 10px;
+  padding: 11px;
   border: 1px solid rgba(251, 191, 36, 0.2);
   border-radius: 16px;
-  background: rgba(251, 191, 36, 0.07);
+  background: color-mix(in srgb, rgba(251, 191, 36, 0.14) 70%, var(--workbench-control-bg));
 }
 
 .readonly-note span {
   color: #fbbf24;
   font-size: 10px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .readonly-note p {
-  margin: 6px 0 0;
+  margin: 5px 0 0;
   color: var(--text-muted);
   font-size: 11px;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
 .asset-main {
   min-width: 0;
   min-height: 0;
-  max-height: 100%;
+  height: 100%;
+  max-height: none;
   padding: 14px;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
   overflow: hidden;
+  overscroll-behavior: contain;
 }
 
 .asset-toolbar {
@@ -769,9 +707,9 @@ onMounted(loadAssets)
   gap: 8px;
   height: 40px;
   padding: 0 13px;
-  border: 1px solid rgba(var(--primary-rgb), 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 999px;
-  background: rgba(var(--glass-bg-rgb), 0.28);
+  background: var(--workbench-control-bg);
   color: var(--text-muted);
 }
 
@@ -789,46 +727,9 @@ onMounted(loadAssets)
 .asset-toolbar select {
   height: 40px;
   padding: 0 12px;
-  border: 1px solid rgba(var(--primary-rgb), 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 999px;
-  background: rgba(var(--glass-bg-rgb), 0.28);
-}
-
-.view-switch {
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  min-width: 126px;
-  padding: 4px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.18);
-}
-
-.view-switch i {
-  position: absolute;
-  top: 4px;
-  bottom: 4px;
-  left: 4px;
-  width: calc(50% - 4px);
-  border-radius: 999px;
-  background: rgba(var(--primary-rgb), 0.18);
-  transition: transform 220ms ease;
-}
-
-.view-switch.is-table i {
-  transform: translateX(100%);
-}
-
-.view-switch button {
-  position: relative;
-  z-index: 1;
-  color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 950;
-}
-
-.view-switch button.active {
-  color: var(--primary-color);
+  background: var(--workbench-control-bg);
 }
 
 .selection-bar {
@@ -838,16 +739,16 @@ onMounted(loadAssets)
   gap: 8px;
   margin-bottom: 12px;
   padding: 10px;
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  border: 1px solid var(--border-color);
   border-radius: 16px;
-  background: rgba(0, 0, 0, 0.12);
+  background: var(--workbench-panel-bg);
 }
 
 .selection-bar span {
   margin-right: auto;
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
 }
 
 .selection-bar button:disabled {
@@ -855,137 +756,12 @@ onMounted(loadAssets)
   opacity: 0.45;
 }
 
-.asset-cards {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding-right: 4px;
-}
-
-.asset-card {
-  position: relative;
-  min-height: 320px;
-  overflow: hidden;
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  border-radius: 22px;
-  background:
-    radial-gradient(circle at 20% 0%, rgba(var(--primary-rgb), 0.14), transparent 34%),
-    rgba(255, 255, 255, 0.035);
-  cursor: pointer;
-  animation: assetIn 360ms ease both;
-  animation-delay: var(--delay);
-  transition: transform 200ms ease, border-color 200ms ease, background 200ms ease;
-}
-
-.asset-card:hover,
-.asset-card.active {
-  transform: translateY(-3px);
-  border-color: rgba(var(--primary-rgb), 0.4);
-}
-
-.asset-card.selected {
-  border-color: rgba(66, 230, 164, 0.8);
-  box-shadow: inset 0 0 0 1px rgba(66, 230, 164, 0.45), 0 0 34px rgba(66, 230, 164, 0.08);
-}
-
-.asset-card.saved::after {
-  content: "Cloud";
-  position: absolute;
-  top: 14px;
-  left: 14px;
-  z-index: 2;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: rgba(var(--primary-rgb), 0.16);
-  color: var(--primary-color);
-  font-size: 10px;
-  font-weight: 950;
-}
-
-.asset-card.readonly {
-  border-color: rgba(251, 191, 36, 0.28);
-}
-
-.readonly-badge {
-  position: absolute;
-  top: 14px;
-  left: 14px;
-  z-index: 4;
-  padding: 4px 8px;
-  border: 1px solid rgba(251, 191, 36, 0.22);
-  border-radius: 999px;
-  background: rgba(251, 191, 36, 0.14);
-  color: #fbbf24;
-  font-size: 10px;
-  font-weight: 950;
-}
-
-.asset-card.saved .readonly-badge {
-  left: 66px;
-}
-
-.select-dot {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 3;
-  width: 30px;
-  height: 30px;
-  display: grid;
-  place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.22);
-  color: #42e6a4;
-}
-
-.select-dot:disabled,
-.asset-card-foot button:disabled,
 .detail-actions button:disabled {
   cursor: not-allowed;
   opacity: 0.45;
   transform: none;
 }
 
-.asset-cover {
-  position: relative;
-  height: 132px;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 6px;
-  background:
-    radial-gradient(circle at 25% 25%, rgba(var(--primary-rgb), 0.36), transparent 30%),
-    radial-gradient(circle at 78% 22%, rgba(66, 230, 164, 0.2), transparent 28%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent);
-}
-
-.asset-cover span,
-.asset-cover em {
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 10px;
-  font-style: normal;
-  font-weight: 950;
-}
-
-.asset-cover strong {
-  color: white;
-  font-size: 42px;
-  font-weight: 950;
-  letter-spacing: -0.08em;
-}
-
-.asset-card-copy {
-  position: relative;
-  z-index: 1;
-  padding: 14px 14px 0;
-}
-
-.asset-card-copy > div,
-.asset-card-foot,
 .detail-tags {
   display: flex;
   flex-wrap: wrap;
@@ -993,60 +769,12 @@ onMounted(loadAssets)
   gap: 8px;
 }
 
-.asset-card-copy > div {
-  justify-content: space-between;
-}
-
-.asset-card-copy span,
-.asset-card-foot small {
-  color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 900;
-}
-
-.asset-card-copy b,
 .detail-tags b {
   padding: 4px 8px;
   border-radius: 999px;
   background: rgba(var(--primary-rgb), 0.1);
   color: var(--primary-color);
   font-size: 10px;
-}
-
-.asset-card-copy b.is-pending {
-  background: rgba(251, 191, 36, 0.12);
-  color: #fbbf24;
-}
-
-.asset-card-copy b.is-error {
-  background: rgba(251, 113, 133, 0.12);
-  color: #fb7185;
-}
-
-.asset-card-copy h3 {
-  margin: 12px 0 8px;
-  color: var(--text-primary);
-  font-size: 17px;
-  font-weight: 950;
-}
-
-.asset-card-copy p {
-  display: -webkit-box;
-  overflow: hidden;
-  min-height: 58px;
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: 12px;
-  line-height: 1.6;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-}
-
-.asset-card-foot {
-  position: relative;
-  z-index: 1;
-  justify-content: space-between;
-  padding: 14px;
 }
 
 .asset-table {
@@ -1065,17 +793,17 @@ onMounted(loadAssets)
   gap: 10px;
   min-height: 62px;
   padding: 10px;
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  border: 1px solid var(--border-color);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--workbench-panel-bg);
   color: var(--text-secondary);
   text-align: left;
 }
 
 .asset-row:hover,
 .asset-row.active {
-  border-color: rgba(var(--primary-rgb), 0.36);
-  background: rgba(var(--primary-rgb), 0.1);
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(var(--primary-rgb), 0.075);
 }
 
 .asset-row.selected {
@@ -1095,7 +823,7 @@ onMounted(loadAssets)
   background: rgba(var(--primary-rgb), 0.13);
   color: var(--primary-color);
   font-size: 10px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .asset-row strong,
@@ -1130,39 +858,15 @@ onMounted(loadAssets)
 
 .asset-detail {
   display: grid;
-  gap: 14px;
-}
-
-.detail-cover {
-  height: 160px;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 8px;
-  border-radius: 20px;
-  background:
-    radial-gradient(circle at 20% 20%, rgba(var(--primary-rgb), 0.28), transparent 35%),
-    radial-gradient(circle at 78% 28%, rgba(66, 230, 164, 0.14), transparent 32%),
-    rgba(0, 0, 0, 0.18);
-}
-
-.detail-cover span {
-  color: var(--primary-color);
-  font-size: 11px;
-  font-weight: 950;
-}
-
-.detail-cover strong {
-  color: var(--text-primary);
-  font-size: 54px;
-  font-weight: 950;
+  gap: 10px;
+  grid-auto-rows: max-content;
 }
 
 .detail-title h2 {
-  margin: 8px 0;
+  margin: 6px 0;
   color: var(--text-primary);
-  font-size: 22px;
-  font-weight: 950;
+  font-size: 20px;
+  font-weight: var(--font-weight-title);
   line-height: 1.2;
 }
 
@@ -1170,12 +874,12 @@ onMounted(loadAssets)
   margin: 0;
   color: var(--text-secondary);
   font-size: 12px;
-  line-height: 1.7;
+  line-height: 1.58;
 }
 
 .metric-list {
   display: grid;
-  gap: 8px;
+  gap: 7px;
 }
 
 .metric-list div {
@@ -1183,26 +887,27 @@ onMounted(loadAssets)
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 10px 12px;
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--workbench-panel-bg);
 }
 
 .metric-list span {
   color: var(--text-muted);
   font-size: 11px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
 }
 
 .metric-list strong {
   color: var(--text-primary);
   font-size: 12px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .detail-actions {
   display: grid;
+  gap: 8px;
 }
 
 .detail-empty,
@@ -1212,17 +917,6 @@ onMounted(loadAssets)
   place-items: center;
   color: var(--text-muted);
   font-size: 13px;
-}
-
-.asset-mode-enter-active,
-.asset-mode-leave-active {
-  transition: opacity 180ms ease, transform 180ms ease;
-}
-
-.asset-mode-enter-from,
-.asset-mode-leave-to {
-  opacity: 0;
-  transform: translateY(10px);
 }
 
 @keyframes assetIn {
@@ -1239,19 +933,103 @@ onMounted(loadAssets)
   }
 }
 
+/* Flatter visualization-style surfaces. */
+.data-page {
+  --data-surface:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.018) 42%, rgba(0, 0, 0, 0.08)),
+    color-mix(in srgb, var(--surface-1) 70%, transparent);
+  --data-panel:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012) 46%, rgba(0, 0, 0, 0.04)),
+    color-mix(in srgb, var(--surface-1) 82%, transparent);
+  --data-border: color-mix(in srgb, var(--primary-color) 8%, var(--border-color));
+  --data-border-strong: color-mix(in srgb, var(--primary-color) 22%, var(--border-color));
+}
+
+.data-hero,
+.summary-card,
+.asset-sidebar,
+.asset-main,
+.asset-detail {
+  border-color: var(--data-border);
+  border-radius: var(--radius-lg);
+  background: var(--data-surface);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(18px) saturate(128%);
+  -webkit-backdrop-filter: blur(18px) saturate(128%);
+}
+
+.data-hero::before,
+.summary-card::before,
+.asset-sidebar::before,
+.asset-main::before,
+.asset-detail::before {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent) top / 100% 1px no-repeat;
+  opacity: 0.22;
+}
+
+.summary-card,
+.asset-tab,
+.cloud-brief,
+.selection-bar,
+.asset-row,
+.metric-list div,
+.readonly-note,
+.search-shell,
+.asset-toolbar select {
+  border-color: var(--data-border);
+  border-radius: var(--radius-md);
+  background: var(--data-panel);
+  box-shadow: var(--shadow-soft);
+}
+
+.asset-tab.active,
+.asset-row:hover,
+.asset-row.active {
+  border-color: var(--data-border-strong);
+  background: color-mix(in srgb, var(--surface-1) 88%, transparent);
+}
+
+.primary-btn,
+.ghost-btn,
+.selection-bar button,
+.cloud-brief button,
+.detail-actions button {
+  border-radius: var(--radius-md);
+  background: var(--data-panel);
+  box-shadow: var(--shadow-soft);
+}
+
+.primary-btn,
+.detail-tags b {
+  background: rgba(var(--primary-rgb), 0.12);
+}
+
+.asset-row.selected {
+  border-color: color-mix(in srgb, var(--primary-color) 42%, var(--border-color));
+  box-shadow: 0 0 0 1px rgba(var(--primary-rgb), 0.12);
+}
+
+.asset-row.readonly,
+.readonly-note {
+  border-color: rgba(251, 191, 36, 0.22);
+}
+
 @media (max-width: 1280px) {
   .asset-workbench {
     grid-template-columns: 220px minmax(0, 1fr);
+    height: auto;
   }
 
   .asset-detail {
     grid-column: 1 / -1;
-    max-height: 320px;
+    height: auto;
+    overflow: visible;
   }
 
-  .asset-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .asset-main {
+    height: var(--asset-workbench-height);
   }
+
 }
 
 @media (max-width: 900px) {
@@ -1270,8 +1048,17 @@ onMounted(loadAssets)
     overflow: visible;
   }
 
-  .asset-sidebar {
+  .asset-sidebar,
+  .asset-main,
+  .asset-detail {
+    height: auto;
     max-height: none;
+    overflow: visible;
+  }
+
+  .asset-table {
+    max-height: none;
+    overflow: visible;
   }
 
   .asset-row {
@@ -1293,8 +1080,7 @@ onMounted(loadAssets)
     padding: 16px;
   }
 
-  .asset-command-grid,
-  .asset-cards {
+  .asset-command-grid {
     grid-template-columns: 1fr;
   }
 }

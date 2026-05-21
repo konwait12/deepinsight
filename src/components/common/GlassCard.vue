@@ -37,35 +37,35 @@ const glassStyle = computed(() => ({
 .glass-card {
   position: relative;
   border-radius: var(--radius-lg);
-  border: 1px solid rgba(var(--primary-rgb), 0.1);
+  border: 1px solid var(--border-color);
   overflow: hidden;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background 0.28s var(--ease-spring), box-shadow 0.28s var(--ease-spring), border-color 0.28s var(--ease-spring), transform 0.28s var(--ease-spring);
 }
 
 /* ========== 磨砂透明度档位 ========== */
 .glass-card--light {
   background: var(--surface-2);
-  backdrop-filter: blur(12px) saturate(150%);
+  backdrop-filter: blur(10px) saturate(120%);
 }
 .glass-card--medium {
-  background: rgba(var(--glass-bg-rgb), 0.72);
-  backdrop-filter: blur(20px) saturate(180%);
+  background: rgba(var(--glass-bg-rgb), var(--glass-opacity));
+  backdrop-filter: blur(14px) saturate(120%);
 }
 .glass-card--heavy {
-  background: rgba(var(--glass-bg-rgb), 0.86);
-  backdrop-filter: blur(28px) saturate(200%);
+  background: rgba(var(--glass-bg-rgb), 0.7);
+  backdrop-filter: blur(18px) saturate(120%);
 }
 
 /* ========== 边框光晕 ========== */
 .glass-card--glow {
   box-shadow:
-    0 8px 32px rgba(var(--primary-rgb), 0.08),
-    inset 0 1px 0 rgba(var(--primary-rgb), 0.06);
+    0 2px 8px rgba(var(--primary-rgb), 0.06),
+    inset 0 1px 0 rgba(var(--primary-rgb), 0.04);
 }
 .glass-card--glow:hover {
   box-shadow:
-    0 12px 40px rgba(var(--primary-rgb), 0.14),
-    inset 0 1px 0 rgba(var(--primary-rgb), 0.1);
+    0 4px 16px rgba(var(--primary-rgb), 0.1),
+    inset 0 1px 0 rgba(var(--primary-rgb), 0.06);
 }
 
 /* ========== 顶部折射高光条 ========== */
@@ -77,12 +77,12 @@ const glassStyle = computed(() => ({
   height: 1px;
   background: linear-gradient(90deg,
     transparent 0%,
-    rgba(var(--primary-rgb), 0.3) 20%,
-    rgba(var(--primary-rgb), 0.5) 50%,
-    rgba(var(--primary-rgb), 0.3) 80%,
+    rgba(var(--primary-rgb), 0.12) 20%,
+    rgba(var(--primary-rgb), 0.2) 50%,
+    rgba(var(--primary-rgb), 0.12) 80%,
     transparent 100%
   );
-  opacity: 0.6;
+  opacity: 0.3;
   z-index: 2;
   pointer-events: none;
 }
@@ -97,9 +97,9 @@ const glassStyle = computed(() => ({
   background: var(--surface-2);
 }
 .light .glass-card--medium {
-  background: rgba(var(--glass-bg-rgb), 0.74);
+  background: rgba(var(--glass-bg-rgb), var(--glass-opacity));
 }
 .light .glass-card--heavy {
-  background: rgba(var(--glass-bg-rgb), 0.88);
+  background: rgba(var(--glass-bg-rgb), 0.78);
 }
 </style>

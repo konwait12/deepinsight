@@ -43,10 +43,6 @@
             <span>{{ copy.search }}</span>
             <input v-model="query" type="search" :placeholder="copy.searchPlaceholder" />
           </label>
-          <div class="display-switch" :class="`is-${displayMode}`">
-            <button type="button" :class="{ active: displayMode === 'list' }" @click="displayMode = 'list'">{{ copy.list }}</button>
-            <button type="button" :class="{ active: displayMode === 'masonry' }" @click="displayMode = 'masonry'">{{ copy.cover }}</button>
-          </div>
         </div>
 
         <div class="cloud-body">
@@ -126,73 +122,30 @@
               </button>
             </div>
 
-            <Transition name="cloud-mode" mode="out-in">
-              <div v-if="displayMode === 'masonry'" key="masonry" class="cloud-masonry">
-                <div v-if="filteredItems.length" class="masonry-wall">
-                  <article
-                    v-for="(item, index) in filteredItems"
-                    :key="item.key"
-                    :draggable="canMoveItem(item)"
-                    class="masonry-card"
-                    :class="{ image: !!item.cover, selected: activeItem?.key === item.key, readonly: isReadOnlyItem(item) }"
-                    :style="{ '--card-h': `${cardHeight(item, index)}px`, '--delay': `${Math.min(index, 10) * 36}ms` }"
-                    @click="selectItem(item, index)"
-                    @dragstart="startItemDrag(item)"
-                    @dragend="clearDrag"
-                  >
-                    <div v-if="item.cover" class="cover-image" :style="{ backgroundImage: `url(${item.cover})` }"></div>
-                    <div v-else class="text-cover">
-                      <span>{{ item.typeLabel }}</span>
-                      <strong>{{ initials(item.title) }}</strong>
-                      <em>{{ item.format || item.status || 'cloud' }}</em>
-                    </div>
-                    <div class="cover-shade"></div>
-                    <button type="button" class="quick-select" @click.stop="emitSelect(item)">
-                      {{ selectable ? copy.select : copy.preview }}
-                    </button>
-                    <span v-if="isReadOnlyItem(item)" class="readonly-pill">{{ copy.readOnly }}</span>
-                    <div class="cover-caption">
-                      <span>{{ item.typeLabel }}</span>
-                      <strong>{{ item.title }}</strong>
-                      <em>{{ item.summary || item.meta || copy.savedItem }}</em>
-                    </div>
-                  </article>
-                </div>
-                <div v-if="!filteredItems.length" class="cloud-empty">{{ copy.empty }}</div>
-              </div>
-
-              <div v-else key="list" class="cloud-table">
-                <button
-                  v-for="(item, index) in filteredItems"
-                  :key="item.key"
-                  type="button"
-                  :draggable="canMoveItem(item)"
-                  class="table-row"
-                  :class="{ selected: activeItem?.key === item.key, readonly: isReadOnlyItem(item) }"
-                  @click="selectItem(item, index)"
-                  @dragstart="startItemDrag(item)"
-                  @dragend="clearDrag"
-                >
-                  <span>{{ typeIcon(item) }}</span>
-                  <strong>{{ item.title }}</strong>
-                  <em>{{ item.typeLabel }}</em>
-                  <i>{{ item.format || item.status || copy.record }}</i>
-                  <small>{{ isReadOnlyItem(item) ? copy.readOnlyDetail : item.summary || item.meta || copy.savedItem }}</small>
-                </button>
-                <div v-if="!filteredItems.length" class="cloud-empty">{{ copy.empty }}</div>
-              </div>
-            </Transition>
+            <div class="cloud-table">
+              <button
+                v-for="(item, index) in filteredItems"
+                :key="item.key"
+                type="button"
+                :draggable="canMoveItem(item)"
+                class="table-row"
+                :class="{ selected: activeItem?.key === item.key, readonly: isReadOnlyItem(item) }"
+                @click="selectItem(item, index)"
+                @dragstart="startItemDrag(item)"
+                @dragend="clearDrag"
+              >
+                <span>{{ typeIcon(item) }}</span>
+                <strong>{{ item.title }}</strong>
+                <em>{{ item.typeLabel }}</em>
+                <i>{{ item.format || item.status || copy.record }}</i>
+                <small>{{ isReadOnlyItem(item) ? copy.readOnlyDetail : item.summary || item.meta || copy.savedItem }}</small>
+              </button>
+              <div v-if="!filteredItems.length" class="cloud-empty">{{ copy.empty }}</div>
+            </div>
           </main>
 
           <aside class="cloud-detail">
             <div v-if="activeItem" class="detail-card">
-              <div class="detail-cover" :class="{ image: !!activeItem.cover }">
-                <img v-if="activeItem.cover" :src="activeItem.cover" :alt="activeItem.title" />
-                <div v-else>
-                  <span>{{ activeItem.typeLabel }}</span>
-                  <strong>{{ initials(activeItem.title) }}</strong>
-                </div>
-              </div>
               <span>{{ activeItem.typeLabel }}</span>
               <h3>{{ activeItem.title }}</h3>
               <p>{{ activeItem.summary || activeItem.meta || activeItem.content || copy.detailFallback }}</p>
@@ -233,7 +186,6 @@ type CloudItem = Record<string, any> & {
   typeLabel: string
   group: string
   folderId: number | null
-  cover?: string
 }
 
 type CloudFolder = Record<string, any> & {
@@ -281,7 +233,6 @@ const copy = computed(() => {
       search: 'Search',
       searchPlaceholder: 'Search name, type, summary...',
       list: 'List',
-      cover: 'Covers',
       folders: 'Folders',
       currentFolder: 'Current folder',
       newFolderPlaceholder: 'New folder name',
@@ -317,7 +268,6 @@ const copy = computed(() => {
     search: '搜索',
     searchPlaceholder: '搜索名称、类型、摘要...',
     list: '列表',
-    cover: '封面',
     folders: '文件夹',
     currentFolder: '当前文件夹',
     newFolderPlaceholder: '新文件夹名称',
@@ -350,7 +300,6 @@ const folderBusy = ref(false)
 const query = ref('')
 const activeTab = ref('all')
 const activeFolderId = ref<number | null>(null)
-const displayMode = ref<'list' | 'masonry'>('masonry')
 const folders = ref<CloudFolder[]>([])
 const cloudItems = ref<CloudItem[]>([])
 const activeItem = ref<CloudItem | null>(null)
@@ -471,7 +420,6 @@ function normalizeRecords(records: any[]): CloudItem[] {
       readOnly,
       canManage: raw.canManage !== false && !readOnly,
       canSync: raw.canSync !== false && !readOnly,
-      cover: coverOf(raw, type),
     }
   })
 }
@@ -695,17 +643,6 @@ function groupOf(type: string) {
   return 'analysis'
 }
 
-function coverOf(item: any, type: string) {
-  const image = item.imageDataUrl || item.image_data_url || ''
-  if (image) return String(image)
-  const fileUrl = String(item.fileUrl || item.file_url || '')
-  const format = String(item.format || item.mimeType || '').toLowerCase()
-  if (type === 'image' || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].some((ext) => format.includes(ext))) {
-    return fileUrl
-  }
-  return ''
-}
-
 function typeLabel(type: string) {
   const zh: Record<string, string> = {
     image: '图片',
@@ -770,16 +707,6 @@ function folderName(folderId: number | null | undefined) {
   return folders.value.find((folder) => folder.id === folderId)?.name || copy.value.root
 }
 
-function initials(title: string) {
-  const clean = title.replace(/\s+/g, '')
-  if (!clean) return isZh.value ? '云' : 'C'
-  return clean.slice(0, 2).toUpperCase()
-}
-
-function cardHeight(item: CloudItem, index: number) {
-  if (item.cover) return [260, 320, 380, 300][index % 4]
-  return [220, 270, 310, 240][index % 4]
-}
 </script>
 
 <style scoped>
@@ -789,11 +716,8 @@ function cardHeight(item: CloudItem, index: number) {
   margin: 0 0 18px;
   border: 1px solid color-mix(in srgb, var(--primary-color) 20%, var(--border-color));
   border-radius: 26px;
-  background:
-    radial-gradient(circle at 8% 0%, rgba(var(--primary-rgb), 0.16), transparent 34%),
-    radial-gradient(circle at 96% 18%, rgba(66, 230, 164, 0.11), transparent 30%),
-    rgba(var(--glass-bg-rgb), 0.34);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.2);
+  background: var(--workbench-shell-bg);
+  box-shadow: var(--workbench-shadow);
   backdrop-filter: blur(18px);
   overflow: hidden;
 }
@@ -810,11 +734,7 @@ function cardHeight(item: CloudItem, index: number) {
 .cloud-portal--page {
   margin: 0;
   border-radius: 34px;
-  background:
-    radial-gradient(circle at 10% 0%, rgba(var(--primary-rgb), 0.22), transparent 34%),
-    radial-gradient(circle at 92% 18%, rgba(66, 230, 164, 0.16), transparent 32%),
-    radial-gradient(circle at 52% 108%, rgba(103, 232, 249, 0.1), transparent 32%),
-    rgba(var(--glass-bg-rgb), 0.36);
+  background: var(--workbench-shell-bg-strong);
 }
 
 .cloud-portal-top {
@@ -838,7 +758,7 @@ function cardHeight(item: CloudItem, index: number) {
 .cloud-title span {
   color: var(--primary-color);
   font-size: 11px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
@@ -846,7 +766,7 @@ function cardHeight(item: CloudItem, index: number) {
 .cloud-title strong {
   color: var(--text-primary);
   font-size: clamp(18px, 2vw, 26px);
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .cloud-portal--page .cloud-title strong {
@@ -877,12 +797,12 @@ function cardHeight(item: CloudItem, index: number) {
 .upload-zone button {
   min-height: 34px;
   padding: 0 13px;
-  border: 1px solid rgba(var(--primary-rgb), 0.24);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 999px;
-  background: rgba(var(--glass-bg-rgb), 0.24);
+  background: var(--workbench-control-bg);
   color: var(--text-secondary);
   font-size: 11px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
 }
 
@@ -892,13 +812,13 @@ function cardHeight(item: CloudItem, index: number) {
 .folder-manage button:hover,
 .upload-zone button:hover {
   transform: translateY(-1px);
-  border-color: rgba(var(--primary-rgb), 0.45);
-  background: rgba(var(--primary-rgb), 0.12);
+  border-color: rgba(255, 255, 255, 0.24);
+  background: rgba(var(--primary-rgb), 0.09);
 }
 
 .cloud-actions .primary,
 .detail-actions .primary {
-  background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.24), rgba(66, 230, 164, 0.16));
+  background: rgba(var(--primary-rgb), 0.12);
   color: var(--primary-color);
 }
 
@@ -925,8 +845,8 @@ function cardHeight(item: CloudItem, index: number) {
 .cloud-nav,
 .cloud-toolbar,
 .cloud-body {
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  background: rgba(5, 10, 15, 0.22);
+  border: 1px solid var(--border-color);
+  background: var(--workbench-panel-bg);
 }
 
 .cloud-nav {
@@ -946,7 +866,7 @@ function cardHeight(item: CloudItem, index: number) {
   border-radius: 999px;
   color: var(--text-secondary);
   font-size: 11px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .cloud-nav button.active {
@@ -972,7 +892,7 @@ function cardHeight(item: CloudItem, index: number) {
   min-width: 0;
   color: var(--text-muted);
   font-size: 11px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   max-height: 58px;
   overflow-x: hidden;
   overflow-y: auto;
@@ -998,14 +918,14 @@ function cardHeight(item: CloudItem, index: number) {
   height: 36px;
   border: 1px solid rgba(var(--primary-rgb), 0.16);
   border-radius: 999px;
-  background: rgba(var(--glass-bg-rgb), 0.26);
+  background: var(--workbench-control-bg);
   color: var(--text-muted);
   padding: 0 12px;
 }
 
 .cloud-search span {
   font-size: 10px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .cloud-search input {
@@ -1014,30 +934,6 @@ function cardHeight(item: CloudItem, index: number) {
   background: transparent;
   color: var(--text-primary);
   outline: none;
-}
-
-.display-switch {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 6px;
-  min-width: 92px;
-}
-
-.display-switch button {
-  height: 28px;
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.12);
-  color: var(--text-muted);
-  font-size: 10px;
-  font-weight: 950;
-  transition: background 180ms ease, border-color 180ms ease, color 180ms ease;
-}
-
-.display-switch button.active {
-  border-color: rgba(var(--primary-rgb), 0.32);
-  background: rgba(var(--primary-rgb), 0.14);
-  color: var(--primary-color);
 }
 
 .cloud-body {
@@ -1062,9 +958,9 @@ function cardHeight(item: CloudItem, index: number) {
 .cloud-showcase,
 .cloud-detail {
   min-width: 0;
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  border: 1px solid var(--border-color);
   border-radius: 18px;
-  background: rgba(var(--glass-bg-rgb), 0.2);
+  background: var(--workbench-panel-bg);
 }
 
 .cloud-folder-pane {
@@ -1082,7 +978,7 @@ function cardHeight(item: CloudItem, index: number) {
   padding: 4px 2px 10px;
   color: var(--text-secondary);
   font-size: 11px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .pane-title b {
@@ -1106,9 +1002,9 @@ function cardHeight(item: CloudItem, index: number) {
   min-height: 40px;
   margin-bottom: 6px;
   padding: 7px 8px 7px calc(8px + var(--level, 0) * 16px);
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  border: 1px solid var(--border-color);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--workbench-panel-bg);
   color: var(--text-secondary);
   text-align: left;
   transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
@@ -1127,7 +1023,7 @@ function cardHeight(item: CloudItem, index: number) {
   overflow: hidden;
   color: inherit;
   font-size: 12px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1170,14 +1066,14 @@ function cardHeight(item: CloudItem, index: number) {
   display: grid;
   gap: 8px;
   padding-top: 8px;
-  border-top: 1px solid rgba(148, 163, 184, 0.12);
+  border-top: 1px solid var(--border-color);
 }
 
 .folder-tools input {
   height: 36px;
-  border: 1px solid rgba(var(--primary-rgb), 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
-  background: rgba(0, 0, 0, 0.16);
+  background: var(--workbench-control-bg);
   color: var(--text-primary);
   padding: 0 11px;
   outline: none;
@@ -1188,15 +1084,15 @@ function cardHeight(item: CloudItem, index: number) {
   gap: 6px;
   margin-top: 10px;
   padding: 10px;
-  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.11);
   border-radius: 15px;
-  background: rgba(0, 0, 0, 0.12);
+  background: var(--workbench-soft-bg);
 }
 
 .folder-manage span {
   color: var(--text-muted);
   font-size: 10px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .folder-manage strong {
@@ -1225,11 +1121,11 @@ function cardHeight(item: CloudItem, index: number) {
   gap: 10px;
   margin-bottom: 10px;
   padding: 12px;
-  border: 1px dashed rgba(var(--primary-rgb), 0.28);
+  border: 1px dashed rgba(255, 255, 255, 0.16);
   border-radius: 18px;
   background:
-    radial-gradient(circle at 10% 0%, rgba(var(--primary-rgb), 0.14), transparent 42%),
-    rgba(255, 255, 255, 0.035);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.018) 42%, rgba(0, 0, 0, 0.08)),
+    var(--workbench-panel-bg);
 }
 
 .upload-zone.over {
@@ -1240,7 +1136,7 @@ function cardHeight(item: CloudItem, index: number) {
 .upload-zone span {
   color: var(--primary-color);
   font-size: 10px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .upload-zone strong {
@@ -1248,7 +1144,7 @@ function cardHeight(item: CloudItem, index: number) {
   margin: 2px 0;
   color: var(--text-primary);
   font-size: 14px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .upload-zone em {
@@ -1259,92 +1155,6 @@ function cardHeight(item: CloudItem, index: number) {
 
 .upload-zone input {
   display: none;
-}
-
-.cloud-masonry {
-  min-height: 0;
-  width: 100%;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scroll-behavior: smooth;
-  padding-right: 6px;
-  scrollbar-gutter: stable;
-}
-
-.masonry-wall {
-  width: 100%;
-  column-count: 3;
-  column-gap: 12px;
-}
-
-.masonry-card {
-  position: relative;
-  display: inline-block;
-  width: 100%;
-  max-width: 100%;
-  height: clamp(170px, var(--card-h), 320px);
-  margin: 0 0 12px;
-  overflow: hidden;
-  break-inside: avoid;
-  vertical-align: top;
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  border-radius: 18px;
-  background: rgba(var(--glass-bg-rgb), 0.22);
-  cursor: pointer;
-  animation: masonryIn 420ms ease both;
-  animation-delay: var(--delay);
-  transition: transform 220ms ease, border-color 220ms ease, filter 220ms ease;
-}
-
-.masonry-card:hover,
-.masonry-card.selected {
-  transform: translateY(-2px);
-  border-color: rgba(var(--primary-rgb), 0.42);
-  filter: saturate(1.1);
-}
-
-.cover-image,
-.text-cover {
-  position: absolute;
-  inset: 0;
-}
-
-.cover-image {
-  background-position: center;
-  background-size: cover;
-}
-
-.text-cover {
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 12px;
-  padding: 20px;
-  background:
-    radial-gradient(circle at 24% 20%, rgba(var(--primary-rgb), 0.28), transparent 32%),
-    linear-gradient(145deg, rgba(66, 230, 164, 0.16), rgba(103, 232, 249, 0.08));
-}
-
-.text-cover span,
-.text-cover em {
-  color: var(--text-secondary);
-  font-size: 11px;
-  font-style: normal;
-  font-weight: 950;
-}
-
-.text-cover strong {
-  color: var(--text-primary);
-  font-size: clamp(34px, 6vw, 72px);
-  font-weight: 950;
-  letter-spacing: -0.08em;
-}
-
-.cover-shade {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.72), transparent 64%);
 }
 
 .quick-select {
@@ -1358,7 +1168,7 @@ function cardHeight(item: CloudItem, index: number) {
   background: rgba(0, 0, 0, 0.25);
   color: white;
   font-size: 10px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   backdrop-filter: blur(10px);
 }
 
@@ -1373,40 +1183,8 @@ function cardHeight(item: CloudItem, index: number) {
   background: rgba(251, 191, 36, 0.14);
   color: #fbbf24;
   font-size: 10px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   backdrop-filter: blur(10px);
-}
-
-.cover-caption {
-  position: absolute;
-  left: 14px;
-  right: 14px;
-  bottom: 14px;
-  display: grid;
-  gap: 5px;
-}
-
-.cover-caption span {
-  color: var(--primary-color);
-  font-size: 10px;
-  font-weight: 950;
-}
-
-.cover-caption strong {
-  color: white;
-  font-size: 14px;
-  font-weight: 950;
-}
-
-.cover-caption em {
-  display: -webkit-box;
-  overflow: hidden;
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 11px;
-  font-style: normal;
-  line-height: 1.45;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
 }
 
 .cloud-table {
@@ -1426,8 +1204,9 @@ function cardHeight(item: CloudItem, index: number) {
   gap: 10px;
   min-height: 58px;
   padding: 10px;
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  border: 1px solid var(--border-color);
   border-radius: 15px;
+  background: var(--workbench-panel-bg);
   color: var(--text-secondary);
   text-align: left;
 }
@@ -1438,7 +1217,6 @@ function cardHeight(item: CloudItem, index: number) {
   background: rgba(var(--primary-rgb), 0.1);
 }
 
-.masonry-card.readonly,
 .table-row.readonly {
   border-color: rgba(251, 191, 36, 0.24);
   cursor: default;
@@ -1453,7 +1231,7 @@ function cardHeight(item: CloudItem, index: number) {
   background: rgba(var(--primary-rgb), 0.12);
   color: var(--primary-color);
   font-size: 10px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .table-row strong,
@@ -1488,47 +1266,17 @@ function cardHeight(item: CloudItem, index: number) {
   gap: 10px;
 }
 
-.detail-cover {
-  height: 156px;
-  overflow: hidden;
-  border-radius: 16px;
-  background:
-    radial-gradient(circle at 20% 20%, rgba(var(--primary-rgb), 0.28), transparent 34%),
-    rgba(0, 0, 0, 0.24);
-}
-
-.detail-cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.detail-cover > div {
-  height: 100%;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 8px;
-}
-
-.detail-cover span,
 .detail-card > span {
   color: var(--primary-color);
   font-size: 10px;
-  font-weight: 950;
-}
-
-.detail-cover strong {
-  color: var(--text-primary);
-  font-size: 52px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .detail-card h3 {
   margin: 0;
   color: var(--text-primary);
   font-size: 18px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   line-height: 1.25;
 }
 
@@ -1583,20 +1331,6 @@ function cardHeight(item: CloudItem, index: number) {
   transform: translateY(12px);
 }
 
-@keyframes masonryIn {
-  from {
-    opacity: 0;
-    transform: translateY(34px);
-    filter: blur(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-    filter: blur(0);
-  }
-}
-
 @media (max-width: 1180px) {
   .cloud-body,
   .cloud-portal--page .cloud-body {
@@ -1608,13 +1342,6 @@ function cardHeight(item: CloudItem, index: number) {
     max-height: 320px;
   }
 
-  .cloud-portal--page .cloud-masonry {
-    width: 100%;
-  }
-
-  .masonry-wall {
-    column-count: 2;
-  }
 }
 
 @media (max-width: 860px) {
@@ -1631,14 +1358,6 @@ function cardHeight(item: CloudItem, index: number) {
     overflow: visible;
   }
 
-  .cloud-masonry {
-    width: 100%;
-  }
-
-  .masonry-wall {
-    column-count: 2;
-  }
-
   .table-row {
     grid-template-columns: 40px 1fr;
   }
@@ -1650,9 +1369,87 @@ function cardHeight(item: CloudItem, index: number) {
   }
 }
 
-@media (max-width: 560px) {
-  .masonry-wall {
-    column-count: 1;
-  }
+/* Flatter list-first cloud workspace aligned with visualization panels. */
+.cloud-portal {
+  border-color: color-mix(in srgb, var(--primary-color) 8%, var(--border-color));
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.018) 42%, rgba(0, 0, 0, 0.08)),
+    color-mix(in srgb, var(--surface-1) 70%, transparent);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(18px) saturate(128%);
 }
+
+.cloud-portal--page {
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.018) 42%, rgba(0, 0, 0, 0.08)),
+    color-mix(in srgb, var(--surface-1) 70%, transparent);
+}
+
+.cloud-nav,
+.cloud-toolbar,
+.cloud-body,
+.cloud-folder-pane,
+.cloud-showcase,
+.cloud-detail,
+.folder-row,
+.folder-manage,
+.upload-zone,
+.table-row,
+.detail-meta b,
+.detail-empty,
+.cloud-empty {
+  border-color: color-mix(in srgb, var(--primary-color) 8%, var(--border-color));
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012) 46%, rgba(0, 0, 0, 0.04)),
+    color-mix(in srgb, var(--surface-1) 82%, transparent);
+  box-shadow: var(--shadow-soft);
+}
+
+.cloud-actions button,
+.detail-actions button,
+.folder-tools button,
+.folder-manage button,
+.upload-zone button,
+.cloud-search,
+.folder-tools input {
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012) 46%, rgba(0, 0, 0, 0.04)),
+    color-mix(in srgb, var(--surface-1) 82%, transparent);
+}
+
+.cloud-nav button,
+.table-row span,
+.folder-mini {
+  border-radius: var(--radius-sm);
+}
+
+.cloud-nav button.active,
+.folder-row:hover,
+.folder-row.active,
+.folder-row.dragover,
+.table-row.selected,
+.table-row:hover,
+.upload-zone.over {
+  border-color: color-mix(in srgb, var(--primary-color) 24%, var(--border-color));
+  background: color-mix(in srgb, var(--surface-1) 88%, transparent);
+  box-shadow: none;
+}
+
+.folder-row:hover,
+.folder-row.active,
+.folder-row.dragover,
+.table-row.selected,
+.table-row:hover {
+  transform: translateY(-1px);
+}
+
+.cloud-actions .primary,
+.detail-actions .primary {
+  background: rgba(var(--primary-rgb), 0.12);
+}
+
 </style>

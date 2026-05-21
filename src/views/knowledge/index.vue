@@ -913,7 +913,7 @@ watch(readerOpen, (open) => {
   border: 1px solid rgba(var(--primary-rgb),0.34);
   background: rgba(var(--primary-rgb),0.1);
   font-size: 9px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--primary-color);
@@ -922,7 +922,7 @@ watch(readerOpen, (open) => {
 }
 .kg-hero-title h1 {
   font-size: clamp(32px, 4.4vw, 52px);
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   letter-spacing: 0;
   color: var(--text-primary);
   margin: 0 0 12px;
@@ -952,7 +952,7 @@ watch(readerOpen, (open) => {
   background: rgba(var(--primary-rgb),0.16);
   color: color-mix(in srgb, var(--primary-color) 62%, white);
   font-size: 12px;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
   cursor: pointer;
   transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
 }
@@ -1009,7 +1009,7 @@ watch(readerOpen, (open) => {
   align-items: center;
   gap: 7px;
   font-size: 10px;
-  font-weight: 750;
+  font-weight: var(--font-weight-body);
   color: var(--text-secondary);
 }
 :global(.light .leg-row) { color: var(--text-secondary); }
@@ -1059,13 +1059,13 @@ watch(readerOpen, (open) => {
   background: rgba(var(--primary-rgb), 0.08);
   color: var(--primary-color);
   font-size: 10px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 .section-intro h2 {
   font-size: clamp(24px, 3vw, 34px);
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   color: var(--text-primary);
   margin: 0 0 10px;
 }
@@ -1145,7 +1145,7 @@ watch(readerOpen, (open) => {
 .tut-info { flex: 1; min-width: 0; }
 .tut-info h3 {
   font-size: 15px;
-  font-weight: 800;
+  font-weight: var(--font-weight-body);
   margin: 0 0 2px;
 }
 .tut-duration {
@@ -1184,7 +1184,7 @@ watch(readerOpen, (open) => {
   margin: 0 0 12px;
 }
 .tut-detail { font-size: 13px; color: var(--text-primary); line-height: 1.8; }
-.tut-detail :deep(h4) { font-size: 13px; font-weight: 800; margin: 16px 0 8px; color: var(--text-primary); border-left: 3px solid var(--primary-color); padding-left: 10px; }
+.tut-detail :deep(h4) { font-size: 13px; font-weight: var(--font-weight-body); margin: 16px 0 8px; color: var(--text-primary); border-left: 3px solid var(--primary-color); padding-left: 10px; }
 .tut-detail :deep(p) { margin: 0 0 8px; color: var(--text-secondary); }
 .tut-detail :deep(ul) { padding-left: 18px; margin: 0 0 12px; }
 .tut-detail :deep(ol) { padding-left: 18px; margin: 0 0 12px; }
@@ -1224,7 +1224,7 @@ watch(readerOpen, (open) => {
 }
 .curve-badge {
   font-size: 9px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   text-transform: uppercase;
   padding: 2px 10px;
   border-radius: 20px;
@@ -1232,7 +1232,7 @@ watch(readerOpen, (open) => {
 }
 .curve-title {
   font-size: 13px;
-  font-weight: 800;
+  font-weight: var(--font-weight-body);
   color: var(--text-primary);
   margin: 0;
 }
@@ -1290,7 +1290,7 @@ watch(readerOpen, (open) => {
 }
 .model-year {
   font-size: 10px;
-  font-weight: 800;
+  font-weight: var(--font-weight-body);
   color: var(--text-secondary);
   background: var(--bg-input);
   padding: 2px 10px;
@@ -1298,12 +1298,12 @@ watch(readerOpen, (open) => {
 }
 .model-type {
   font-size: 10px;
-  font-weight: 800;
+  font-weight: var(--font-weight-body);
   text-transform: uppercase;
 }
 .model-card-name {
   font-size: 18px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   color: var(--text-primary);
   margin: 0 0 8px;
 }
@@ -1327,12 +1327,12 @@ watch(readerOpen, (open) => {
   border-radius: 12px;
   background: color-mix(in srgb, var(--surface-2) 72%, transparent);
 }
-.stat-value { font-size: 16px; font-weight: 900; display: block; }
+.stat-value { font-size: 16px; font-weight: var(--font-weight-title); display: block; }
 .stat-label { font-size: 9px; color: var(--text-secondary); text-transform: uppercase; }
 .model-card-tags { display: flex; flex-wrap: wrap; gap: 4px; }
 .model-tag {
   font-size: 9px;
-  font-weight: 700;
+  font-weight: var(--font-weight-body);
   padding: 2px 8px;
   border-radius: 8px;
   background: var(--bg-input);
@@ -1369,7 +1369,7 @@ watch(readerOpen, (open) => {
 }
 .kb-cta h2 {
   font-size: 32px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   color: var(--text-primary);
   margin: 0 0 12px;
   position: relative;
@@ -1425,7 +1425,7 @@ watch(readerOpen, (open) => {
 .article-index-leave-active { transition: opacity .22s ease, transform .22s ease; }
 .article-index-enter-from,
 .article-index-leave-to { opacity:0; transform: translateX(30px); }
-.article-dialog-item h4 { font-size: 14px; font-weight: 800; color: var(--text-primary); margin: 0 0 2px; }
+.article-dialog-item h4 { font-size: 14px; font-weight: var(--font-weight-body); color: var(--text-primary); margin: 0 0 2px; }
 .article-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 6px; box-shadow: 0 0 12px rgba(var(--primary-rgb), 0.55); }
 .article-meta-text { font-size: 10px; color: var(--text-secondary); }
 .article-index-empty { padding: 30px 12px; color: var(--text-muted); font-size: 12px; text-align: center; }

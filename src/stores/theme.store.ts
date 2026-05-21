@@ -39,35 +39,18 @@ export const palettes: Palette[] = [
   { id: 'graphite', name: 'Graphite', color: '#6ee7f9', rgb: [110, 231, 249], glow: '#cbd5e1', warning: '#a3e635', danger: '#fda4af' },
 ]
 
-function parseColor(color: string): [number, number, number] {
-  if (color.startsWith('#')) {
-    const hex = color.replace('#', '')
-    return [
-      parseInt(hex.substring(0, 2), 16),
-      parseInt(hex.substring(2, 4), 16),
-      parseInt(hex.substring(4, 6), 16),
-    ]
-  }
+const GLASS_OPACITY = 0.68
+const GLASS_OPACITY_LIGHT = 0.6
+const STALE_SKIN_KEYS = ['theme-hue', 'theme-saturation', 'theme-lightness', 'theme-glass-opacity']
 
-  const match = color.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/)
-  if (!match) return [66, 230, 164]
-
-  const hue = parseInt(match[1])
-  const sat = parseInt(match[2]) / 100
-  const light = parseInt(match[3]) / 100
-  const a = sat * Math.min(light, 1 - light)
-  const f = (n: number) => {
-    const k = (n + hue / 30) % 12
-    return light - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))
-  }
-  return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)]
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
 }
 
 export const useThemeStore = defineStore('theme', () => {
   const storedPalette = localStorage.getItem(STORAGE_KEYS.THEME_PALETTE) as PaletteId | null
   const paletteId = ref<PaletteId>(palettes.some((p) => p.id === storedPalette) ? storedPalette! : 'aurora')
-  const primaryColor = ref(palettes.find((p) => p.id === paletteId.value)!.color)
-  const isDarkMode = ref(true)
+  const isDarkMode = ref(localStorage.getItem(STORAGE_KEYS.THEME_IS_DARK) !== 'false')
   const isHorizontalMenu = ref(localStorage.getItem(STORAGE_KEYS.THEME_IS_HORIZONTAL) !== null ? localStorage.getItem(STORAGE_KEYS.THEME_IS_HORIZONTAL) === 'true' : true)
   const lang = ref<Lang>((localStorage.getItem(STORAGE_KEYS.LANG) as Lang) || 'zh')
   const themeTransition = ref<ThemeTransitionState>({
@@ -82,34 +65,135 @@ export const useThemeStore = defineStore('theme', () => {
   })
 
   const palette = computed(() => palettes.find((p) => p.id === paletteId.value) || palettes[0])
+  const primaryColor = computed(() => palette.value.color)
   let themeTransitionRaf: number | null = null
   let themeTransitionEndTimer: number | null = null
 
+  const persistPalette = () => {
+    localStorage.setItem(STORAGE_KEYS.THEME_PRIMARY_COLOR, primaryColor.value)
+    localStorage.setItem(STORAGE_KEYS.THEME_PALETTE, paletteId.value)
+  }
+
   const applyThemeVars = () => {
-    const [r, g, b] = palette.value.color === primaryColor.value ? palette.value.rgb : parseColor(primaryColor.value)
+    const selectedPalette = palette.value
+    const primary = selectedPalette.color
+    const [r, g, b] = selectedPalette.rgb
+    const dark = isDarkMode.value
     const root = document.documentElement
-    root.style.setProperty('--primary-color', primaryColor.value)
+
+    root.style.setProperty('--primary-color', primary)
     root.style.setProperty('--primary-rgb', `${r}, ${g}, ${b}`)
     root.style.setProperty('--primary-color-rgb', `${r} ${g} ${b}`)
-    root.style.setProperty('--primary-glow', `rgba(${r}, ${g}, ${b}, 0.34)`)
-    root.style.setProperty('--primary-subtle', `rgba(${r}, ${g}, ${b}, 0.09)`)
-    root.style.setProperty('--accent-glow', palette.value.glow)
-    root.style.setProperty('--warning-glow', palette.value.warning)
-    root.style.setProperty('--danger-glow', palette.value.danger)
-    root.style.setProperty('--bg-tint', `rgba(${r}, ${g}, ${b}, 0.11)`)
+    root.style.setProperty('--accent-glow', selectedPalette.glow)
+    root.style.setProperty('--warning-glow', selectedPalette.warning)
+    root.style.setProperty('--danger-glow', selectedPalette.danger)
+
+    if (dark) {
+      const glassOpacity = GLASS_OPACITY
+      const glassMix = 0.035
+      const glassBase = [28, 31, 38]
+      const glassR = Math.round(glassBase[0] * (1 - glassMix) + r * glassMix)
+      const glassG = Math.round(glassBase[1] * (1 - glassMix) + g * glassMix)
+      const glassB = Math.round(glassBase[2] * (1 - glassMix) + b * glassMix)
+      root.style.setProperty('--glass-bg-rgb', `${glassR}, ${glassG}, ${glassB}`)
+      root.style.setProperty('--glass-opacity', `${glassOpacity}`)
+      root.style.setProperty('--glass-border-opacity', '0.14')
+      root.style.setProperty('--glass-shadow-opacity', '0.1')
+      root.style.setProperty('--glass-highlight-opacity', '0.18')
+      root.style.setProperty('--primary-glow', `rgba(${r}, ${g}, ${b}, 0.1)`)
+      root.style.setProperty('--primary-subtle', `rgba(${r}, ${g}, ${b}, 0.04)`)
+      root.style.setProperty('--bg-tint', `rgba(${r}, ${g}, ${b}, 0.04)`)
+      root.style.setProperty('--spotlight-color', `rgba(${r}, ${g}, ${b}, 0.1)`)
+      root.style.setProperty('--spotlight-soft-color', `rgba(255, 255, 255, 0.07)`)
+      root.style.setProperty('--spotlight-button-color', `rgba(255, 255, 255, 0.12)`)
+      root.style.setProperty('--surface-2', `rgba(255, 255, 255, 0.07)`)
+      root.style.setProperty('--surface-3', `rgba(255, 255, 255, 0.09)`)
+      root.style.setProperty('--shadow-hover', `0 2px 12px rgba(0, 0, 0, 0.14), 0 0 0 1px rgba(${r}, ${g}, ${b}, 0.1)`)
+      root.style.setProperty('--shadow-ring', `0 0 0 1px rgba(${r}, ${g}, ${b}, 0.12), 0 4px 16px rgba(0, 0, 0, 0.1)`)
+      root.style.setProperty('--bg-input', `rgba(255, 255, 255, 0.075)`)
+      root.style.setProperty('--border-color', `rgba(255, 255, 255, 0.12)`)
+      root.style.setProperty('--border-strong', `rgba(255, 255, 255, 0.18)`)
+      root.style.setProperty('--nav-bg', `linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.04) 34%, rgba(0, 0, 0, 0.16)), rgba(22, 24, 29, 0.62)`)
+      root.style.setProperty('--bg-card', `rgba(28, 31, 38, 0.68)`)
+      root.style.setProperty('--bg-card-hover', `rgba(33, 36, 43, 0.76)`)
+      root.style.setProperty('--panel-bg', `rgba(28, 31, 38, 0.68)`)
+      root.style.setProperty('--surface-1', `rgba(30, 33, 40, 0.68)`)
+      root.style.setProperty('--workbench-control-bg', `rgba(28, 31, 38, 0.22)`)
+      root.style.setProperty('--workbench-soft-bg', `rgba(22, 24, 29, 0.24)`)
+      root.style.setProperty('--workbench-overlay-bg', `rgba(22, 24, 29, 0.92)`)
+      root.style.setProperty('--theme-nav-alpha', '0.62')
+      root.style.setProperty('--theme-surface-alpha', '0.068')
+    } else {
+      const glassOpacity = GLASS_OPACITY_LIGHT
+      root.style.setProperty('--glass-bg-rgb', '255, 255, 255')
+      root.style.setProperty('--glass-opacity', `${glassOpacity}`)
+      root.style.setProperty('--glass-border-opacity', '0.08')
+      root.style.setProperty('--glass-shadow-opacity', '0.04')
+      root.style.setProperty('--glass-highlight-opacity', '0.14')
+      root.style.setProperty('--primary-glow', `rgba(${r}, ${g}, ${b}, 0.14)`)
+      root.style.setProperty('--primary-subtle', `rgba(${r}, ${g}, ${b}, 0.06)`)
+      root.style.setProperty('--bg-tint', `rgba(${r}, ${g}, ${b}, 0.06)`)
+      root.style.setProperty('--spotlight-color', `rgba(${r}, ${g}, ${b}, 0.1)`)
+      root.style.setProperty('--spotlight-soft-color', `rgba(${r}, ${g}, ${b}, 0.06)`)
+      root.style.setProperty('--spotlight-button-color', `rgba(0, 0, 0, 0.04)`)
+      root.style.setProperty('--surface-2', `rgba(242, 242, 247, 0.8)`)
+      root.style.setProperty('--surface-3', `rgba(0, 0, 0, 0.04)`)
+      root.style.setProperty('--shadow-hover', `0 2px 8px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(${r}, ${g}, ${b}, 0.1)`)
+      root.style.setProperty('--shadow-ring', `0 0 0 1px rgba(${r}, ${g}, ${b}, 0.14), 0 4px 16px rgba(0, 0, 0, 0.06)`)
+      root.style.setProperty('--bg-input', `rgba(0, 0, 0, 0.04)`)
+      root.style.setProperty('--border-color', `rgba(0, 0, 0, 0.08)`)
+      root.style.setProperty('--border-strong', `rgba(0, 0, 0, 0.16)`)
+      root.style.setProperty('--nav-bg', `rgba(255, 255, 255, 0.72)`)
+      root.style.setProperty('--bg-card', `rgba(255, 255, 255, 0.72)`)
+      root.style.setProperty('--bg-card-hover', `rgba(255, 255, 255, 0.86)`)
+      root.style.setProperty('--panel-bg', `rgba(255, 255, 255, 0.72)`)
+      root.style.setProperty('--surface-1', `rgba(255, 255, 255, 0.72)`)
+      root.style.setProperty('--workbench-control-bg', `rgba(255, 255, 255, 0.5)`)
+      root.style.setProperty('--workbench-soft-bg', `rgba(245, 245, 247, 0.5)`)
+      root.style.setProperty('--workbench-overlay-bg', `rgba(245, 245, 247, 0.92)`)
+      root.style.setProperty('--theme-nav-alpha', '0.72')
+      root.style.setProperty('--theme-surface-alpha', '0.72')
+    }
+
+    const dynamicVars = [
+      '--primary-color', '--primary-rgb', '--primary-color-rgb',
+      '--glass-bg-rgb', '--primary-glow', '--primary-subtle',
+      '--accent-glow', '--warning-glow', '--danger-glow', '--bg-tint',
+      '--nav-bg', '--bg-card', '--bg-card-hover', '--panel-bg',
+      '--surface-1', '--surface-2', '--surface-3', '--bg-input',
+      '--border-color', '--border-strong', '--glass-opacity',
+      '--glass-border-opacity', '--glass-shadow-opacity',
+      '--spotlight-color', '--spotlight-soft-color', '--spotlight-button-color',
+      '--shadow-hover', '--shadow-ring',
+      '--workbench-control-bg', '--workbench-soft-bg', '--workbench-overlay-bg',
+      '--glass-highlight-opacity',
+      '--theme-nav-alpha', '--theme-surface-alpha',
+    ]
+    const mirrorTargets = [document.body, document.getElementById('app')].filter((target): target is HTMLElement => Boolean(target))
+    mirrorTargets.forEach((target) => {
+      dynamicVars.forEach((name) => {
+        const value = root.style.getPropertyValue(name)
+        if (value) target.style.setProperty(name, value)
+      })
+    })
   }
 
   const updateThemeClasses = () => {
-    document.documentElement.classList.add('dark')
-    document.documentElement.classList.remove('light')
-    document.documentElement.dataset.palette = paletteId.value
+    const root = document.documentElement
+    if (isDarkMode.value) {
+      root.classList.add('dark')
+      root.classList.remove('light')
+    } else {
+      root.classList.add('light')
+      root.classList.remove('dark')
+    }
+    root.dataset.palette = paletteId.value
   }
 
   const commitDarkMode = () => {
-    isDarkMode.value = true
     updateThemeClasses()
     applyThemeVars()
-    localStorage.setItem(STORAGE_KEYS.THEME_IS_DARK, 'true')
+    localStorage.setItem(STORAGE_KEYS.THEME_IS_DARK, String(isDarkMode.value))
   }
 
   const clearThemeTransition = () => {
@@ -127,43 +211,44 @@ export const useThemeStore = defineStore('theme', () => {
     document.documentElement.classList.remove('theme-switching')
   }
 
-  const animateDarkMode = (_value: boolean, _origin: ThemeTransitionOrigin) => {
+  const animateDarkMode = (value: boolean, _origin: ThemeTransitionOrigin) => {
     clearThemeTransition()
+    isDarkMode.value = value
     commitDarkMode()
   }
 
   const setPrimaryColor = (color: string) => {
-    primaryColor.value = color
-    applyThemeVars()
-    localStorage.setItem(STORAGE_KEYS.THEME_PRIMARY_COLOR, color)
+    const next = palettes.find((item) => item.color.toLowerCase() === color.toLowerCase())
+    setPalette(next?.id || 'aurora')
   }
 
   const setPalette = (id: PaletteId) => {
     const next = palettes.find((p) => p.id === id)
     if (!next) return
     paletteId.value = next.id
-    primaryColor.value = next.color
     updateThemeClasses()
     applyThemeVars()
-    localStorage.setItem(STORAGE_KEYS.THEME_PALETTE, next.id)
-    localStorage.setItem(STORAGE_KEYS.THEME_PRIMARY_COLOR, next.color)
+    persistPalette()
   }
 
-  const setDarkMode = (_value: boolean, origin?: ThemeTransitionOrigin) => {
+  const setDarkMode = (value: boolean, origin?: ThemeTransitionOrigin) => {
     if (origin) {
-      animateDarkMode(true, origin)
+      animateDarkMode(value, origin)
       return
     }
     clearThemeTransition()
+    isDarkMode.value = value
     commitDarkMode()
   }
 
   const toggleDarkMode = (origin?: ThemeTransitionOrigin) => {
+    const next = !isDarkMode.value
     if (origin) {
-      animateDarkMode(true, origin)
+      animateDarkMode(next, origin)
       return
     }
     clearThemeTransition()
+    isDarkMode.value = next
     commitDarkMode()
   }
 
@@ -241,11 +326,10 @@ export const useThemeStore = defineStore('theme', () => {
   }
 
   const initTheme = () => {
-    primaryColor.value = palette.value.color
-    localStorage.setItem(STORAGE_KEYS.THEME_IS_DARK, 'true')
-    localStorage.setItem(STORAGE_KEYS.THEME_PRIMARY_COLOR, palette.value.color)
+    STALE_SKIN_KEYS.forEach((key) => localStorage.removeItem(key))
     updateThemeClasses()
     applyThemeVars()
+    persistPalette()
     updateCurve()
     if (autoSyncEnabled.value) startAutoSync()
     i18n.global.locale.value = lang.value

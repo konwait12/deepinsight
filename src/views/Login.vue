@@ -165,7 +165,7 @@ async function handleSubmit() {
   margin: 0;
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
   line-height: 1.6;
 }
 
@@ -182,7 +182,7 @@ async function handleSubmit() {
 .login-form label span {
   color: var(--text-secondary);
   font-size: 11px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
 }
 
 .login-form input[type="text"],
@@ -220,7 +220,7 @@ async function handleSubmit() {
   place-items: center;
   color: var(--text-muted);
   font-size: 11px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   pointer-events: none;
 }
 
@@ -277,7 +277,7 @@ async function handleSubmit() {
   background: var(--primary-color);
   color: #06100c;
   font-size: 13px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   cursor: pointer;
   box-shadow: 0 16px 44px rgba(var(--primary-rgb), 0.28);
   transition: transform 170ms ease, opacity 170ms ease;
@@ -308,7 +308,7 @@ async function handleSubmit() {
   background: transparent;
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
   cursor: pointer;
   transition: color 150ms ease;
 }

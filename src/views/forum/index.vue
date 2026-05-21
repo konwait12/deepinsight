@@ -681,7 +681,7 @@ onUnmounted(() => {
   margin-bottom: 10px;
   color: var(--forum-accent);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   letter-spacing: 0.24em;
   text-transform: uppercase;
 }
@@ -690,7 +690,7 @@ onUnmounted(() => {
   margin: 0;
   font-size: clamp(42px, 7vw, 104px);
   line-height: 0.88;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   letter-spacing: -0.08em;
 }
 
@@ -740,7 +740,7 @@ onUnmounted(() => {
 .gallery-copy small {
   color: var(--forum-muted);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: var(--font-weight-body);
 }
 
 .gallery-copy strong {
@@ -806,7 +806,7 @@ onUnmounted(() => {
 
 .search-input :deep(.el-input__inner) {
   color: var(--forum-text);
-  font-weight: 700;
+  font-weight: var(--font-weight-body);
 }
 
 .mode-switch {
@@ -850,7 +850,7 @@ onUnmounted(() => {
   color: var(--text-secondary);
   cursor: pointer;
   font-size: 12px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   padding: 8px 12px;
   transition: background 180ms ease, color 180ms ease, transform 180ms ease;
 }
@@ -882,7 +882,7 @@ onUnmounted(() => {
   color: var(--forum-text);
   cursor: pointer;
   font-size: 12px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   padding: 7px 10px;
   transition: background 180ms ease, opacity 180ms ease;
 }
@@ -900,7 +900,7 @@ onUnmounted(() => {
   min-width: 48px;
   color: var(--forum-muted);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   text-align: center;
 }
 
@@ -1041,7 +1041,7 @@ onUnmounted(() => {
   color: color-mix(in srgb, var(--accent), var(--text-primary) 18%);
   font-size: 10px;
   font-style: normal;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
 }
 
 .tile-label strong {
@@ -1060,7 +1060,7 @@ onUnmounted(() => {
   background: rgba(var(--glass-bg-rgb), 0.72);
   color: var(--text-primary);
   font-size: 9px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   backdrop-filter: blur(10px);
 }
 
@@ -1154,7 +1154,7 @@ onUnmounted(() => {
   justify-content: space-between;
   color: var(--forum-accent);
   font-size: 12px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   letter-spacing: 0.14em;
 }
 
@@ -1179,7 +1179,7 @@ onUnmounted(() => {
   color: var(--text-primary);
   font-size: 12px;
   font-style: normal;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
 }
 
 .preview-content p {
@@ -1197,7 +1197,7 @@ onUnmounted(() => {
   background: var(--forum-accent);
   color: var(--bg-color);
   font-size: 12px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .preview-enter-active,
@@ -1384,7 +1384,7 @@ onUnmounted(() => {
   background: rgba(var(--primary-rgb), 0.08);
   color: var(--forum-muted);
   font-size: 10px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
 }
 
 .normal-body h2 {
@@ -1411,7 +1411,7 @@ onUnmounted(() => {
   background: rgba(var(--primary-rgb), 0.12);
   color: var(--text-primary);
   font-size: 11px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   opacity: 0;
   transform: translateY(8px);
   transition: opacity 180ms ease, transform 180ms ease;
@@ -1429,7 +1429,7 @@ onUnmounted(() => {
   place-items: center;
   color: var(--forum-muted);
   font-size: 14px;
-  font-weight: 800;
+  font-weight: var(--font-weight-body);
 }
 
 .md-editor-wrapper {
@@ -1472,7 +1472,7 @@ onUnmounted(() => {
 .upload-status {
   color: var(--primary-color);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: var(--font-weight-body);
 }
 
 .upload-list {
@@ -1488,7 +1488,7 @@ onUnmounted(() => {
   color: var(--primary-color);
   cursor: pointer;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: var(--font-weight-body);
 }
 
 :global(body.dg-scroll-lock) {
