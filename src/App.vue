@@ -3,7 +3,7 @@
     <div
       ref="appRootRef"
       class="app-root"
-      :class="['dark', { 'is-public-preview': isPublicPreview, 'is-scroll-isolated': usesIsolatedScroll }]"
+      :class="{ 'is-public-preview': isPublicPreview, 'is-scroll-isolated': usesIsolatedScroll }"
       @pointermove="handlePointerMove"
       @pointerleave="handlePointerLeave"
       @pointercancel="handlePointerLeave"
@@ -11,34 +11,9 @@
       <SandBackground />
       <ReactBitsCursor
         v-if="!isLandingPage"
-        :dark="true"
+        :dark="themeStore.isDarkMode"
         :paused="false"
       />
-      <div
-        v-if="languageTransition.active"
-        class="language-transition-layer"
-        aria-hidden="true"
-      >
-        <span
-          v-for="glitch in languageTransition.glitches"
-          :key="glitch.id"
-          class="language-glitch-token"
-          :style="{
-            left: glitch.left + 'px',
-            top: glitch.top + 'px',
-            width: glitch.width + 'px',
-            height: glitch.height + 'px',
-            fontSize: glitch.fontSize + 'px',
-            fontWeight: glitch.fontWeight,
-            textAlign: glitch.textAlign,
-            color: glitch.color,
-            letterSpacing: glitch.letterSpacing,
-            '--lang-glitch-scale-x': glitch.scaleX.toFixed(3),
-            '--lang-glitch-scale-y': glitch.scaleY.toFixed(3),
-            '--lang-glitch-delay': glitch.distanceDelay + 'ms',
-          }"
-        >{{ glitch.displayText }}</span>
-      </div>
       <Header />
       <div class="app-main" :class="{ 'has-sidebar': showSidebar && isDesktop }" :style="{ '--sidebar-width': showSidebar && isDesktop ? '240px' : '0px' }">
         <div class="sidebar-slot">
@@ -63,7 +38,7 @@ import Sidebar from '@/components/common/Sidebar.vue'
 import Footer from '@/components/common/Footer.vue'
 import SandBackground from '@/components/background/SandBackground.vue'
 import ReactBitsCursor from '@/components/effects/ReactBitsCursor.vue'
-import { onMounted, onUnmounted, computed, ref, nextTick, watch } from 'vue'
+import { onMounted, onUnmounted, computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useThemeStore } from '@/stores/theme.store'
 import { useAuthStore } from '@/stores/auth.store'
@@ -78,50 +53,45 @@ const handleResize = () => {
   isDesktop.value = window.innerWidth >= 1024
   clearSpotlightState()
 }
-const isolatedScrollRoutes = new Set(['Data', 'AI'])
+const isolatedScrollRoutes = new Set(['AI'])
 let pointerRaf = 0
 let pendingPointerX = window.innerWidth / 2
 let pendingPointerY = window.innerHeight / 2
 let activeSpotlightElements = new Set<HTMLElement>()
-const EDGE_GLOW_REACH = 128
+const EDGE_GLOW_REACH = 100
 const spotlightTargetSelector = [
   'button',
   '[role="button"]',
   '[data-edge-glow]',
   '.edge-glow-surface',
-  '.spotlight-card',
+  '.el-card',
+  '.glass-panel',
+  '.glass-panel-light',
+  '.glass-panel-heavy',
+  '.surface-hover',
+  '.toolbar',
+  '.control-bar',
+  '.control-card',
+  '.table-card',
+  '.chart-card',
+  '.config-card',
+  '.result-card',
+  '.job-card',
+  '.section-card',
+  '.ai-insight-card',
+  '.model-chip',
+  '.result-item',
+  '.progress-item',
+  '.perf-item',
+  '.module-card',
   '.data-hero',
-  '.asset-sidebar',
-  '.asset-main',
-  '.asset-detail',
   '.summary-card',
   '.asset-card',
-  '.asset-tab',
   '.cloud-brief',
+  '.step-section',
   '.el-button',
-  'button.primary-action',
-  'button.secondary-action',
-  'button.text-action',
-  'button.back-btn',
-  'button.ctrl-toggle',
-  'button.focus-btn',
-  'button.msg-btn',
-  'button.send-btn',
-  'button.stop-btn',
-  'button.model-action',
-  'button.rule-action',
-  '.mode-switch button',
-  '.pager-chip button',
-  '.hero-actions button',
-  '.panel-expand button',
-  '.quick-chips button',
-  '.assistant-actions button',
-  '.ai-panel-actions button',
-  '.result-view-switch button',
-  '.result-filter-chips button',
-  '.smart-select-action',
-  '.clear-select-action',
-  '.module-select-toggle',
+  '.el-input__wrapper',
+  '.el-select__wrapper',
   '.icon-btn',
   '.lang-btn',
   '.avatar-btn',
@@ -132,30 +102,37 @@ const spotlightTargetSelector = [
   '.app-icon-tile',
 ].join(',')
 const nativeGlowSurfaceSelector = [
-  'button.primary-action',
-  'button.secondary-action',
-  'button.text-action',
-  'button.back-btn',
-  'button.ctrl-toggle',
-  'button.focus-btn',
-  'button.msg-btn',
-  'button.send-btn',
-  'button.stop-btn',
-  'button.model-action',
-  'button.rule-action',
-  '.mode-switch button',
-  '.pager-chip button',
-  '.hero-actions button',
-  '.panel-expand button',
-  '.quick-chips button',
-  '.assistant-actions button',
-  '.ai-panel-actions button',
-  '.result-view-switch button',
-  '.result-filter-chips button',
-  '.smart-select-action',
-  '.clear-select-action',
-  '.module-select-toggle',
+  'button',
+  '.el-card',
+  '.glass-panel',
+  '.glass-panel-light',
+  '.glass-panel-heavy',
+  '.surface-hover',
+  '.toolbar',
+  '.control-bar',
+  '.control-card',
+  '.table-card',
+  '.chart-card',
+  '.config-card',
+  '.result-card',
+  '.job-card',
+  '.section-card',
+  '.ai-insight-card',
+  '.model-chip',
+  '.result-item',
+  '.progress-item',
+  '.perf-item',
+  '.module-card',
+  '.step-section',
   '.el-button',
+  '.el-input__wrapper',
+  '.icon-btn',
+  '.lang-btn',
+  '.avatar-btn',
+  '.palette-switcher button',
+  '.module-icon',
+  '.tut-icon',
+  '.app-icon-tile',
 ].join(',')
 const textEntrySurfaceSelector = [
   'input',
@@ -178,298 +155,25 @@ const textEntrySurfaceSelector = [
   '.search-shell',
   '.search-input',
 ].join(',')
-type LanguageGlitchToken = {
-  id: number
-  element: HTMLElement | null
-  left: number
-  top: number
-  width: number
-  height: number
-  fontSize: number
-  fontWeight: string
-  textAlign: string
-  color: string
-  letterSpacing: string
-  sourceText: string
-  targetText: string
-  displayText: string
-  binaryLength: number
-  scaleX: number
-  scaleY: number
-  distanceDelay: number
-}
-const languageTransition = ref<{ active: boolean; glitches: LanguageGlitchToken[] }>({
-  active: false,
-  glitches: [],
-})
-let languageTransitionToggleTimer = 0
 let languageTransitionCleanupTimer = 0
-let languageTransitionGlitchInterval = 0
-let languageTransitionTokenId = 0
-let languageTransitionStartedAt = 0
 let globalStateCleanupTimer = 0
-let languageTransitionOrigin = {
-  x: window.innerWidth - 72,
-  y: 42,
-}
-const LANGUAGE_GLITCH_STEP_MS = 46
-const LANGUAGE_TOGGLE_DELAY_MS = 360
-const LANGUAGE_LOCAL_SOURCE_MS = 210
-const LANGUAGE_LOCAL_BRIDGE_MS = 180
-const LANGUAGE_LOCAL_TARGET_MS = 320
-const LANGUAGE_MAX_DISTANCE_DELAY_MS = 180
-const LANGUAGE_TRANSITION_TOTAL_MS =
-  LANGUAGE_MAX_DISTANCE_DELAY_MS + LANGUAGE_LOCAL_SOURCE_MS + LANGUAGE_LOCAL_BRIDGE_MS + LANGUAGE_LOCAL_TARGET_MS + 180
-
-const languageTransitionSelectors = [
-  'button',
-  'a',
-  'label',
-  'p',
-  'span',
-  'strong',
-  'em',
-  'small',
-  'h1',
-  'h2',
-  'h3',
-  'h4',
-  'h5',
-  'h6',
-  'li',
-  'th',
-  'td',
-  '.el-button',
-  '.el-tag',
-  '.el-radio__label',
-  '.el-checkbox__label',
-  '.el-form-item__label',
-].join(',')
-
-const binaryChars = ['0', '1']
-const randomBinary = (length: number) => Array.from({ length }, () => binaryChars[Math.floor(Math.random() * binaryChars.length)]).join('')
-const isSpaceLike = (char: string) => /\s/.test(char)
-const charOrder = (seed: number, index: number, count: number) => {
-  if (count <= 1) return 0
-  return ((index * 17 + seed * 13) % count) / (count - 1)
-}
-const textLengthForBinary = (text: string) => {
-  const compact = text.replace(/\s+/g, '')
-  if (!compact) return 0
-  return Math.max(4, Math.min(40, compact.length * 2))
-}
 const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-const readTransitionText = (node: HTMLElement | null) => node?.innerText?.trim() || ''
-const collectLanguageCandidateNodes = () => {
-  const root = appRootRef.value
-  if (!root) return [] as Array<{ node: HTMLElement; rect: DOMRect; text: string }>
-  return Array.from(root.querySelectorAll<HTMLElement>(languageTransitionSelectors))
-    .map((node) => ({ node, rect: node.getBoundingClientRect(), text: readTransitionText(node) }))
-    .filter(({ node, rect, text }) => {
-      const style = window.getComputedStyle(node)
-      if (node.closest('.language-transition-layer')) return false
-      if (!text || !/[A-Za-z\u4e00-\u9fff0-9]/.test(text)) return false
-      if (rect.width < 24 || rect.height < 10) return false
-      if (rect.bottom < 0 || rect.top > window.innerHeight || rect.right < 0 || rect.left > window.innerWidth) return false
-      if (style.visibility === 'hidden' || style.display === 'none' || Number(style.opacity) < 0.04) return false
-      return true
-    })
-}
-const applyWaveMetadata = (glitches: LanguageGlitchToken[]) => {
-  glitches.forEach((glitch) => {
-    if (!glitch.element?.isConnected) return
-    glitch.element.dataset.langWave = '1'
-    glitch.element.style.setProperty('--lang-wave-delay', `${glitch.distanceDelay}ms`)
-  })
-}
-const clearWaveMetadata = (glitches: LanguageGlitchToken[]) => {
-  glitches.forEach((glitch) => {
-    if (!glitch.element) return
-    glitch.element.removeAttribute('data-lang-wave')
-    glitch.element.style.removeProperty('--lang-wave-delay')
-  })
-}
-
-const transitionChar = (value: string | undefined, fallback = '') => value && value.length > 0 ? value : fallback
-const sourceToBinaryText = (token: LanguageGlitchToken, progress: number) => {
-  const chars = Array.from(token.sourceText)
-  const count = Math.max(1, chars.filter((char) => !isSpaceLike(char)).length)
-  let seen = 0
-  return chars.map((char, index) => {
-    if (isSpaceLike(char)) return char
-    const order = charOrder(token.id, index, count)
-    const shouldReplace = progress >= order
-    seen += 1
-    return shouldReplace ? randomBinary(1) : char
-  }).join('')
-}
-const bridgeLanguageText = (token: LanguageGlitchToken, progress: number) => {
-  const sourceChars = Array.from(token.sourceText)
-  const targetChars = Array.from(token.targetText || token.sourceText)
-  const count = Math.max(sourceChars.length, targetChars.length, 1)
-  return Array.from({ length: count }, (_, index) => {
-    const sourceChar = transitionChar(sourceChars[index], '')
-    const targetChar = transitionChar(targetChars[index], '')
-    const order = charOrder(token.id + 5, index, count)
-    if (progress >= order) return targetChar || randomBinary(1)
-    if (progress + 0.24 >= order) return randomBinary(1)
-    return sourceChar || randomBinary(1)
-  }).join('')
-}
-const binaryToTargetText = (token: LanguageGlitchToken, progress: number) => {
-  const chars = Array.from(token.targetText || token.sourceText)
-  const count = Math.max(1, chars.filter((char) => !isSpaceLike(char)).length)
-  return chars.map((char, index) => {
-    if (isSpaceLike(char)) return char
-    const order = charOrder(token.id + 11, index, count)
-    return progress >= order ? char : randomBinary(1)
-  }).join('')
-}
-
-const collectLanguageGlitches = () => {
-  const root = appRootRef.value
-  if (!root) return [] as LanguageGlitchToken[]
-  const rootRect = root.getBoundingClientRect()
-  const nodes = collectLanguageCandidateNodes().map(({ node, rect, text }) => ({ node, rect, text }))
-  const collected: Array<LanguageGlitchToken & { distance: number }> = []
-
-  for (const { node, rect, text } of nodes) {
-    const style = window.getComputedStyle(node)
-    const centerX = rect.left + rect.width / 2
-    const centerY = rect.top + rect.height / 2
-    const distance = Math.hypot(centerX - languageTransitionOrigin.x, centerY - languageTransitionOrigin.y)
-
-    collected.push({
-      id: ++languageTransitionTokenId,
-      element: node,
-      left: rect.left - rootRect.left,
-      top: rect.top - rootRect.top,
-      width: rect.width,
-      height: rect.height,
-      fontSize: Number.parseFloat(style.fontSize) || 14,
-      fontWeight: style.fontWeight || '700',
-      textAlign: style.textAlign || 'left',
-      color: style.color || 'var(--text-primary)',
-      letterSpacing: style.letterSpacing === 'normal' ? '0.04em' : style.letterSpacing || '0.04em',
-      sourceText: text,
-      targetText: '',
-      displayText: text,
-      binaryLength: textLengthForBinary(text),
-      scaleX: text.length > 8 ? 1.055 : 1.1,
-      scaleY: text.length > 8 ? 0.955 : 0.92,
-      distanceDelay: 0,
-      distance,
-    })
-  }
-
-  const maxDistance = collected.reduce((max, glitch) => Math.max(max, glitch.distance), 1)
-  return collected
-    .sort((a, b) => a.distance - b.distance)
-    .slice(0, 180)
-    .map(({ distance, ...glitch }) => ({
-      ...glitch,
-      distanceDelay: Math.min(220, (distance / maxDistance) * 220),
-    }))
-}
-
-const hydrateLanguageTransitionTargets = () => {
-  const root = appRootRef.value
-  if (!root) return
-  const rootRect = root.getBoundingClientRect()
-  const candidates = collectLanguageCandidateNodes()
-  const used = new Set<HTMLElement>()
-  languageTransition.value = {
-    active: languageTransition.value.active,
-    glitches: languageTransition.value.glitches.map((glitch) => {
-      const currentCenterX = rootRect.left + glitch.left + glitch.width / 2
-      const currentCenterY = rootRect.top + glitch.top + glitch.height / 2
-      const match = candidates
-        .filter(({ node }) => !used.has(node))
-        .map((candidate) => {
-          const candidateCenterX = candidate.rect.left + candidate.rect.width / 2
-          const candidateCenterY = candidate.rect.top + candidate.rect.height / 2
-          const distance = Math.hypot(candidateCenterX - currentCenterX, candidateCenterY - currentCenterY)
-          const sizeDiff = Math.abs(candidate.rect.width - glitch.width) + Math.abs(candidate.rect.height - glitch.height)
-          const tagPenalty = candidate.node.tagName === glitch.element?.tagName ? 0 : 28
-          return { candidate, score: distance + sizeDiff * 0.35 + tagPenalty }
-        })
-        .sort((a, b) => a.score - b.score)[0]?.candidate
-      if (match) used.add(match.node)
-      return {
-        ...glitch,
-        element: match?.node || glitch.element,
-        targetText: match?.text || glitch.targetText || glitch.sourceText,
-        width: match ? Math.max(glitch.width, match.rect.width) : glitch.width,
-        height: match ? Math.max(glitch.height, match.rect.height) : glitch.height,
-        left: match ? match.rect.left - rootRect.left : glitch.left,
-        top: match ? match.rect.top - rootRect.top : glitch.top,
-      }
-    }),
-  }
-  applyWaveMetadata(languageTransition.value.glitches)
-}
-
-const refreshLanguageGlitches = () => {
-  const elapsed = performance.now() - languageTransitionStartedAt
-  languageTransition.value = {
-    active: languageTransition.value.active,
-    glitches: languageTransition.value.glitches.map((glitch) => ({
-      ...glitch,
-      displayText: (() => {
-        const localElapsed = elapsed - glitch.distanceDelay
-        if (localElapsed <= 0) return glitch.sourceText
-        if (localElapsed <= LANGUAGE_LOCAL_SOURCE_MS) {
-          return sourceToBinaryText(glitch, localElapsed / LANGUAGE_LOCAL_SOURCE_MS)
-        }
-        if (localElapsed <= LANGUAGE_LOCAL_SOURCE_MS + LANGUAGE_LOCAL_BRIDGE_MS) {
-          return bridgeLanguageText(glitch, (localElapsed - LANGUAGE_LOCAL_SOURCE_MS) / LANGUAGE_LOCAL_BRIDGE_MS)
-        }
-        const decodeProgress = Math.min(
-          1,
-          (localElapsed - LANGUAGE_LOCAL_SOURCE_MS - LANGUAGE_LOCAL_BRIDGE_MS) / LANGUAGE_LOCAL_TARGET_MS,
-        )
-        return binaryToTargetText(glitch, decodeProgress)
-      })(),
-    })),
-  }
-}
 
 const clearLanguageTransition = () => {
-  const glitches = languageTransition.value.glitches
-  if (languageTransitionToggleTimer) {
-    window.clearTimeout(languageTransitionToggleTimer)
-    languageTransitionToggleTimer = 0
-  }
   if (languageTransitionCleanupTimer) {
     window.clearTimeout(languageTransitionCleanupTimer)
     languageTransitionCleanupTimer = 0
   }
-  if (languageTransitionGlitchInterval) {
-    window.clearInterval(languageTransitionGlitchInterval)
-    languageTransitionGlitchInterval = 0
-  }
-  clearWaveMetadata(glitches)
-  languageTransition.value = { active: false, glitches: [] }
-  document.documentElement.classList.remove('lang-switching')
-  document.documentElement.classList.remove('lang-switch-encoding')
-  document.documentElement.classList.remove('lang-switch-decoding')
+  document.documentElement.classList.remove('lang-soft-switching')
 }
 
 const sanitizeTransientUiState = () => {
   const root = document.documentElement
-  const staleLanguageState =
-    root.classList.contains('lang-switching') ||
-    root.classList.contains('lang-switch-encoding') ||
-    root.classList.contains('lang-switch-decoding') ||
-    document.querySelector('[data-lang-wave="1"]')
-
-  if (staleLanguageState && !languageTransition.value.active) {
-    root.classList.remove('lang-switching', 'lang-switch-encoding', 'lang-switch-decoding')
-    document.querySelectorAll<HTMLElement>('[data-lang-wave="1"]').forEach((node) => {
-      node.removeAttribute('data-lang-wave')
-      node.style.removeProperty('--lang-wave-delay')
-    })
-  }
+  root.classList.remove('lang-switching', 'lang-switch-encoding', 'lang-switch-decoding')
+  document.querySelectorAll<HTMLElement>('[data-lang-wave="1"]').forEach((node) => {
+    node.removeAttribute('data-lang-wave')
+    node.style.removeProperty('--lang-wave-delay')
+  })
 
   if (root.classList.contains('theme-switching') && !themeStore.themeTransition.active) {
     root.classList.remove('theme-switching')
@@ -477,50 +181,16 @@ const sanitizeTransientUiState = () => {
 }
 
 const triggerLanguageTransition = () => {
-  if (reducedMotion()) {
-    themeStore.toggleLang()
-    return
-  }
-
   clearLanguageTransition()
-  languageTransition.value = {
-    active: true,
-    glitches: collectLanguageGlitches(),
-  }
-  languageTransitionStartedAt = performance.now()
-  document.documentElement.classList.add('lang-switching')
-  document.documentElement.classList.add('lang-switch-encoding')
-  document.documentElement.classList.remove('lang-switch-decoding')
-  applyWaveMetadata(languageTransition.value.glitches)
-  refreshLanguageGlitches()
-
-  languageTransitionGlitchInterval = window.setInterval(() => {
-    refreshLanguageGlitches()
-  }, LANGUAGE_GLITCH_STEP_MS)
-
-  languageTransitionToggleTimer = window.setTimeout(() => {
-    themeStore.toggleLang()
-    nextTick(() => {
-      requestAnimationFrame(() => {
-        document.documentElement.classList.remove('lang-switch-encoding')
-        document.documentElement.classList.add('lang-switch-decoding')
-        hydrateLanguageTransitionTargets()
-        refreshLanguageGlitches()
-      })
-    })
-  }, LANGUAGE_TOGGLE_DELAY_MS)
-
+  if (!reducedMotion()) document.documentElement.classList.add('lang-soft-switching')
+  themeStore.toggleLang()
   languageTransitionCleanupTimer = window.setTimeout(() => {
-    clearLanguageTransition()
-  }, LANGUAGE_TRANSITION_TOTAL_MS)
+    document.documentElement.classList.remove('lang-soft-switching')
+    languageTransitionCleanupTimer = 0
+  }, 360)
 }
 
-const handleLanguageToggleRequest = (event?: Event) => {
-  const customEvent = event as CustomEvent<{ x?: number; y?: number }> | undefined
-  languageTransitionOrigin = {
-    x: customEvent?.detail?.x ?? window.innerWidth - 72,
-    y: customEvent?.detail?.y ?? 42,
-  }
+const handleLanguageToggleRequest = () => {
   triggerLanguageTransition()
 }
 
@@ -549,7 +219,15 @@ const applyGlowTargetState = (nextSpotlightElements: Map<HTMLElement, { rect: DO
     const { rect, strength } = edgeState
     const x = pendingPointerX - rect.left
     const y = pendingPointerY - rect.top
-    const radius = Math.max(176, Math.min(320, EDGE_GLOW_REACH + Math.max(rect.width, rect.height) * 0.38))
+    const cx = rect.width / 2
+    const cy = rect.height / 2
+    const dx = x - cx
+    const dy = y - cy
+    const radians = Math.atan2(dy, dx)
+    let angleDeg = radians * (180 / Math.PI) + 90
+    if (angleDeg < 0) angleDeg += 360
+
+    const radius = Math.max(148, Math.min(260, EDGE_GLOW_REACH + Math.max(rect.width, rect.height) * 0.24))
     const pseudoClass = resolveGlowPseudoClass(element)
 
     element.classList.add('edge-glow-active')
@@ -559,6 +237,7 @@ const applyGlowTargetState = (nextSpotlightElements: Map<HTMLElement, { rect: DO
     element.style.setProperty('--mx', `${x}px`)
     element.style.setProperty('--my', `${y}px`)
     element.style.setProperty('--edge-proximity', `${(strength * 100).toFixed(3)}`)
+    element.style.setProperty('--cursor-angle', `${angleDeg.toFixed(3)}deg`)
     element.style.setProperty('--edge-glow-strength', strength.toFixed(3))
     element.style.setProperty('--edge-glow-opacity', strength.toFixed(3))
     element.style.setProperty('--edge-glow-radius', `${radius.toFixed(1)}px`)
@@ -593,8 +272,7 @@ const isGlowCandidate = (element: HTMLElement) => {
   const rect = element.getBoundingClientRect()
   if (rect.width < 36 || rect.height < 24) return false
   if (rect.bottom < 0 || rect.top > window.innerHeight || rect.right < 0 || rect.left > window.innerWidth) return false
-  if (element.closest('.language-transition-layer')) return false
-  if (element.closest('.landing-page, .public-preview, .language-transition-layer')) return false
+  if (element.closest('.landing-page, .public-preview')) return false
   if (element.closest('[data-edge-glow="off"], .edge-glow-disabled')) return false
   if (element.matches(textEntrySurfaceSelector) || element.closest(textEntrySurfaceSelector)) return false
   if (element.classList.contains('magic-bento-card')) return false
@@ -609,12 +287,10 @@ const isGlowCandidate = (element: HTMLElement) => {
 const hasVisibleBorder = (style: CSSStyleDeclaration) => {
   const widths = [style.borderTopWidth, style.borderRightWidth, style.borderBottomWidth, style.borderLeftWidth]
   const styles = [style.borderTopStyle, style.borderRightStyle, style.borderBottomStyle, style.borderLeftStyle]
-  const colors = [style.borderTopColor, style.borderRightColor, style.borderBottomColor, style.borderLeftColor]
   return widths.some((width, index) => {
     const px = Number.parseFloat(width)
     if (!Number.isFinite(px) || px <= 0) return false
-    if (styles[index] === 'none' || styles[index] === 'hidden') return false
-    return !/rgba?\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0\s*\)|transparent/i.test(colors[index])
+    return styles[index] !== 'none' && styles[index] !== 'hidden'
   })
 }
 
@@ -776,6 +452,29 @@ onUnmounted(() => {
   overscroll-behavior: contain;
 }
 
+:global(html.lang-soft-switching) .app-content,
+:global(html.lang-soft-switching) .topbar,
+:global(html.lang-soft-switching) .sidebar-slot {
+  animation: language-soft-refresh 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes language-soft-refresh {
+  0% {
+    opacity: 0.74;
+    filter: blur(5px) saturate(0.92);
+    transform: translateY(2px);
+  }
+  42% {
+    opacity: 0.96;
+    filter: blur(1px) saturate(1.04);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0) saturate(1);
+    transform: translateY(0);
+  }
+}
+
 .app-root.is-scroll-isolated {
   height: 100dvh;
   overflow: hidden;
@@ -791,174 +490,11 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-.language-transition-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 230;
-  pointer-events: none;
-  overflow: clip;
-}
-
-.language-glitch-token {
-  position: absolute;
-  display: block;
-  white-space: nowrap;
-  font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
-  line-height: 1.05;
-  opacity: 0;
-  mix-blend-mode: screen;
-  text-shadow:
-    0 0 12px rgba(var(--primary-rgb), 0.24),
-    0 0 1px currentColor;
-  transform-origin: center;
-  padding-inline: 0.04em;
-  animation: language-glitch-token 560ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-:global(html.lang-switching) :where(
-  h1, h2, h3, h4, h5, h6,
-  p, span, strong, em, small, li, a, button, label,
-  th, td, .el-button, .el-tag, .el-radio__label, .el-checkbox__label, .el-form-item__label
-) {
-  animation: language-text-recode 520ms cubic-bezier(0.16, 1, 0.3, 1);
-  transform-origin: center;
-}
-
-:global(html.lang-switch-encoding) [data-lang-wave="1"] {
-  animation:
-    language-wave-squeeze 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  animation-delay: var(--lang-wave-delay, 0ms);
-}
-
-:global(html.lang-switch-decoding) [data-lang-wave="1"] {
-  animation:
-    language-wave-release 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  animation-delay: var(--lang-wave-delay, 0ms);
-}
-
-:global(html.lang-switching) :where(
-  svg, .el-icon, .module-icon, .tut-icon, .app-icon-tile
-) {
-  animation: language-icon-pulse 520ms cubic-bezier(0.16, 1, 0.3, 1);
-  transform-origin: center;
-}
-
-:global(html.light.lang-switching) .language-glitch-token {
-  mix-blend-mode: multiply;
-}
-
-@keyframes language-glitch-token {
-  0% {
-    opacity: 0;
-    transform: scale(0.985);
-    filter: blur(6px);
-  }
-  14% {
-    opacity: 0.18;
-    transform: scale(1.01, 0.99);
-    filter: blur(2px);
-  }
-  34% {
-    opacity: 0.92;
-    transform: scale(var(--lang-glitch-scale-x), var(--lang-glitch-scale-y));
-    filter: blur(0);
-  }
-  66% {
-    opacity: 0.9;
-    transform: scale(1.045, 0.96);
-    filter: blur(0.4px);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(0.995);
-    filter: blur(6px);
-  }
-}
-
-@keyframes language-text-recode {
-  0% {
-    opacity: 1;
-    transform: scale(1);
-    filter: blur(0);
-  }
-  22% {
-    opacity: 0.92;
-    transform: scale(1.028, 0.965);
-    filter: blur(0.6px);
-  }
-  44% {
-    opacity: 0.78;
-    transform: scale(1.055, 0.9);
-    filter: blur(0.8px);
-  }
-  72% {
-    opacity: 0.9;
-    transform: scale(0.992, 1.024);
-    filter: blur(0.35px);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-    filter: blur(0);
-  }
-}
-
-@keyframes language-icon-pulse {
-  0% {
-    transform: scale(1) rotate(0deg);
-    filter: blur(0);
-  }
-  28% {
-    transform: scale(1.06, 0.94) rotate(-2deg);
-    filter: blur(0.4px);
-  }
-  48% {
-    transform: scale(1.14, 0.86) rotate(-5deg);
-    filter: blur(0.8px);
-  }
-  78% {
-    transform: scale(0.96, 1.08) rotate(3deg);
-    filter: blur(0);
-  }
-  100% {
-    transform: scale(1) rotate(0deg);
-    filter: blur(0);
-  }
-}
-
-@keyframes language-wave-squeeze {
-  0% {
-    transform: scale(1);
-    filter: blur(0);
-  }
-  52% {
-    transform: scale(1.012, 0.984);
-    filter: blur(0.3px);
-  }
-  100% {
-    transform: scale(0.998, 1.004);
-    filter: blur(0.18px);
-  }
-}
-
-@keyframes language-wave-release {
-  0% {
-    transform: scale(0.998, 1.004);
-    filter: blur(0.22px);
-  }
-  48% {
-    transform: scale(1.006, 0.992);
-    filter: blur(0.16px);
-  }
-  100% {
-    transform: scale(1);
-    filter: blur(0);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .language-transition-layer {
-    display: none;
+  :global(html.lang-soft-switching) .app-content,
+  :global(html.lang-soft-switching) .topbar,
+  :global(html.lang-soft-switching) .sidebar-slot {
+    animation: none;
   }
 }
 

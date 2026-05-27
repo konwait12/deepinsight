@@ -135,14 +135,14 @@ onMounted(async () => {
   background: rgba(var(--primary-rgb), 0.1);
   color: var(--primary-color);
   font-size: 9px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
 }
 
 .sidebar-head h3 {
   margin: 0;
   color: var(--text-primary);
   font-size: 18px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
 }
 
 .sidebar-head p {
@@ -172,7 +172,7 @@ onMounted(async () => {
   color: var(--text-secondary);
   cursor: pointer;
   font-size: 13px;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
   transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, transform 180ms ease;
 }
 
@@ -244,7 +244,7 @@ onMounted(async () => {
   border-radius: var(--radius-sm);
   background: var(--surface-2);
   color: var(--text-secondary);
-  font-weight: 800;
+  font-weight: var(--font-weight-body);
 }
 
 .user-tag {
@@ -276,7 +276,7 @@ onMounted(async () => {
   border-bottom: 1px solid var(--border-color);
   color: var(--text-primary) !important;
   font-size: 28px !important;
-  font-weight: 900 !important;
+  font-weight: var(--font-weight-title) !important;
 }
 
 :deep(.page-title::after) {
@@ -295,7 +295,7 @@ onMounted(async () => {
   margin: 18px 0 10px !important;
   color: var(--text-primary) !important;
   font-size: 13px !important;
-  font-weight: 900 !important;
+  font-weight: var(--font-weight-title) !important;
 }
 
 :deep(.el-table) {

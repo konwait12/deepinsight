@@ -789,11 +789,8 @@ function cardHeight(item: CloudItem, index: number) {
   margin: 0 0 18px;
   border: 1px solid color-mix(in srgb, var(--primary-color) 20%, var(--border-color));
   border-radius: 26px;
-  background:
-    radial-gradient(circle at 8% 0%, rgba(var(--primary-rgb), 0.16), transparent 34%),
-    radial-gradient(circle at 96% 18%, rgba(66, 230, 164, 0.11), transparent 30%),
-    rgba(var(--glass-bg-rgb), 0.34);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.2);
+  background: var(--workbench-shell-bg);
+  box-shadow: var(--workbench-shadow);
   backdrop-filter: blur(18px);
   overflow: hidden;
 }
@@ -810,11 +807,7 @@ function cardHeight(item: CloudItem, index: number) {
 .cloud-portal--page {
   margin: 0;
   border-radius: 34px;
-  background:
-    radial-gradient(circle at 10% 0%, rgba(var(--primary-rgb), 0.22), transparent 34%),
-    radial-gradient(circle at 92% 18%, rgba(66, 230, 164, 0.16), transparent 32%),
-    radial-gradient(circle at 52% 108%, rgba(103, 232, 249, 0.1), transparent 32%),
-    rgba(var(--glass-bg-rgb), 0.36);
+  background: var(--workbench-shell-bg-strong);
 }
 
 .cloud-portal-top {
@@ -838,7 +831,7 @@ function cardHeight(item: CloudItem, index: number) {
 .cloud-title span {
   color: var(--primary-color);
   font-size: 11px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
@@ -846,7 +839,7 @@ function cardHeight(item: CloudItem, index: number) {
 .cloud-title strong {
   color: var(--text-primary);
   font-size: clamp(18px, 2vw, 26px);
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .cloud-portal--page .cloud-title strong {
@@ -877,12 +870,12 @@ function cardHeight(item: CloudItem, index: number) {
 .upload-zone button {
   min-height: 34px;
   padding: 0 13px;
-  border: 1px solid rgba(var(--primary-rgb), 0.24);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 999px;
-  background: rgba(var(--glass-bg-rgb), 0.24);
+  background: var(--workbench-control-bg);
   color: var(--text-secondary);
   font-size: 11px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
 }
 
@@ -892,13 +885,13 @@ function cardHeight(item: CloudItem, index: number) {
 .folder-manage button:hover,
 .upload-zone button:hover {
   transform: translateY(-1px);
-  border-color: rgba(var(--primary-rgb), 0.45);
-  background: rgba(var(--primary-rgb), 0.12);
+  border-color: rgba(255, 255, 255, 0.24);
+  background: rgba(var(--primary-rgb), 0.09);
 }
 
 .cloud-actions .primary,
 .detail-actions .primary {
-  background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.24), rgba(66, 230, 164, 0.16));
+  background: rgba(var(--primary-rgb), 0.12);
   color: var(--primary-color);
 }
 
@@ -925,8 +918,8 @@ function cardHeight(item: CloudItem, index: number) {
 .cloud-nav,
 .cloud-toolbar,
 .cloud-body {
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  background: rgba(5, 10, 15, 0.22);
+  border: 1px solid var(--border-color);
+  background: var(--workbench-panel-bg);
 }
 
 .cloud-nav {
@@ -946,7 +939,7 @@ function cardHeight(item: CloudItem, index: number) {
   border-radius: 999px;
   color: var(--text-secondary);
   font-size: 11px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .cloud-nav button.active {
@@ -972,7 +965,7 @@ function cardHeight(item: CloudItem, index: number) {
   min-width: 0;
   color: var(--text-muted);
   font-size: 11px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   max-height: 58px;
   overflow-x: hidden;
   overflow-y: auto;
@@ -998,14 +991,14 @@ function cardHeight(item: CloudItem, index: number) {
   height: 36px;
   border: 1px solid rgba(var(--primary-rgb), 0.16);
   border-radius: 999px;
-  background: rgba(var(--glass-bg-rgb), 0.26);
+  background: var(--workbench-control-bg);
   color: var(--text-muted);
   padding: 0 12px;
 }
 
 .cloud-search span {
   font-size: 10px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .cloud-search input {
@@ -1025,12 +1018,12 @@ function cardHeight(item: CloudItem, index: number) {
 
 .display-switch button {
   height: 28px;
-  border: 1px solid rgba(148, 163, 184, 0.14);
+  border: 1px solid var(--border-color);
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.12);
+  background: var(--workbench-soft-bg);
   color: var(--text-muted);
   font-size: 10px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   transition: background 180ms ease, border-color 180ms ease, color 180ms ease;
 }
 
@@ -1062,9 +1055,9 @@ function cardHeight(item: CloudItem, index: number) {
 .cloud-showcase,
 .cloud-detail {
   min-width: 0;
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  border: 1px solid var(--border-color);
   border-radius: 18px;
-  background: rgba(var(--glass-bg-rgb), 0.2);
+  background: var(--workbench-panel-bg);
 }
 
 .cloud-folder-pane {
@@ -1082,7 +1075,7 @@ function cardHeight(item: CloudItem, index: number) {
   padding: 4px 2px 10px;
   color: var(--text-secondary);
   font-size: 11px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .pane-title b {
@@ -1106,9 +1099,9 @@ function cardHeight(item: CloudItem, index: number) {
   min-height: 40px;
   margin-bottom: 6px;
   padding: 7px 8px 7px calc(8px + var(--level, 0) * 16px);
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  border: 1px solid var(--border-color);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--workbench-panel-bg);
   color: var(--text-secondary);
   text-align: left;
   transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
@@ -1127,7 +1120,7 @@ function cardHeight(item: CloudItem, index: number) {
   overflow: hidden;
   color: inherit;
   font-size: 12px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1170,14 +1163,14 @@ function cardHeight(item: CloudItem, index: number) {
   display: grid;
   gap: 8px;
   padding-top: 8px;
-  border-top: 1px solid rgba(148, 163, 184, 0.12);
+  border-top: 1px solid var(--border-color);
 }
 
 .folder-tools input {
   height: 36px;
-  border: 1px solid rgba(var(--primary-rgb), 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
-  background: rgba(0, 0, 0, 0.16);
+  background: var(--workbench-control-bg);
   color: var(--text-primary);
   padding: 0 11px;
   outline: none;
@@ -1188,15 +1181,15 @@ function cardHeight(item: CloudItem, index: number) {
   gap: 6px;
   margin-top: 10px;
   padding: 10px;
-  border: 1px solid rgba(var(--primary-rgb), 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.11);
   border-radius: 15px;
-  background: rgba(0, 0, 0, 0.12);
+  background: var(--workbench-soft-bg);
 }
 
 .folder-manage span {
   color: var(--text-muted);
   font-size: 10px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .folder-manage strong {
@@ -1225,11 +1218,11 @@ function cardHeight(item: CloudItem, index: number) {
   gap: 10px;
   margin-bottom: 10px;
   padding: 12px;
-  border: 1px dashed rgba(var(--primary-rgb), 0.28);
+  border: 1px dashed rgba(255, 255, 255, 0.16);
   border-radius: 18px;
   background:
-    radial-gradient(circle at 10% 0%, rgba(var(--primary-rgb), 0.14), transparent 42%),
-    rgba(255, 255, 255, 0.035);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.018) 42%, rgba(0, 0, 0, 0.08)),
+    var(--workbench-panel-bg);
 }
 
 .upload-zone.over {
@@ -1240,7 +1233,7 @@ function cardHeight(item: CloudItem, index: number) {
 .upload-zone span {
   color: var(--primary-color);
   font-size: 10px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .upload-zone strong {
@@ -1248,7 +1241,7 @@ function cardHeight(item: CloudItem, index: number) {
   margin: 2px 0;
   color: var(--text-primary);
   font-size: 14px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .upload-zone em {
@@ -1288,9 +1281,9 @@ function cardHeight(item: CloudItem, index: number) {
   overflow: hidden;
   break-inside: avoid;
   vertical-align: top;
-  border: 1px solid rgba(148, 163, 184, 0.14);
+  border: 1px solid var(--border-color);
   border-radius: 18px;
-  background: rgba(var(--glass-bg-rgb), 0.22);
+  background: var(--workbench-panel-bg);
   cursor: pointer;
   animation: masonryIn 420ms ease both;
   animation-delay: var(--delay);
@@ -1300,8 +1293,8 @@ function cardHeight(item: CloudItem, index: number) {
 .masonry-card:hover,
 .masonry-card.selected {
   transform: translateY(-2px);
-  border-color: rgba(var(--primary-rgb), 0.42);
-  filter: saturate(1.1);
+  border-color: rgba(255, 255, 255, 0.24);
+  filter: saturate(1.04);
 }
 
 .cover-image,
@@ -1322,8 +1315,8 @@ function cardHeight(item: CloudItem, index: number) {
   gap: 12px;
   padding: 20px;
   background:
-    radial-gradient(circle at 24% 20%, rgba(var(--primary-rgb), 0.28), transparent 32%),
-    linear-gradient(145deg, rgba(66, 230, 164, 0.16), rgba(103, 232, 249, 0.08));
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.018) 42%, rgba(0, 0, 0, 0.12)),
+    rgba(var(--glass-bg-rgb), 0.34);
 }
 
 .text-cover span,
@@ -1331,13 +1324,13 @@ function cardHeight(item: CloudItem, index: number) {
   color: var(--text-secondary);
   font-size: 11px;
   font-style: normal;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .text-cover strong {
   color: var(--text-primary);
   font-size: clamp(34px, 6vw, 72px);
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   letter-spacing: -0.08em;
 }
 
@@ -1358,7 +1351,7 @@ function cardHeight(item: CloudItem, index: number) {
   background: rgba(0, 0, 0, 0.25);
   color: white;
   font-size: 10px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   backdrop-filter: blur(10px);
 }
 
@@ -1373,7 +1366,7 @@ function cardHeight(item: CloudItem, index: number) {
   background: rgba(251, 191, 36, 0.14);
   color: #fbbf24;
   font-size: 10px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   backdrop-filter: blur(10px);
 }
 
@@ -1389,13 +1382,13 @@ function cardHeight(item: CloudItem, index: number) {
 .cover-caption span {
   color: var(--primary-color);
   font-size: 10px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .cover-caption strong {
   color: white;
   font-size: 14px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .cover-caption em {
@@ -1426,8 +1419,9 @@ function cardHeight(item: CloudItem, index: number) {
   gap: 10px;
   min-height: 58px;
   padding: 10px;
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  border: 1px solid var(--border-color);
   border-radius: 15px;
+  background: var(--workbench-panel-bg);
   color: var(--text-secondary);
   text-align: left;
 }
@@ -1453,7 +1447,7 @@ function cardHeight(item: CloudItem, index: number) {
   background: rgba(var(--primary-rgb), 0.12);
   color: var(--primary-color);
   font-size: 10px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .table-row strong,
@@ -1493,8 +1487,8 @@ function cardHeight(item: CloudItem, index: number) {
   overflow: hidden;
   border-radius: 16px;
   background:
-    radial-gradient(circle at 20% 20%, rgba(var(--primary-rgb), 0.28), transparent 34%),
-    rgba(0, 0, 0, 0.24);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.018) 42%, rgba(0, 0, 0, 0.14)),
+    var(--workbench-soft-bg);
 }
 
 .detail-cover img {
@@ -1515,20 +1509,20 @@ function cardHeight(item: CloudItem, index: number) {
 .detail-card > span {
   color: var(--primary-color);
   font-size: 10px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .detail-cover strong {
   color: var(--text-primary);
   font-size: 52px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .detail-card h3 {
   margin: 0;
   color: var(--text-primary);
   font-size: 18px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   line-height: 1.25;
 }
 

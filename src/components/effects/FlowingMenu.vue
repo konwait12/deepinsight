@@ -84,7 +84,7 @@ withDefaults(defineProps<{
   text-decoration: none;
   white-space: nowrap;
   text-transform: uppercase;
-  font-weight: 700;
+  font-weight: var(--font-weight-body);
   font-size: clamp(46px, 5.4vh, 72px);
   letter-spacing: 0;
 }

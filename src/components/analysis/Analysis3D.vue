@@ -93,7 +93,7 @@ watch(() => [props.jobs, props.selectedJobId, props.curveData], () => nextTick(i
 
 <style scoped>
 .chart-card { border-radius: 16px; margin-bottom: 16px; }
-.chart-title { font-size: 13px; font-weight: 800; color: var(--text-primary); }
+.chart-title { font-size: 13px; font-weight: var(--font-weight-body); color: var(--text-primary); }
 .chart-desc-3d { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; line-height: 1.5; padding: 6px 10px; background: var(--bg-input); border-radius: 8px; }
 .chart-box-3d { width: 100%; height: 380px; }
 </style>

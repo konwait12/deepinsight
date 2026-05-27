@@ -6,6 +6,7 @@ export const STORAGE_KEYS = {
   LANG: 'lang',
   THEME_PRIMARY_COLOR: 'primary-color',
   THEME_PALETTE: 'theme-palette',
+  THEME_CUSTOM_HUE: 'theme-custom-hue',
   THEME_IS_DARK: 'is-dark',
   THEME_IS_HORIZONTAL: 'is-horizontal',
   CURVE_BRIGHTNESS: 'curve-brightness',

@@ -94,10 +94,10 @@ function handleNavClick(item: NavItem) {
   overflow-y: auto;
   overscroll-behavior: contain;
   border: 1px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: 14px;
   background: var(--nav-bg);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(14px) saturate(115%);
+  -webkit-backdrop-filter: blur(14px) saturate(115%);
   box-shadow: var(--shadow-soft);
   scrollbar-width: thin;
 }
@@ -109,9 +109,8 @@ function handleNavClick(item: NavItem) {
   pointer-events: none;
   border-radius: inherit;
   background:
-    linear-gradient(180deg, rgba(255,255,255,0.16), transparent 34%),
-    radial-gradient(circle at 18% 0%, rgba(var(--primary-rgb),0.12), transparent 30%);
-  opacity: 0.72;
+    linear-gradient(180deg, rgba(255,255,255,0.08), transparent 34%);
+  opacity: 0.35;
 }
 
 .sidebar-shell > * {
@@ -130,7 +129,7 @@ function handleNavClick(item: NavItem) {
 .status-top span {
   display: block;
   font-size: 10px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   text-transform: uppercase;
   letter-spacing: 0;
   color: var(--text-muted);
@@ -163,8 +162,8 @@ function handleNavClick(item: NavItem) {
   background: transparent;
   color: var(--text-secondary);
   font: inherit;
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 14px;
+  font-weight: 550;
   text-align: left;
   cursor: pointer;
   transition: background 180ms ease, color 180ms ease, border-color 180ms ease, transform 180ms ease;
@@ -218,7 +217,7 @@ function handleNavClick(item: NavItem) {
 .status-top em {
   font-style: normal;
   font-size: 10px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   color: var(--primary-color);
 }
 
@@ -239,6 +238,6 @@ function handleNavClick(item: NavItem) {
   margin: 10px 0 0;
   color: var(--text-muted);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: var(--font-weight-body);
 }
 </style>

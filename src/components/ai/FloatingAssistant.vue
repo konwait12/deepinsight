@@ -381,7 +381,10 @@ onUnmounted(() => {
   width: 56px;
   height: 56px;
   user-select: none;
-  transition: width 260ms cubic-bezier(0.22, 1, 0.36, 1), height 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition:
+    width 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    height 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 220ms ease;
 }
 
 .assistant-container.expanded {
@@ -395,13 +398,23 @@ onUnmounted(() => {
   height: 56px;
   display: grid;
   place-items: center;
-  border-radius: var(--radius-sm) !important;
+  border-radius: 18px !important;
   color: var(--primary-color);
   cursor: grab;
   overflow: hidden;
   background:
-    radial-gradient(circle at 70% 24%, rgba(var(--primary-rgb), 0.28), transparent 32%),
-    linear-gradient(145deg, rgba(var(--primary-rgb), 0.13), transparent 62%);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.035) 42%, rgba(0, 0, 0, 0.18)),
+    var(--workbench-shell-bg);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 16px 42px rgba(0, 0, 0, 0.24),
+    var(--workbench-shadow);
+  animation: assistantOrbBreath 4.6s ease-in-out infinite;
+  transition:
+    transform 260ms var(--ease-smooth),
+    border-color 220ms ease,
+    box-shadow 260ms var(--ease-smooth),
+    background 260ms ease;
 }
 
 .assistant-orb span {
@@ -410,10 +423,46 @@ onUnmounted(() => {
   bottom: 7px;
   padding: 1px 5px;
   border-radius: 6px;
-  background: rgba(var(--glass-bg-rgb), 0.72);
+  background: var(--workbench-panel-bg-strong);
   color: var(--primary-color);
   font-size: 9px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
+  letter-spacing: -0.02em;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.assistant-orb svg,
+.assistant-actions button svg,
+.assistant-send svg,
+.assistant-reasoning-trigger svg {
+  transform-origin: center;
+  transition: transform 260ms var(--ease-smooth), filter 260ms ease, color 180ms ease;
+}
+
+.assistant-orb:hover {
+  transform: translateY(-2px) scale(1.024);
+  border-color: rgba(255, 255, 255, 0.24);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 18px 48px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(var(--primary-rgb), 0.1),
+    var(--workbench-shadow);
+}
+
+.assistant-orb:hover svg,
+.assistant-actions button:hover svg,
+.assistant-send:hover svg,
+.assistant-reasoning-trigger:hover svg {
+  animation: assistantIconKinetic 920ms var(--ease-smooth);
+  filter: drop-shadow(0 0 7px rgba(255, 255, 255, 0.14));
+}
+
+.assistant-orb:hover :deep(svg[fill="none"] :where(path, line, polyline, polygon, circle, rect)),
+.assistant-actions button:hover :deep(svg[fill="none"] :where(path, line, polyline, polygon, circle, rect)),
+.assistant-send:hover :deep(svg[fill="none"] :where(path, line, polyline, polygon, circle, rect)),
+.assistant-reasoning-trigger:hover :deep(svg[fill="none"] :where(path, line, polyline, polygon, circle, rect)) {
+  animation: assistantIconLineFlow 1180ms var(--ease-smooth);
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.14));
 }
 
 .assistant-panel {
@@ -457,14 +506,14 @@ onUnmounted(() => {
   margin: 0;
   color: var(--text-primary);
   font-size: 13px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .assistant-title p {
   margin: 2px 0 0;
   color: var(--text-muted);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: var(--font-weight-body);
 }
 
 .assistant-actions,
@@ -490,20 +539,27 @@ onUnmounted(() => {
   border-radius: 11px;
   background: transparent;
   color: var(--text-secondary);
+  transition:
+    transform 220ms var(--ease-smooth),
+    background 180ms ease,
+    color 180ms ease,
+    box-shadow 220ms ease;
 }
 
 .assistant-actions button:hover {
   background: rgba(var(--primary-rgb), 0.1);
   color: var(--primary-color);
+  transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .quick-chips button {
   padding: 6px 9px;
   border-radius: 999px;
-  background: rgba(var(--primary-rgb), 0.09);
+  background: rgba(255, 255, 255, 0.06);
   color: var(--text-secondary);
   font-size: 10px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .assistant-messages {
@@ -514,7 +570,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 13px;
-  background-image: radial-gradient(rgba(var(--primary-rgb), 0.08) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px);
   background-size: 18px 18px;
 }
 
@@ -529,7 +585,7 @@ onUnmounted(() => {
 }
 
 .user-avatar {
-  background: rgba(148, 163, 184, 0.14);
+  background: var(--workbench-panel-bg);
   color: var(--text-secondary);
 }
 
@@ -542,7 +598,7 @@ onUnmounted(() => {
   padding: 10px 13px;
   border: 1px solid var(--border-color);
   border-radius: 15px;
-  background: rgba(var(--glass-bg-rgb), 0.42);
+  background: var(--workbench-panel-bg-strong);
   color: var(--text-primary);
   font-size: 12px;
   line-height: 1.6;
@@ -550,7 +606,7 @@ onUnmounted(() => {
 }
 
 .message-row.user .message-bubble {
-  border-color: rgba(var(--primary-rgb), 0.46);
+  border-color: rgba(255, 255, 255, 0.28);
   background: var(--primary-color);
   color: #06100c;
 }
@@ -571,7 +627,7 @@ onUnmounted(() => {
   background: rgba(var(--primary-rgb), 0.1);
   color: var(--primary-color);
   font-size: 11px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
 }
 
 .assistant-thinking pre {
@@ -619,17 +675,17 @@ onUnmounted(() => {
   position: relative;
   display: grid;
   min-width: 0;
-  border: 1px solid rgba(var(--primary-rgb), 0.17);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 17px;
   background:
-    linear-gradient(135deg, rgba(var(--primary-rgb), 0.1), transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 42%),
     var(--bg-input);
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
 .assistant-input-shell:focus-within {
-  border-color: rgba(var(--primary-rgb), 0.44);
-  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
+  border-color: rgba(255, 255, 255, 0.24);
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.075);
 }
 
 .assistant-input textarea {
@@ -669,15 +725,21 @@ onUnmounted(() => {
   gap: 5px;
   border: 1px solid rgba(var(--primary-rgb), 0.18) !important;
   border-radius: 999px !important;
-  background: rgba(var(--glass-bg-rgb), 0.24) !important;
+  background: var(--workbench-control-bg) !important;
   color: var(--text-secondary) !important;
   box-shadow: none !important;
   font-size: 10px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .assistant-reasoning-trigger {
   padding: 0 9px;
+  transition:
+    transform 180ms var(--ease-smooth),
+    border-color 180ms ease,
+    background 180ms ease,
+    color 180ms ease,
+    box-shadow 200ms ease;
 }
 
 .assistant-reasoning-trigger svg {
@@ -685,8 +747,14 @@ onUnmounted(() => {
 }
 
 .assistant-reasoning.open .assistant-reasoning-trigger {
-  border-color: rgba(var(--primary-rgb), 0.48) !important;
+  border-color: rgba(255, 255, 255, 0.24) !important;
   color: var(--text-primary) !important;
+}
+
+.assistant-reasoning-trigger:hover {
+  transform: translateY(-0.5px);
+  border-color: rgba(255, 255, 255, 0.24) !important;
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.16) !important;
 }
 
 .assistant-reasoning-menu {
@@ -698,11 +766,11 @@ onUnmounted(() => {
   display: grid;
   gap: 6px;
   padding: 9px;
-  border: 1px solid rgba(var(--primary-rgb), 0.26);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 16px;
   background:
-    radial-gradient(circle at 12% 0%, rgba(var(--primary-rgb), 0.18), transparent 35%),
-    rgba(12, 18, 26, 0.96);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.022) 40%, rgba(0, 0, 0, 0.14)),
+    var(--workbench-overlay-bg);
   box-shadow: 0 20px 58px rgba(0, 0, 0, 0.38);
   backdrop-filter: blur(18px);
   animation: assistantMenuRise 160ms ease both;
@@ -717,20 +785,20 @@ onUnmounted(() => {
   border: 1px solid rgba(148, 163, 184, 0.14);
   border-radius: 12px;
   text-align: left;
-  background: rgba(var(--glass-bg-rgb), 0.18);
+  background: var(--workbench-panel-bg);
   color: var(--text-secondary);
   box-shadow: none;
 }
 
 .assistant-reasoning-menu button.active {
-  border-color: rgba(var(--primary-rgb), 0.62);
-  background: rgba(var(--primary-rgb), 0.18);
+  border-color: rgba(255, 255, 255, 0.24);
+  background: rgba(var(--primary-rgb), 0.12);
   color: var(--text-primary);
 }
 
 .assistant-reasoning-menu strong {
   font-size: 11px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .assistant-reasoning-menu em {
@@ -741,14 +809,14 @@ onUnmounted(() => {
   color: var(--primary-color);
   font-size: 9px;
   font-style: normal;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .assistant-reasoning-menu span {
   grid-column: 1 / -1;
   color: var(--text-muted);
   font-size: 10px;
-  font-weight: 750;
+  font-weight: var(--font-weight-body);
   line-height: 1.45;
 }
 
@@ -775,6 +843,18 @@ onUnmounted(() => {
   border-radius: 16px;
   background: var(--primary-color);
   color: #06100c;
+  transition:
+    transform 220ms var(--ease-smooth),
+    box-shadow 220ms ease,
+    filter 180ms ease;
+}
+
+.assistant-input .assistant-send:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 14px 30px rgba(0, 0, 0, 0.18),
+    0 0 0 1px rgba(255, 255, 255, 0.28) inset;
+  filter: saturate(1.08) brightness(1.04);
 }
 
 .assistant-input .assistant-send:disabled {
@@ -788,7 +868,7 @@ onUnmounted(() => {
   color: var(--text-muted);
   text-align: center;
   font-size: 10px;
-  font-weight: 750;
+  font-weight: var(--font-weight-body);
 }
 
 @keyframes typing {
@@ -796,9 +876,79 @@ onUnmounted(() => {
   40% { opacity: 1; transform: translateY(-3px); }
 }
 
+@keyframes assistantOrbBreath {
+  0%, 100% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      0 16px 42px rgba(0, 0, 0, 0.24),
+      var(--workbench-shadow);
+  }
+
+  50% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      0 20px 52px rgba(0, 0, 0, 0.3),
+      0 0 0 1px rgba(var(--primary-rgb), 0.08),
+      var(--workbench-shadow);
+  }
+}
+
+@keyframes assistantIconKinetic {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  42% { transform: translate3d(0, -1px, 0) scale(1.05); }
+  74% { transform: translate3d(0, 0, 0) scale(1.016); }
+  100% { transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes assistantIconLineFlow {
+  0% {
+    stroke-dasharray: 1 0;
+    stroke-dashoffset: 0;
+    opacity: 0.82;
+  }
+
+  38% {
+    stroke-dasharray: 10 18;
+    stroke-dashoffset: 14;
+    opacity: 0.92;
+  }
+
+  72% {
+    stroke-dasharray: 10 18;
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+
+  100% {
+    stroke-dasharray: 1 0;
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
 @keyframes assistantMenuRise {
   from { opacity: 0; transform: translateY(6px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .assistant-orb {
+    animation: none;
+  }
+
+  .assistant-orb:hover svg,
+  .assistant-actions button:hover svg,
+  .assistant-send:hover svg,
+  .assistant-reasoning-trigger:hover svg {
+    animation: none;
+  }
+
+  .assistant-orb:hover :deep(svg[fill="none"] :where(path, line, polyline, polygon, circle, rect)),
+  .assistant-actions button:hover :deep(svg[fill="none"] :where(path, line, polyline, polygon, circle, rect)),
+  .assistant-send:hover :deep(svg[fill="none"] :where(path, line, polyline, polygon, circle, rect)),
+  .assistant-reasoning-trigger:hover :deep(svg[fill="none"] :where(path, line, polyline, polygon, circle, rect)) {
+    animation: none;
+  }
 }
 
 @media (max-width: 560px) {

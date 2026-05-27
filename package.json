@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --port=3000 --host=0.0.0.0",
+    "dev": "vite --port=5173 --host=0.0.0.0",
     "dev:frontend": "powershell -ExecutionPolicy Bypass -File scripts/start-frontend.ps1",
     "dev:backend": "powershell -ExecutionPolicy Bypass -File scripts/start-backend.ps1",
     "build": "vite build",

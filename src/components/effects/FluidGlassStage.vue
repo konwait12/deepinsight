@@ -838,7 +838,7 @@ onUnmounted(() => {
   color: color-mix(in srgb, var(--text-secondary) 84%, var(--primary-color));
   font-size: 11px;
   line-height: 1;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   text-transform: uppercase;
 }
 
@@ -975,7 +975,7 @@ onUnmounted(() => {
   color: var(--text-primary);
   font-size: clamp(42px, 6.4vw, 108px);
   line-height: 0.88;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   letter-spacing: 0;
   text-shadow: 0 0 30px rgba(var(--primary-rgb), 0.24);
 }
@@ -985,7 +985,7 @@ onUnmounted(() => {
   margin-top: 16px;
   color: color-mix(in srgb, var(--text-secondary) 78%, var(--primary-color));
   font-size: clamp(12px, 1.1vw, 18px);
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
 }
 
 .fluid-card {
@@ -1095,7 +1095,7 @@ onUnmounted(() => {
   color: color-mix(in srgb, var(--accent) 78%, var(--text-primary));
   font-size: 12px;
   line-height: 1;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .fluid-card h3 {
@@ -1103,7 +1103,7 @@ onUnmounted(() => {
   color: var(--text-primary);
   font-size: clamp(28px, 3vw, 48px);
   line-height: 1.02;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .fluid-lines {
@@ -1121,7 +1121,7 @@ onUnmounted(() => {
   background: rgba(var(--glass-bg-rgb), 0.2);
   font-size: 12px;
   font-style: normal;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
 }
 
 .fluid-chart {
@@ -1161,7 +1161,7 @@ onUnmounted(() => {
     0 0 28px color-mix(in srgb, var(--accent) 32%, transparent);
   font-size: 11px;
   line-height: 1;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   white-space: nowrap;
   opacity: var(--caption-opacity);
   pointer-events: none;

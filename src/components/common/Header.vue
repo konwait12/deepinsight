@@ -49,16 +49,75 @@
 
     <div class="top-actions">
       <div class="palette-switcher" aria-label="Palette">
-        <button
-          v-for="palette in themeStore.palettes"
-          :key="palette.id"
-          type="button"
-          :class="{ active: themeStore.paletteId === palette.id }"
-          :title="palette.name"
-          :style="{ '--swatch': palette.color }"
-          @click="themeStore.setPalette(palette.id)"
-        ></button>
+        <div class="palette-strip">
+          <button
+            v-for="palette in featuredPalettes"
+            :key="palette.id"
+            type="button"
+            class="palette-dot"
+            :class="{ active: themeStore.paletteId === palette.id }"
+            :title="palette.name"
+            :aria-label="palette.name"
+            :aria-pressed="themeStore.paletteId === palette.id"
+            :style="paletteVars(palette)"
+            @click="themeStore.setPalette(palette.id)"
+          ></button>
+          <span class="palette-more" aria-hidden="true"></span>
+        </div>
+
+        <div class="palette-panel" :aria-label="paletteCopy.panelAria">
+          <div class="palette-panel-head">
+            <span>{{ paletteCopy.title }}</span>
+            <strong>{{ paletteDisplayName(themeStore.palette) }}</strong>
+          </div>
+          <div
+            class="palette-gradient"
+            :style="paletteVars(themeStore.palette)"
+          ></div>
+          <label class="palette-slider">
+            <span>
+              <b>{{ paletteCopy.slider }}</b>
+              <em>{{ themeStore.customHue }}</em>
+            </span>
+            <input
+              type="range"
+              min="0"
+              max="360"
+              step="1"
+              :value="themeStore.customHue"
+              :aria-label="paletteCopy.sliderAria"
+              @input="handleHueInput"
+            >
+          </label>
+          <div class="palette-grid">
+            <button
+              v-for="palette in visiblePalettes"
+              :key="palette.id"
+              type="button"
+              :class="{ active: themeStore.paletteId === palette.id }"
+              :title="paletteDisplayName(palette)"
+              :aria-label="paletteDisplayName(palette)"
+              :aria-pressed="themeStore.paletteId === palette.id"
+              :style="paletteVars(palette)"
+              @click="themeStore.setPalette(palette.id)"
+            >
+              <span class="palette-swatch"></span>
+              <span>{{ paletteDisplayName(palette) }}</span>
+            </button>
+          </div>
+        </div>
       </div>
+
+      <button
+        class="icon-btn theme-btn"
+        type="button"
+        :aria-label="themeStore.isDarkMode ? 'Switch to day theme' : 'Switch to night theme'"
+        :title="themeStore.isDarkMode ? 'Day theme' : 'Night theme'"
+        @click="themeStore.toggleDarkMode"
+      >
+        <Sun v-if="themeStore.isDarkMode" :size="17" stroke-width="2.4" />
+        <Moon v-else :size="17" stroke-width="2.4" />
+      </button>
 
       <button v-if="route.path !== '/'" class="icon-btn" type="button" aria-label="Toggle navigation" @click="themeStore.toggleMenuMode">
         <PanelLeftClose v-if="themeStore.isHorizontalMenu" :size="17" stroke-width="2.4" />
@@ -79,7 +138,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { useThemeStore } from '@/stores/theme.store'
+import { useThemeStore, type Palette } from '@/stores/theme.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { APP_EVENTS } from '@/constants'
 import DeepLogo from '@/components/common/DeepLogo.vue'
@@ -96,6 +155,8 @@ import {
   Compass,
   PanelLeftClose,
   PanelTop,
+  Moon,
+  Sun,
   UserRound,
 } from 'lucide-vue-next'
 
@@ -109,7 +170,44 @@ const isLanding = computed(() => route.name === 'Landing')
 const showTopNav = computed(() => isLanding.value || themeStore.isHorizontalMenu)
 const navItems = mainNavItems
 const exploreItems = exploreNavItems
+const featuredPalettes = computed(() => themeStore.palettes.slice(0, 4))
+const visiblePalettes = computed(() => themeStore.palettes)
 const langLabel = computed(() => themeStore.lang === 'zh' ? 'EN' : '中')
+const paletteCopy = computed(() => themeStore.lang === 'zh'
+  ? {
+      title: '主题色',
+      slider: '自定义色相',
+      sliderAria: '拖动选择自定义主题色',
+      panelAria: '主题色预设',
+      names: {
+        aurora: '极光',
+        copper: '暖铜',
+        violet: '紫晶',
+        graphite: '天青',
+        rose: '蔷薇',
+        amber: '琥珀',
+        indigo: '靛蓝',
+        mint: '薄荷',
+        custom: '自定义',
+      },
+    }
+  : {
+      title: 'Theme Color',
+      slider: 'Custom Hue',
+      sliderAria: 'Drag to choose a custom theme color',
+      panelAria: 'Theme color presets',
+      names: {
+        aurora: 'Aurora',
+        copper: 'Copper',
+        violet: 'Violet',
+        graphite: 'Sky',
+        rose: 'Rose',
+        amber: 'Amber',
+        indigo: 'Indigo',
+        mint: 'Mint',
+        custom: 'Custom',
+      },
+    })
 const accountLabel = computed(() => {
   if (!authStore.isAuthenticated) return t('header.login')
   return authStore.user?.username || t('header.profile')
@@ -128,12 +226,25 @@ const navigateTo = (path: string) => router.push(path)
 const navigateExplore = () => router.push(exploreItems[0]?.path || '/knowledge')
 const handleAccount = () => router.push(authStore.isAuthenticated ? '/profile' : '/login')
 const navLabel = (path: string) => t(navLabelKey(path))
+const paletteVars = (palette: Palette) => ({
+  '--swatch': palette.color,
+  '--swatch-glow': palette.glow,
+})
+const paletteDisplayName = (palette: Palette) => paletteCopy.value.names[palette.id] || palette.name
+const handleHueInput = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  themeStore.setCustomHue(input.value)
+}
 const handleLangToggle = (event: MouseEvent) => window.dispatchEvent(new CustomEvent(APP_EVENTS.TOGGLE_LANG, {
   detail: { x: event.clientX, y: event.clientY },
 }))
 
-onMounted(() => window.addEventListener('scroll', handleScroll, { passive: true }))
-onUnmounted(() => window.removeEventListener('scroll', handleScroll))
+onMounted(() => {
+  window.addEventListener('scroll', handleScroll, { passive: true })
+})
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll)
+})
 </script>
 
 <style scoped>
@@ -150,16 +261,25 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
   align-items: center;
   padding: 0 10px 0 14px;
   border: 1px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: 14px;
   background: var(--nav-bg);
-  backdrop-filter: blur(24px) saturate(180%);
-  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(14px) saturate(115%);
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.08),
+    0 4px 12px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.06);
   transition: background 240ms ease, border-color 240ms ease, transform 240ms ease;
 }
 
 .topbar.landing {
   background: rgba(5, 7, 10, 0.34);
   border-color: rgba(255, 255, 255, 0.12);
+}
+
+:global(html.light .topbar.landing) {
+  background: rgba(255, 255, 255, 0.64);
+  border-color: rgba(15, 23, 42, 0.1);
 }
 
 .brand {
@@ -179,9 +299,9 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
   border-left: 1px solid var(--border-color);
   color: var(--text-muted);
   font-size: 11px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   text-transform: uppercase;
-  letter-spacing: 0;
+  letter-spacing: var(--tracking-label);
   white-space: nowrap;
 }
 
@@ -198,7 +318,20 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
   padding: 4px;
   border: 1px solid var(--border-color);
   border-radius: 10px;
-  background: var(--surface-3);
+  background: rgba(255, 255, 255, 0.055);
+}
+
+:global(html.light .top-nav),
+:global(html.light .palette-switcher),
+:global(html.light .icon-btn),
+:global(html.light .lang-btn),
+:global(html.light .avatar-btn) {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(240, 248, 246, 0.58)),
+    rgba(var(--glass-bg-rgb), 0.62);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.78),
+    0 8px 22px rgba(31, 56, 68, 0.055);
 }
 
 .nav-item-wrap {
@@ -220,12 +353,12 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 0 12px;
+  padding: 0 14px;
   border-radius: 8px;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 850;
+  font-size: 14px;
+  font-weight: 600;
   transition: background 180ms ease, color 180ms ease, transform 180ms ease;
 }
 
@@ -241,9 +374,16 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
 
 .top-nav button:hover,
 .top-nav button.active {
-  background: rgba(var(--primary-rgb), 0.13);
+  background: rgba(255, 255, 255, 0.08);
   color: var(--text-primary);
-  transform: translateY(-1px);
+  transform: translateY(-0.5px);
+}
+
+:global(html.light .top-nav button:hover),
+:global(html.light .top-nav button.active) {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(var(--primary-rgb), 0.11)),
+    rgba(var(--primary-rgb), 0.09);
 }
 
 .top-nav button.active {
@@ -259,13 +399,26 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
   padding: 8px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  background: rgba(var(--glass-bg-rgb), 0.94);
-  backdrop-filter: blur(22px) saturate(170%);
-  box-shadow: var(--shadow-soft);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.035) 38%, rgba(0, 0, 0, 0.18)),
+    rgba(var(--glass-bg-rgb), 0.86);
+  backdrop-filter: blur(14px) saturate(115%);
+  box-shadow:
+    0 22px 60px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
   transform: translate(-50%, 8px);
   opacity: 0;
   pointer-events: none;
   transition: opacity 160ms ease, transform 160ms ease;
+}
+
+:global(html.light .top-nav-submenu) {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.56) 38%, rgba(0, 0, 0, 0.015)),
+    rgba(var(--glass-bg-rgb), 0.86);
+  box-shadow:
+    0 18px 46px rgba(15, 23, 42, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
 }
 
 .top-nav-submenu::before {
@@ -299,34 +452,306 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
 }
 
 .palette-switcher {
+  position: relative;
+  isolation: isolate;
   height: 38px;
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 0 8px;
+  padding: 0 9px;
   border: 1px solid var(--border-color);
   border-radius: 10px;
-  background: var(--surface-3);
+  background: rgba(255, 255, 255, 0.055);
 }
 
-.palette-switcher button {
-  width: 20px;
-  height: 20px;
+.palette-strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.palette-dot {
+  width: 22px;
+  height: 22px;
+  padding: 0;
   border-radius: 999px;
-  background: var(--swatch);
+  background:
+    radial-gradient(circle at 32% 24%, rgba(255, 255, 255, 0.82), transparent 0 22%, rgba(255, 255, 255, 0.08) 23% 34%, transparent 35%),
+    linear-gradient(145deg, var(--swatch-glow), var(--swatch) 52%, color-mix(in srgb, var(--swatch) 72%, #111827));
   box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,0.5),
-    0 0 16px color-mix(in srgb, var(--swatch) 32%, transparent);
+    0 0 0 1px rgba(255, 255, 255, 0.2),
+    0 4px 10px color-mix(in srgb, var(--swatch) 32%, transparent),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.5),
+    inset 0 -7px 12px rgba(0, 0, 0, 0.18);
   transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
 }
 
-.palette-switcher button.active {
-  filter: saturate(1.18) brightness(1.16);
-  transform: scale(1.22);
+.palette-dot.active,
+.palette-grid button.active .palette-swatch {
+  filter: saturate(1.08) brightness(1.08);
+  transform: scale(1.14);
   box-shadow:
-    0 0 0 3px rgba(var(--primary-rgb), 0.28),
-    0 0 22px rgba(var(--primary-rgb), 0.42),
-    inset 0 0 0 1px rgba(255,255,255,0.78);
+    0 0 0 3px color-mix(in srgb, var(--swatch) 18%, transparent),
+    0 0 0 5px rgba(255, 255, 255, 0.1),
+    0 7px 16px color-mix(in srgb, var(--swatch) 35%, transparent),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.72),
+    inset 0 -7px 12px rgba(0, 0, 0, 0.16);
+}
+
+.palette-more {
+  width: 5px;
+  height: 22px;
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      180deg,
+      var(--primary-color),
+      var(--accent-glow) 48%,
+      var(--warning-glow)
+    );
+  opacity: 0.62;
+  box-shadow: 0 0 12px rgba(var(--primary-rgb), 0.18);
+}
+
+.palette-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 150;
+  width: 286px;
+  padding: 14px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.035) 44%, rgba(0, 0, 0, 0.18)),
+    rgba(var(--glass-bg-rgb), 0.9);
+  backdrop-filter: blur(16px) saturate(125%);
+  box-shadow:
+    0 22px 58px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px) scale(0.98);
+  transform-origin: top right;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.palette-panel::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -12px;
+  height: 12px;
+}
+
+.palette-switcher:hover .palette-panel,
+.palette-switcher:focus-within .palette-panel {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+}
+
+:global(html.light .palette-panel) {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(247, 252, 250, 0.66) 46%, rgba(28, 75, 88, 0.035)),
+    rgba(var(--glass-bg-rgb), 0.9);
+  box-shadow:
+    0 18px 46px rgba(15, 23, 42, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+.palette-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.palette-panel-head strong {
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.palette-gradient {
+  height: 36px;
+  margin-top: 10px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 14% 32%, rgba(255, 255, 255, 0.75), transparent 0 16%, transparent 17%),
+    linear-gradient(90deg, color-mix(in srgb, var(--swatch) 12%, white), var(--swatch), var(--swatch-glow));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.35),
+    inset 0 -12px 18px rgba(0, 0, 0, 0.14),
+    0 10px 24px color-mix(in srgb, var(--swatch) 20%, transparent);
+}
+
+.palette-slider {
+  display: grid;
+  gap: 9px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--swatch) 18%, var(--border-color));
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.025)),
+    rgba(255, 255, 255, 0.04);
+}
+
+:global(html.light .palette-slider) {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(241, 249, 247, 0.52)),
+    rgba(var(--glass-bg-rgb), 0.5);
+}
+
+.palette-slider span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.palette-slider b {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.palette-slider em {
+  min-width: 48px;
+  padding: 4px 9px;
+  border-radius: 8px;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--swatch) 16%, rgba(255, 255, 255, 0.08));
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.palette-slider input {
+  width: 100%;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.palette-slider input::-webkit-slider-runnable-track {
+  height: 12px;
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      90deg,
+      #fb7185 0%,
+      #f59e5b 16%,
+      #facc15 28%,
+      #42e6a4 45%,
+      #6ee7f9 62%,
+      #6366f1 78%,
+      #f0abfc 100%
+    );
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.42),
+    0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+.palette-slider input::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 24px;
+  margin-top: -6px;
+  border: 3px solid rgba(255, 255, 255, 0.95);
+  border-radius: 999px;
+  background: var(--swatch);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--swatch) 24%, transparent),
+    0 6px 16px color-mix(in srgb, var(--swatch) 38%, transparent);
+}
+
+.palette-slider input::-moz-range-track {
+  height: 12px;
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      90deg,
+      #fb7185 0%,
+      #f59e5b 16%,
+      #facc15 28%,
+      #42e6a4 45%,
+      #6ee7f9 62%,
+      #6366f1 78%,
+      #f0abfc 100%
+    );
+}
+
+.palette-slider input::-moz-range-thumb {
+  width: 18px;
+  height: 24px;
+  border: 3px solid rgba(255, 255, 255, 0.95);
+  border-radius: 999px;
+  background: var(--swatch);
+}
+
+.palette-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.palette-grid button {
+  height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 10px;
+  border-radius: 9px;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid color-mix(in srgb, var(--swatch) 18%, var(--border-color));
+  font-size: 12px;
+  font-weight: 650;
+  transition: transform 160ms ease, color 160ms ease, background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.palette-grid button:hover,
+.palette-grid button.active {
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--swatch) 36%, var(--border-color));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--swatch) 12%, transparent), rgba(255, 255, 255, 0.045)),
+    rgba(255, 255, 255, 0.055);
+}
+
+.palette-grid button.active {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--swatch) 22%, transparent);
+}
+
+.palette-swatch {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 32% 24%, rgba(255, 255, 255, 0.84), transparent 0 22%, rgba(255, 255, 255, 0.08) 23% 34%, transparent 35%),
+    linear-gradient(145deg, var(--swatch-glow), var(--swatch) 54%, color-mix(in srgb, var(--swatch) 72%, #111827));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.52),
+    inset 0 -6px 10px rgba(0, 0, 0, 0.16);
+}
+
+.palette-grid span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .icon-btn,
@@ -335,7 +760,7 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
   height: 38px;
   border-radius: 10px;
   color: var(--text-primary);
-  background: var(--surface-3);
+  background: rgba(255, 255, 255, 0.055);
   border: 1px solid var(--border-color);
   display: inline-flex;
   align-items: center;
@@ -348,23 +773,32 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
 }
 
 .lang-btn {
-  padding: 0 10px;
-  font-size: 12px;
-  font-weight: 900;
+  padding: 0 12px;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .avatar-btn {
   gap: 8px;
-  padding: 0 12px;
-  font-size: 12px;
-  font-weight: 850;
+  padding: 0 14px;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .icon-btn:hover,
 .lang-btn:hover,
 .avatar-btn:hover {
-  transform: translateY(-1px);
-  border-color: rgba(var(--primary-rgb), 0.38);
+  transform: translateY(-0.5px);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+:global(html.light .icon-btn:hover),
+:global(html.light .lang-btn:hover),
+:global(html.light .avatar-btn:hover) {
+  border-color: rgba(var(--primary-rgb), 0.24);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(var(--primary-rgb), 0.12)),
+    rgba(var(--primary-rgb), 0.08);
 }
 
 @media (max-width: 1180px) {

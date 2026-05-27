@@ -111,7 +111,7 @@ defineProps<{
   display: inline-flex;
   align-items: baseline;
   gap: 2px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   letter-spacing: 0;
   line-height: 1;
 }

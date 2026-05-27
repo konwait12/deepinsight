@@ -15,7 +15,7 @@ import CloudFolderDock from '@/components/cloud/CloudFolderDock.vue'
 
 const themeStore = useThemeStore()
 const route = useRoute()
-const showCloudPortal = computed(() => !['Dashboard'].includes(String(route.name || '')))
+const showCloudPortal = computed(() => !['Dashboard', 'Cloud'].includes(String(route.name || '')))
 </script>
 
 <style scoped>

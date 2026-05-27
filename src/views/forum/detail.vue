@@ -129,7 +129,7 @@ watch(() => route.params.id, fetchPost);
   color: var(--text-secondary);
   cursor: pointer;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: var(--font-weight-body);
   padding: 8px 15px;
   transition: color 180ms ease, background 180ms ease, border-color 180ms ease, transform 180ms ease;
 }
@@ -157,7 +157,7 @@ watch(() => route.params.id, fetchPost);
   min-height: 360px;
   place-items: center;
   color: var(--text-secondary);
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
 }
 
 .article-main {
@@ -179,7 +179,7 @@ watch(() => route.params.id, fetchPost);
   border: 1px solid transparent;
   border-radius: 999px;
   font-size: 10px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   padding: 4px 9px;
 }
 
@@ -199,7 +199,7 @@ watch(() => route.params.id, fetchPost);
   margin: 0 0 14px;
   color: var(--text-primary);
   font-size: clamp(32px, 5vw, 56px);
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   letter-spacing: -0.06em;
   line-height: 1.04;
 }
@@ -212,7 +212,7 @@ watch(() => route.params.id, fetchPost);
   margin-bottom: 18px;
   color: var(--text-muted);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: var(--font-weight-body);
 }
 
 .cover-img {

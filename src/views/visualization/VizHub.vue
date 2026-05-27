@@ -3335,7 +3335,7 @@ const componentNodes = computed(() => [
 .selector-row label {
   color: var(--text-primary);
   font-size: 13px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
 }
 
 .run-select {
@@ -3388,12 +3388,12 @@ const componentNodes = computed(() => [
 .analysis-mode-switch button b {
   color: inherit;
   font-size: 12px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .analysis-mode-switch button small {
   font-size: 9px;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
   text-transform: uppercase;
 }
 
@@ -3402,10 +3402,14 @@ const componentNodes = computed(() => [
 }
 
 .matrix-action-stack {
-  display: grid;
-  justify-items: end;
-  gap: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
   min-width: 260px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-color);
 }
 
 .analysis-module-ribbon {
@@ -3446,7 +3450,7 @@ const componentNodes = computed(() => [
 .analysis-module-ribbon span {
   color: color-mix(in srgb, var(--module-accent, var(--active-accent)) 74%, var(--text-muted));
   font-size: 9px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   text-transform: uppercase;
 }
 
@@ -3454,7 +3458,7 @@ const componentNodes = computed(() => [
   margin-top: 3px;
   color: var(--text-primary);
   font-size: 12px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .analysis-module-ribbon em {
@@ -3462,7 +3466,7 @@ const componentNodes = computed(() => [
   color: var(--text-secondary);
   font-size: 11px;
   font-style: normal;
-  font-weight: 800;
+  font-weight: var(--font-weight-body);
   line-height: 1.5;
 }
 
@@ -3478,8 +3482,12 @@ const componentNodes = computed(() => [
   color: var(--text-secondary);
   font-size: 11px;
   font-style: normal;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
   text-align: right;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .matrix-controls {
@@ -3498,13 +3506,13 @@ const componentNodes = computed(() => [
   --spotlight-x: 50%;
   --spotlight-y: 50%;
   --spotlight-color: color-mix(in srgb, var(--active-accent) 18%, transparent);
-  --edge-sensitivity: 15;
-  border: 1px solid color-mix(in srgb, var(--active-accent) 14%, var(--border-color));
+  --edge-sensitivity: 24;
+  border: 1px solid color-mix(in srgb, var(--active-accent) 8%, var(--border-color));
   border-radius: var(--radius-lg);
   background:
-    radial-gradient(circle at 18% 0%, color-mix(in srgb, var(--active-accent) 8%, transparent), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.064), rgba(255, 255, 255, 0.018) 42%, rgba(0, 0, 0, 0.08)),
     rgba(var(--glass-bg-rgb), 0.34);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .matrix-control-card::before,
@@ -3522,7 +3530,7 @@ const componentNodes = computed(() => [
   z-index: 0;
   pointer-events: none;
   border-radius: inherit;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--active-accent) 18%, transparent), transparent) top / 100% 1px no-repeat;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent) top / 100% 1px no-repeat;
   opacity: 0;
   transition: opacity 420ms ease;
 }
@@ -3549,9 +3557,9 @@ const componentNodes = computed(() => [
   opacity: 0;
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, calc(var(--edge-glow-opacity) * 0.12)),
-    0 0 calc(46px * var(--edge-glow-opacity)) var(--edge-glow-soft);
-  filter: saturate(1.45) brightness(1.08);
-  mix-blend-mode: plus-lighter;
+    0 0 calc(20px * var(--edge-glow-opacity)) var(--edge-glow-soft);
+  filter: saturate(1.08) brightness(1.03);
+  mix-blend-mode: screen;
   transition: opacity 120ms ease, box-shadow 120ms ease, filter 120ms ease;
   -webkit-mask:
     linear-gradient(#000 0 0) content-box,
@@ -3581,7 +3589,7 @@ const componentNodes = computed(() => [
 .signal-card:focus-within::before,
 .component-node:focus-within::before,
 .module-analysis-strip:focus-within::before {
-  opacity: 0.42;
+  opacity: 0.24;
 }
 
 .matrix-control-card:hover::after,
@@ -3632,7 +3640,7 @@ const componentNodes = computed(() => [
   margin: 0 0 14px;
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 750;
+  font-weight: var(--font-weight-body);
   line-height: 1.65;
 }
 
@@ -3656,7 +3664,7 @@ const componentNodes = computed(() => [
   display: block;
   color: var(--text-muted);
   font-size: 10px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   text-transform: uppercase;
 }
 
@@ -3665,7 +3673,7 @@ const componentNodes = computed(() => [
 .result-card-top strong {
   color: var(--text-primary);
   font-size: 13px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .matrix-check-grid,
@@ -3741,7 +3749,7 @@ const componentNodes = computed(() => [
   min-width: 0;
   color: var(--text-primary);
   font-size: 12px;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
 }
 
 .matrix-run-label {
@@ -3754,7 +3762,7 @@ const componentNodes = computed(() => [
   color: var(--text-muted);
   font-size: 10px;
   font-style: normal;
-  font-weight: 800;
+  font-weight: var(--font-weight-body);
 }
 
 .matrix-module-grid {
@@ -3769,7 +3777,7 @@ const componentNodes = computed(() => [
   overflow: hidden;
   color: var(--text-secondary);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: var(--font-weight-body);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -3788,7 +3796,7 @@ const componentNodes = computed(() => [
   background: color-mix(in srgb, var(--module-accent, var(--active-accent)) 12%, transparent);
   color: color-mix(in srgb, var(--module-accent, var(--active-accent)) 72%, white);
   font-size: 9px;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
 }
 
 .matrix-results {
@@ -3805,7 +3813,7 @@ const componentNodes = computed(() => [
 .result-filter-panel {
   position: relative;
   isolation: isolate;
-  overflow: hidden;
+  overflow: visible;
   --spotlight-x: 50%;
   --spotlight-y: 50%;
   --spotlight-color: color-mix(in srgb, var(--active-accent) 16%, transparent);
@@ -3814,7 +3822,7 @@ const componentNodes = computed(() => [
   flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 14px;
-  padding: 12px;
+  padding: 14px;
   border: 1px solid color-mix(in srgb, var(--active-accent) 16%, var(--border-color));
   border-radius: var(--radius-lg);
   background:
@@ -3829,7 +3837,7 @@ const componentNodes = computed(() => [
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
 }
 
 .result-view-switch {
@@ -3851,12 +3859,13 @@ const componentNodes = computed(() => [
   border-radius: 999px;
   cursor: pointer;
   font-size: 10px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   transition: transform 160ms ease, background 160ms ease, color 160ms ease, box-shadow 160ms ease;
 }
 
 .result-view-switch button {
-  padding: 7px 11px;
+  min-height: 34px;
+  padding: 8px 14px;
   background: transparent;
   color: var(--text-muted);
 }
@@ -3873,7 +3882,8 @@ const componentNodes = computed(() => [
 .save-view-action,
 .save-selected-action,
 .import-chat-action {
-  padding: 7px 11px;
+  min-height: 36px;
+  padding: 8px 14px;
 }
 
 .smart-select-action {
@@ -3916,7 +3926,7 @@ const componentNodes = computed(() => [
   display: block;
   color: var(--text-primary);
   font-size: 13px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .view-save-head span {
@@ -3929,13 +3939,13 @@ const componentNodes = computed(() => [
 
 .view-save-head button {
   flex: 0 0 auto;
-  height: 28px;
-  padding: 0 10px;
+  min-height: 34px;
+  padding: 0 13px;
   border-radius: 999px;
   background: rgba(66, 230, 164, 0.12);
   color: #42e6a4;
   font-size: 11px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .view-save-grid {
@@ -3953,7 +3963,7 @@ const componentNodes = computed(() => [
 .view-save-grid span {
   color: var(--text-muted);
   font-size: 10px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
 }
 
 .view-save-grid select {
@@ -3967,20 +3977,20 @@ const componentNodes = computed(() => [
 }
 
 .view-save-grid > button {
-  height: 36px;
-  padding: 0 13px;
+  min-height: 40px;
+  padding: 0 16px;
   border-radius: 12px;
   background: linear-gradient(135deg, rgba(66, 230, 164, 0.24), rgba(var(--primary-rgb), 0.14));
   color: #42e6a4;
   font-size: 11px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .result-persist-actions em {
   color: var(--text-muted);
   font-size: 10px;
   font-style: normal;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
 }
 
 .select-visible-action {
@@ -4026,8 +4036,9 @@ const componentNodes = computed(() => [
 .result-filter-chips button {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 6px 8px 6px 10px;
+  gap: 8px;
+  min-height: 34px;
+  padding: 7px 11px 7px 13px;
   border: 1px solid rgba(148, 163, 184, 0.14);
   background: rgba(var(--glass-bg-rgb), 0.22);
   color: var(--text-secondary);
@@ -4049,7 +4060,7 @@ const componentNodes = computed(() => [
   background: rgba(255, 255, 255, 0.08);
   color: color-mix(in srgb, var(--active-accent) 72%, white);
   font-size: 9px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .result-group-stack {
@@ -4083,21 +4094,21 @@ const componentNodes = computed(() => [
   color: var(--text-muted);
   font-size: 10px;
   font-style: normal;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   text-transform: uppercase;
 }
 
 .result-group-head strong {
   color: var(--text-primary);
   font-size: 15px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .matrix-result-head em {
   color: var(--text-muted);
   font-size: 11px;
   font-style: normal;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
 }
 
 .matrix-result-grid {
@@ -4141,7 +4152,7 @@ const componentNodes = computed(() => [
   color: var(--text-secondary);
   cursor: pointer;
   font-size: 9px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   backdrop-filter: blur(10px);
   transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease;
 }
@@ -4169,7 +4180,7 @@ const componentNodes = computed(() => [
 .result-status-row span {
   color: var(--text-muted);
   font-size: 10px;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
 }
 
 .result-score {
@@ -4183,7 +4194,7 @@ const componentNodes = computed(() => [
 .result-score strong {
   color: var(--primary-color);
   font-size: 24px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   line-height: 1;
 }
 
@@ -4193,7 +4204,7 @@ const componentNodes = computed(() => [
   color: var(--text-secondary);
   font-size: 11px;
   font-style: normal;
-  font-weight: 750;
+  font-weight: var(--font-weight-body);
   line-height: 1.55;
 }
 
@@ -4216,7 +4227,7 @@ const componentNodes = computed(() => [
   margin-top: 5px;
   color: var(--text-primary);
   font-size: 12px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .ai-panel-meta {
@@ -4236,7 +4247,7 @@ const componentNodes = computed(() => [
   padding: 3px 7px;
   font-size: 9px;
   font-style: normal;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   line-height: 1;
 }
 
@@ -4274,7 +4285,7 @@ const componentNodes = computed(() => [
   background: rgba(var(--primary-rgb), 0.08);
   color: var(--text-secondary);
   font-size: 10px;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
   line-height: 1.45;
 }
 
@@ -4293,7 +4304,7 @@ const componentNodes = computed(() => [
   color: var(--primary-color);
   cursor: pointer;
   font-size: 10px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
 }
 
@@ -4340,14 +4351,14 @@ const componentNodes = computed(() => [
   display: block;
   color: var(--primary-color);
   font-size: 28px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   line-height: 1;
 }
 
 .header-index small {
   color: var(--text-secondary);
   font-size: 10px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   text-transform: uppercase;
 }
 
@@ -4357,14 +4368,14 @@ const componentNodes = computed(() => [
   overflow: hidden;
   --spotlight-x: 50%;
   --spotlight-y: 50%;
-  --spotlight-color: rgba(var(--primary-rgb), 0.14);
-  --edge-sensitivity: 15;
+  --spotlight-color: rgba(255, 255, 255, 0.1);
+  --edge-sensitivity: 24;
   margin-bottom: 22px;
   padding: 18px;
-  border: 1px solid color-mix(in srgb, var(--primary-color) 12%, var(--border-color));
+  border: 1px solid color-mix(in srgb, var(--primary-color) 8%, var(--border-color));
   border-radius: var(--radius-lg);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.026), transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.018) 42%, rgba(0, 0, 0, 0.08)),
     color-mix(in srgb, var(--surface-1) 70%, transparent);
   box-shadow: var(--shadow-soft);
 }
@@ -4375,8 +4386,8 @@ const componentNodes = computed(() => [
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  background: linear-gradient(90deg, rgba(var(--primary-rgb), 0.26), transparent 34%, rgba(var(--primary-rgb), 0.08)) top / 100% 1px no-repeat;
-  opacity: 0.34;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent) top / 100% 1px no-repeat;
+  opacity: 0.24;
   transition: opacity 420ms ease;
 }
 
@@ -4395,9 +4406,9 @@ const componentNodes = computed(() => [
   opacity: 0;
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, calc(var(--edge-glow-opacity) * 0.1)),
-    0 0 calc(54px * var(--edge-glow-opacity)) var(--edge-glow-soft);
-  filter: saturate(1.45) brightness(1.08);
-  mix-blend-mode: plus-lighter;
+    0 0 calc(20px * var(--edge-glow-opacity)) var(--edge-glow-soft);
+  filter: saturate(1.08) brightness(1.03);
+  mix-blend-mode: screen;
   transition: opacity 120ms ease, box-shadow 120ms ease, filter 120ms ease;
   -webkit-mask:
     linear-gradient(#000 0 0) content-box,
@@ -4411,7 +4422,7 @@ const componentNodes = computed(() => [
 
 .workspace-band:hover::before,
 .workspace-band:focus-within::before {
-  opacity: 0.5;
+  opacity: 0.28;
 }
 
 .workspace-band:hover::after,
@@ -4440,7 +4451,7 @@ const componentNodes = computed(() => [
   display: block;
   color: var(--text-muted);
   font-size: 10px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   text-transform: uppercase;
 }
 
@@ -4449,7 +4460,7 @@ const componentNodes = computed(() => [
   margin-top: 5px;
   color: var(--text-primary);
   font-size: 18px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .band-caption p {
@@ -4457,7 +4468,7 @@ const componentNodes = computed(() => [
   margin: 7px 0 0;
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 750;
+  font-weight: var(--font-weight-body);
   line-height: 1.65;
 }
 
@@ -4501,7 +4512,7 @@ const componentNodes = computed(() => [
   display: block;
   color: var(--text-muted);
   font-size: 10px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   text-transform: uppercase;
 }
 
@@ -4511,7 +4522,7 @@ const componentNodes = computed(() => [
   margin-top: 4px;
   color: var(--text-primary);
   font-size: 16px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .panel-head em {
@@ -4521,7 +4532,7 @@ const componentNodes = computed(() => [
   color: var(--primary-color);
   font-size: 10px;
   font-style: normal;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
 }
 
 .preview-side {
@@ -4544,7 +4555,7 @@ const componentNodes = computed(() => [
   display: block;
   margin-top: 9px;
   font-size: 24px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   line-height: 1;
 }
 
@@ -4554,7 +4565,7 @@ const componentNodes = computed(() => [
   color: var(--text-secondary);
   font-size: 11px;
   font-style: normal;
-  font-weight: 800;
+  font-weight: var(--font-weight-body);
 }
 
 .chart-box {
@@ -4591,14 +4602,14 @@ const componentNodes = computed(() => [
 .chart-empty-state strong {
   color: var(--text-primary);
   font-size: 14px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .chart-empty-state span {
   max-width: 34ch;
   color: var(--text-muted);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: var(--font-weight-body);
   line-height: 1.55;
 }
 
@@ -4630,7 +4641,7 @@ const componentNodes = computed(() => [
   width: 100%;
   height: 100%;
   min-height: inherit;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .plot-bg,
@@ -4692,7 +4703,7 @@ const componentNodes = computed(() => [
 .axis-labels text {
   fill: color-mix(in srgb, var(--text-muted) 84%, #42e6a4);
   font-size: 10px;
-  font-weight: 800;
+  font-weight: var(--font-weight-body);
 }
 
 .chart-legend {
@@ -4713,7 +4724,7 @@ const componentNodes = computed(() => [
   gap: 6px;
   color: var(--text-secondary);
   font-size: 10px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
 }
 
 .chart-legend i {
@@ -4796,7 +4807,7 @@ const componentNodes = computed(() => [
 .svg-tooltip text {
   fill: var(--text-primary);
   font-size: 10px;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
 }
 
 .svg-tooltip.compact text {
@@ -4820,7 +4831,7 @@ const componentNodes = computed(() => [
   margin-top: 8px;
   color: var(--text-primary);
   font-size: 20px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .sparkline {
@@ -4869,14 +4880,14 @@ const componentNodes = computed(() => [
 
 .dom-tooltip strong {
   font-size: 13px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .dom-tooltip span {
   margin-top: 2px;
   color: var(--text-muted);
   font-size: 9px;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
 }
 
 .component-preview {
@@ -4912,7 +4923,7 @@ const componentNodes = computed(() => [
   display: block;
   color: var(--text-muted);
   font-size: 10px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   text-transform: uppercase;
 }
 
@@ -4921,7 +4932,7 @@ const componentNodes = computed(() => [
   margin-top: 6px;
   color: var(--text-primary);
   font-size: 14px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .node-bars {
@@ -4967,7 +4978,7 @@ const componentNodes = computed(() => [
   margin: 7px 0 0;
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 750;
+  font-weight: var(--font-weight-body);
   line-height: 1.65;
 }
 
@@ -4986,8 +4997,8 @@ const componentNodes = computed(() => [
 
 .module-preview-panel {
   position: relative;
-  min-height: 0;
-  padding: 16px;
+  min-height: 120px;
+  padding: 18px;
   border: 1px solid color-mix(in srgb, var(--active-accent) 22%, var(--border-color));
   border-radius: var(--radius-lg);
   background:
@@ -5020,7 +5031,7 @@ const componentNodes = computed(() => [
   display: block;
   color: color-mix(in srgb, var(--active-accent) 72%, var(--text-muted));
   font-size: 10px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   text-transform: uppercase;
 }
 
@@ -5029,7 +5040,7 @@ const componentNodes = computed(() => [
   margin-top: 7px;
   color: var(--text-primary);
   font-size: 24px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   line-height: 1.08;
 }
 
@@ -5074,7 +5085,7 @@ const componentNodes = computed(() => [
   inset: 22px 14px 42px;
   width: calc(100% - 28px);
   height: calc(100% - 64px);
-  overflow: visible;
+  overflow: hidden;
 }
 
 .module-art-area {
@@ -5162,14 +5173,14 @@ const componentNodes = computed(() => [
 .module-readout strong {
   color: var(--active-accent);
   font-size: 15px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .module-readout span {
   margin-top: 3px;
   color: var(--text-secondary);
   font-size: 10px;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
 }
 
 .module-art-code {
@@ -5191,7 +5202,7 @@ const componentNodes = computed(() => [
   color: color-mix(in srgb, var(--active-accent) 76%, var(--text-secondary));
   font-family: "JetBrains Mono", Consolas, monospace;
   font-size: 10px;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
   white-space: nowrap;
 }
 
@@ -5221,7 +5232,7 @@ const componentNodes = computed(() => [
 .module-preview-meta strong {
   color: var(--active-accent);
   font-size: 18px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .module-preview-meta em {
@@ -5229,7 +5240,7 @@ const componentNodes = computed(() => [
   color: var(--text-muted);
   font-size: 10px;
   font-style: normal;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   text-transform: uppercase;
 }
 
@@ -5284,8 +5295,9 @@ const componentNodes = computed(() => [
 .module-card {
   position: relative;
   --spotlight-color: color-mix(in srgb, var(--module-accent, var(--active-accent)) 18%, transparent);
-  min-height: 184px;
-  padding-bottom: 58px;
+  min-height: 200px;
+  padding: 18px 18px 62px 18px;
+  overflow: hidden;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
   outline: none;
 }
@@ -5333,46 +5345,42 @@ const componentNodes = computed(() => [
   margin-bottom: 16px;
   color: var(--text-muted);
   font-size: 9px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   text-transform: uppercase;
 }
 
 .module-select-toggle {
   position: absolute;
-  right: 12px;
-  bottom: 12px;
+  right: 10px;
+  bottom: 10px;
   z-index: 4;
-  display: grid;
-  gap: 3px;
-  min-width: 88px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   border: 1px solid rgba(148, 163, 184, 0.16);
-  padding: 7px 9px;
-  border-radius: 14px;
-  background: rgba(15, 23, 42, 0.74);
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.8);
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 9px;
-  font-weight: 950;
-  line-height: 1;
-  text-align: right;
+  font-size: 11px;
+  font-weight: 550;
+  line-height: 1.3;
+  text-align: left;
   text-transform: none;
-  opacity: 0.78;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
-  backdrop-filter: blur(14px);
-  transition: opacity 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(10px);
+  transition: opacity 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease, box-shadow 160ms ease;
 }
 
-.module-select-toggle span,
-.module-select-toggle b {
-  display: block;
+.module-select-toggle span {
+  color: var(--text-primary);
 }
-
 .module-select-toggle b {
   color: var(--text-muted);
-  font-size: 8px;
-  font-weight: 950;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 10px;
+  font-weight: 550;
 }
 
 .module-select-toggle.analyzable b {
@@ -5405,7 +5413,7 @@ const componentNodes = computed(() => [
   margin: 0 0 6px;
   color: var(--text-primary);
   font-size: 14px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
 }
 
 .module-card p {
@@ -5503,7 +5511,7 @@ const componentNodes = computed(() => [
   display: block;
   color: color-mix(in srgb, var(--active-accent) 64%, var(--text-muted));
   font-size: 10px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   text-transform: uppercase;
 }
 
@@ -5512,7 +5520,7 @@ const componentNodes = computed(() => [
   margin-top: 6px;
   color: var(--text-primary);
   font-size: 24px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .detail-head p {
@@ -5551,7 +5559,7 @@ const componentNodes = computed(() => [
 .detail-stats strong {
   color: var(--active-accent);
   font-size: 18px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .detail-stats em {
@@ -5559,7 +5567,7 @@ const componentNodes = computed(() => [
   color: var(--text-muted);
   font-size: 10px;
   font-style: normal;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   text-transform: uppercase;
 }
 
@@ -5583,7 +5591,7 @@ const componentNodes = computed(() => [
   width: 100%;
   height: 100%;
   min-height: 380px;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .detail-empty-state {
@@ -5673,7 +5681,7 @@ const componentNodes = computed(() => [
   margin-top: 9px;
   color: var(--active-accent);
   font-size: 20px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .detail-readout em {
@@ -5682,7 +5690,7 @@ const componentNodes = computed(() => [
   color: var(--text-secondary);
   font-size: 11px;
   font-style: normal;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
 }
 
 .detail-lines {
@@ -5701,7 +5709,7 @@ const componentNodes = computed(() => [
   color: color-mix(in srgb, var(--active-accent) 76%, var(--text-secondary));
   font-family: "JetBrains Mono", Consolas, monospace;
   font-size: 10px;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
   white-space: nowrap;
 }
 
@@ -5721,7 +5729,7 @@ const componentNodes = computed(() => [
 .detail-table strong {
   color: var(--text-primary);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
 }
 
 .detail-panel-enter-active,

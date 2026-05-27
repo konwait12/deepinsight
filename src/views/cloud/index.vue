@@ -97,10 +97,8 @@ const copy = computed(() => {
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--primary-color) 18%, var(--border-color));
   border-radius: 34px;
-  background:
-    radial-gradient(circle at 8% 0%, rgba(var(--primary-rgb), 0.2), transparent 34%),
-    linear-gradient(135deg, rgba(var(--glass-bg-rgb), 0.42), rgba(5, 10, 15, 0.26));
-  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.24);
+  background: var(--workbench-shell-bg-strong);
+  box-shadow: var(--workbench-shadow);
   backdrop-filter: blur(18px);
   animation: cloudSceneRise 720ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -108,7 +106,7 @@ const copy = computed(() => {
 .cloud-center-hero span {
   color: var(--primary-color);
   font-size: 12px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
@@ -117,7 +115,7 @@ const copy = computed(() => {
   margin: 6px 0 8px;
   color: var(--text-primary);
   font-size: clamp(32px, 4.6vw, 60px);
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   letter-spacing: -0.07em;
 }
 
@@ -132,19 +130,20 @@ const copy = computed(() => {
 .hero-cloud-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 12px;
+  gap: 12px;
+  margin-top: 16px;
 }
 
 .hero-cloud-actions button {
-  height: 38px;
-  padding: 0 15px;
+  min-height: 40px;
+  min-width: 108px;
+  padding: 0 18px;
   border: 1px solid rgba(var(--primary-rgb), 0.24);
   border-radius: 999px;
-  background: rgba(var(--glass-bg-rgb), 0.32);
+  background: var(--workbench-control-bg);
   color: var(--text-primary);
   font-size: 12px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
   transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
 }
 
@@ -164,7 +163,7 @@ const copy = computed(() => {
   border-radius: 50%;
   background:
     radial-gradient(circle, rgba(var(--primary-rgb), 0.18), transparent 60%),
-    rgba(255, 255, 255, 0.025);
+    var(--workbench-panel-bg);
 }
 
 .cloud-hero-orbit i {
@@ -203,7 +202,7 @@ const copy = computed(() => {
 .cloud-hero-orbit strong {
   color: var(--text-primary);
   font-size: 22px;
-  font-weight: 950;
+  font-weight: var(--font-weight-title);
 }
 
 .cloud-center-page :deep(.cloud-portal) {

@@ -35,7 +35,7 @@ defineProps<{ dark?: boolean; paused?: boolean }>()
   mix-blend-mode: screen;
 }
 
-:global(.light) .reactbits-field {
+:global(html.light .reactbits-field) {
   opacity: 0.12;
   mix-blend-mode: normal;
 }

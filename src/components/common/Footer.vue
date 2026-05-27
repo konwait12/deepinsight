@@ -55,7 +55,7 @@ const resources = ['Documentation', 'API Reference', 'Help Center']
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.7;
-  font-weight: 750;
+  font-weight: var(--font-weight-body);
 }
 
 .footer-links {
@@ -71,7 +71,7 @@ const resources = ['Documentation', 'API Reference', 'Help Center']
   background: transparent;
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
   cursor: pointer;
   transition: color 160ms ease, transform 160ms ease;
 }
@@ -92,7 +92,7 @@ const resources = ['Documentation', 'API Reference', 'Help Center']
 .footer-bottom {
   color: var(--text-muted);
   font-size: 11px;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
   text-transform: uppercase;
   letter-spacing: 0;
 }

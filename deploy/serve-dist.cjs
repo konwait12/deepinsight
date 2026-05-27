@@ -1,9 +1,14 @@
 const fs = require('node:fs')
 const http = require('node:http')
+const https = require('node:https')
 const path = require('node:path')
 
 const root = path.resolve(process.argv[2] || path.join(__dirname, 'dist'))
 const port = Number(process.argv[3] || process.env.PORT || 3000)
+const backendOrigin = process.env.BACKEND_URL || `http://localhost:${process.env.BACKEND_PORT || process.env.SERVER_PORT || 8080}`
+const backendUrl = new URL(backendOrigin)
+const backendClient = backendUrl.protocol === 'https:' ? https : http
+const proxyPrefixes = ['/api/', '/uploads/']
 
 const mimeTypes = {
   '.css': 'text/css; charset=utf-8',
@@ -28,8 +33,60 @@ function resolveRequest(urlPath) {
   return path.join(root, 'index.html')
 }
 
+function isProxyRequest(urlPath) {
+  return proxyPrefixes.some((prefix) => urlPath.startsWith(prefix))
+}
+
+function withoutHopByHopHeaders(headers) {
+  const nextHeaders = { ...headers }
+  for (const header of [
+    'connection',
+    'keep-alive',
+    'proxy-authenticate',
+    'proxy-authorization',
+    'te',
+    'trailer',
+    'transfer-encoding',
+    'upgrade',
+  ]) {
+    delete nextHeaders[header]
+  }
+  return nextHeaders
+}
+
+function proxyRequest(request, response) {
+  const target = new URL(request.url || '/', backendUrl)
+  const headers = withoutHopByHopHeaders(request.headers)
+  headers.host = target.host
+
+  const proxy = backendClient.request(
+    target,
+    {
+      method: request.method,
+      headers,
+    },
+    (proxyResponse) => {
+      response.writeHead(proxyResponse.statusCode || 502, withoutHopByHopHeaders(proxyResponse.headers))
+      proxyResponse.pipe(response)
+    },
+  )
+
+  proxy.on('error', (error) => {
+    response.writeHead(502, { 'Content-Type': 'application/json; charset=utf-8' })
+    response.end(JSON.stringify({ message: 'Backend proxy failed', detail: error.message }))
+  })
+
+  request.pipe(proxy)
+}
+
 const server = http.createServer((request, response) => {
-  const filePath = resolveRequest(request.url || '/')
+  const requestUrl = request.url || '/'
+  if (isProxyRequest(requestUrl)) {
+    proxyRequest(request, response)
+    return
+  }
+
+  const filePath = resolveRequest(requestUrl)
   if (!filePath || !fs.existsSync(filePath)) {
     response.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' })
     response.end('Not found')
@@ -43,4 +100,5 @@ const server = http.createServer((request, response) => {
 
 server.listen(port, () => {
   console.log(`Serving ${root} at http://localhost:${port}`)
+  console.log(`Proxying /api and /uploads to ${backendUrl.origin}`)
 })

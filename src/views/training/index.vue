@@ -420,26 +420,26 @@ onUnmounted(() => { if (pollTimer) clearInterval(pollTimer); });
 
 <style scoped>
 .training-page { padding: 24px; max-width: 1400px; margin: 0 auto }
-.page-header h2 { font-size: 22px; font-weight: 800; color: var(--text-primary); margin: 0 0 4px }
+.page-header h2 { font-size: 22px; font-weight: var(--font-weight-body); color: var(--text-primary); margin: 0 0 4px }
 .page-header p { font-size: 13px; color: var(--text-secondary); margin: 0 0 20px }
 .login-hint { border-radius: 20px; text-align: center; padding: 60px }
 .hint-content { display: flex; flex-direction: column; align-items: center; gap: 12px }
-.hint-content h3 { font-size: 18px; font-weight: 800; color: var(--text-primary); margin: 0 }
+.hint-content h3 { font-size: 18px; font-weight: var(--font-weight-body); color: var(--text-primary); margin: 0 }
 .hint-content p { font-size: 13px; color: var(--text-secondary); margin: 0 }
 .training-guide { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px }
 .training-guide article { position: relative; min-height: 112px; padding: 16px; border: 1px solid rgba(var(--primary-rgb), .14); border-radius: 18px; background: radial-gradient(circle at 12% 0%, rgba(var(--primary-rgb), .16), transparent 46%), color-mix(in srgb, var(--surface-1) 78%, transparent); overflow: hidden }
 .training-guide article::after { content: ""; position: absolute; right: -18px; bottom: -28px; width: 92px; height: 92px; border-radius: 50%; border: 1px solid rgba(var(--primary-rgb), .16) }
-.training-guide span { display: block; color: var(--primary-color); font-size: 11px; font-weight: 950; letter-spacing: .12em }
-.training-guide strong { display: block; margin-top: 10px; color: var(--text-primary); font-size: 15px; font-weight: 950 }
+.training-guide span { display: block; color: var(--primary-color); font-size: 11px; font-weight: var(--font-weight-title); letter-spacing: .12em }
+.training-guide strong { display: block; margin-top: 10px; color: var(--text-primary); font-size: 15px; font-weight: var(--font-weight-title) }
 .training-guide p { margin: 6px 0 0; color: var(--text-secondary); font-size: 12px; line-height: 1.55 }
 .step-section { margin-bottom: 16px }
-.step-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; font-size: 14px; font-weight: 800; color: var(--text-primary); margin-bottom: 12px }
+.step-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; font-size: 14px; font-weight: var(--font-weight-body); color: var(--text-primary); margin-bottom: 12px }
 .step-header > div { display: flex; align-items: center; flex-wrap: wrap; gap: 8px }
-.step-header small { width: 100%; margin-left: 30px; color: var(--text-muted); font-size: 11px; font-weight: 750; line-height: 1.45 }
-.step-badge { width: 22px; height: 22px; border-radius: 50%; background: var(--primary-color); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 900; flex-shrink: 0 }
+.step-header small { width: 100%; margin-left: 30px; color: var(--text-muted); font-size: 11px; font-weight: var(--font-weight-body); line-height: 1.45 }
+.step-badge { width: 22px; height: 22px; border-radius: 50%; background: var(--primary-color); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: var(--font-weight-title); flex-shrink: 0 }
 .selected-hint { font-size: 12px; color: var(--text-secondary); font-weight: 600 }
 .selected-hint strong { color: var(--primary-color) }
-.selected-model-name { font-size: 11px; color: var(--primary-color); font-weight: 700 }
+.selected-model-name { font-size: 11px; color: var(--primary-color); font-weight: var(--font-weight-body) }
 .model-scroll { display: flex; flex-wrap: wrap; gap: 8px }
 .model-chip { position: relative; display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 12px; border: 1px solid var(--border-color); background: var(--panel-bg); cursor: pointer; overflow: hidden; transition: border-color .2s ease, background .2s ease, box-shadow .2s ease, transform .2s ease }
 .model-chip:hover { border-color: rgba(var(--primary-rgb), 0.58); transform: translateY(-1px); box-shadow: 0 10px 24px rgba(var(--primary-rgb), 0.1) }
@@ -476,7 +476,7 @@ onUnmounted(() => { if (pollTimer) clearInterval(pollTimer); });
 }
 .chip-body { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; flex: 1; min-width: 0 }
 .chip-copy { display: grid; gap: 4px; min-width: 0; flex: 1 }
-.chip-name { font-size: 13px; font-weight: 700; color: var(--text-primary) }
+.chip-name { font-size: 13px; font-weight: var(--font-weight-body); color: var(--text-primary) }
 .chip-meta { font-size: 10px; color: var(--text-secondary) }
 .chip-desc { max-width: 420px; color: var(--text-muted); font-size: 10px; line-height: 1.45 }
 .chip-flag {
@@ -489,21 +489,21 @@ onUnmounted(() => { if (pollTimer) clearInterval(pollTimer); });
   background: rgba(var(--primary-rgb), 0.08);
   color: var(--primary-color);
   font-size: 9px;
-  font-weight: 700;
+  font-weight: var(--font-weight-body);
   line-height: 1.35;
 }
 .add-chip { border-style: dashed; opacity: .7 }
-.card-header { display: flex; align-items: center; gap: 8px; font-weight: 800; color: var(--text-primary) }
+.card-header { display: flex; align-items: center; gap: 8px; font-weight: var(--font-weight-body); color: var(--text-primary) }
 .stacked-card-header { display: grid; align-items: start; gap: 5px }
 .stacked-card-header > span { display: flex; align-items: center; gap: 8px }
-.stacked-card-header small { color: var(--text-muted); font-size: 11px; font-weight: 750; line-height: 1.45 }
+.stacked-card-header small { color: var(--text-muted); font-size: 11px; font-weight: var(--font-weight-body); line-height: 1.45 }
 .selected-model-card { margin-bottom: 14px; padding: 13px 14px; border: 1px solid rgba(var(--primary-rgb), .18); border-radius: 14px; background: linear-gradient(135deg, rgba(var(--primary-rgb), .12), transparent 66%), color-mix(in srgb, var(--surface-2) 70%, transparent) }
-.selected-model-card span { display: block; color: var(--text-muted); font-size: 10px; font-weight: 950; text-transform: uppercase }
-.selected-model-card strong { display: block; margin-top: 5px; color: var(--text-primary); font-size: 15px; font-weight: 950 }
-.selected-model-card em { display: block; margin-top: 4px; color: var(--text-secondary); font-size: 11px; font-style: normal; font-weight: 750 }
+.selected-model-card span { display: block; color: var(--text-muted); font-size: 10px; font-weight: var(--font-weight-title); text-transform: uppercase }
+.selected-model-card strong { display: block; margin-top: 5px; color: var(--text-primary); font-size: 15px; font-weight: var(--font-weight-title) }
+.selected-model-card em { display: block; margin-top: 4px; color: var(--text-secondary); font-size: 11px; font-style: normal; font-weight: var(--font-weight-body) }
 .chart-card-header { justify-content: space-between; align-items: flex-start }
 .chart-card-header span { display: flex; align-items: center; gap: 8px }
-.chart-card-header small { max-width: 320px; color: var(--text-muted); font-size: 11px; font-weight: 700; line-height: 1.45; text-align: right }
+.chart-card-header small { max-width: 320px; color: var(--text-muted); font-size: 11px; font-weight: var(--font-weight-body); line-height: 1.45; text-align: right }
 .config-card, .chart-card, .job-card { border-radius: 16px; margin-bottom: 16px }
 .chart-box { width: 100%; height: 300px }
 .metric-explainers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px }
@@ -511,12 +511,12 @@ onUnmounted(() => { if (pollTimer) clearInterval(pollTimer); });
 .metric-explainers strong { display: block; margin-bottom: 3px; color: var(--text-primary); font-size: 12px }
 .job-item { display: flex; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--border-color) }
 .job-info { width: 180px }
-.job-name { font-weight: 700; display: block; color: var(--text-primary) }
+.job-name { font-weight: var(--font-weight-body); display: block; color: var(--text-primary) }
 .job-model { font-size: 11px; color: var(--text-secondary) }
 .job-progress { flex: 1 }
 .job-meta { display: flex; gap: 12px; align-items: center; width: 200px; font-size: 12px; color: var(--text-primary) }
-.job-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; min-width: 150px }
-.job-actions :deep(.el-button) { padding: 5px 9px }
+.job-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; min-width: 190px }
+.job-actions :deep(.el-button) { min-height: 34px !important; padding: 6px 12px !important }
 .mt-4 { margin-top: 16px }
 @media (max-width: 980px) {
   .training-guide { grid-template-columns: repeat(2, minmax(0, 1fr)) }

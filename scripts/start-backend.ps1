@@ -26,21 +26,27 @@ function Test-JavaHome {
   return Test-Path -LiteralPath (Join-Path $Path "bin\java.exe")
 }
 
+function Resolve-JavaExe {
+  $home = @($env:DEEPINSIGHT_JAVA_HOME, $env:JAVA_HOME) |
+    Where-Object { Test-JavaHome $_ } |
+    Select-Object -First 1
+
+  if ($home) {
+    $env:JAVA_HOME = $home
+    return Join-Path $home "bin\java.exe"
+  }
+
+  $java = Get-Command java -CommandType Application -ErrorAction SilentlyContinue
+  if ($java) { return $java.Source }
+
+  throw "No usable Java runtime found. Install JDK 21, add java.exe to PATH, or set DEEPINSIGHT_JAVA_HOME."
+}
+
 Import-EnvFile (Join-Path $repoRoot ".env.local")
 Import-EnvFile (Join-Path $backendDir ".env.local")
 
-$javaHomeCandidates = @(
-  $env:DEEPINSIGHT_JAVA_HOME,
-  "D:\jdk\java21",
-  $env:JAVA_HOME
-) | Where-Object { Test-JavaHome $_ } | Select-Object -Unique
-
-if ($javaHomeCandidates.Count -eq 0) {
-  throw "No usable Java home found. Install JDK 21 or set DEEPINSIGHT_JAVA_HOME."
-}
-
-$env:JAVA_HOME = $javaHomeCandidates[0]
-$env:PATH = (Join-Path $env:JAVA_HOME "bin") + ";" + $env:PATH
+$javaExe = Resolve-JavaExe
+$env:PATH = (Split-Path -Parent $javaExe) + ";" + $env:PATH
 
 Set-Location -LiteralPath $backendDir
 & $mvnw "spring-boot:run" *> $logFile

@@ -8,7 +8,7 @@
       <ShaderField
         class="hero-shader-field"
         variant="hero"
-        :dark="true"
+        :dark="themeStore.isDarkMode"
         :paused="false"
         :speed="0.88"
         :dot-spacing="14"
@@ -21,6 +21,19 @@
         :dpr-cap="1.35"
       />
       <div class="hero-grid" aria-hidden="true"></div>
+      <div class="hero-day-map" aria-hidden="true">
+        <span class="map-line line-1"></span>
+        <span class="map-line line-2"></span>
+        <span class="map-line line-3"></span>
+        <span class="map-line line-4"></span>
+        <span class="map-line line-5"></span>
+        <span class="map-node node-1"></span>
+        <span class="map-node node-2"></span>
+        <span class="map-node node-3"></span>
+        <span class="map-node node-4"></span>
+        <span class="map-node node-5"></span>
+        <span class="map-node node-6"></span>
+      </div>
 
       <div class="hero-shell entrance-hero">
         <div class="hero-kicker">
@@ -32,7 +45,7 @@
           <ShinyText
             text="DeepInsight"
             class-name="hero-shiny-title"
-            color="rgba(248, 253, 255, 0.92)"
+            :color="themeStore.isDarkMode ? 'rgba(248, 253, 255, 0.92)' : 'rgba(18, 24, 31, 0.94)'"
             shine-color="var(--primary-color)"
             :speed="1.35"
             :delay="0.18"
@@ -98,7 +111,7 @@
     </section>
 
     <section id="work" class="fluid-stage-band" aria-label="DeepInsight fluid glass preview">
-      <FluidGlassStage :dark="true" />
+      <FluidGlassStage :dark="themeStore.isDarkMode" />
     </section>
 
     <section class="section-band narrative-band">
@@ -168,6 +181,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth.store'
+import { useThemeStore } from '@/stores/theme.store'
 import FluidGlassStage from '@/components/effects/FluidGlassStage.vue'
 import ShaderField from '@/components/effects/ShaderField.vue'
 import ShinyText from '@/components/effects/ShinyText.vue'
@@ -222,6 +236,7 @@ type LandingCopy = {
 
 const router = useRouter()
 const authStore = useAuthStore()
+const themeStore = useThemeStore()
 const { locale } = useI18n()
 const landingRootRef = ref<HTMLElement | null>(null)
 const workCardPointers = ref([
@@ -494,6 +509,17 @@ onUnmounted(() => {
   --tilt-x: 0deg;
   --tilt-y: 0deg;
   --flowing-menu-bg: var(--surface-solid);
+  --landing-day-wash: color-mix(in srgb, var(--primary-color) 6%, #dbeafe);
+  --landing-day-glow: color-mix(in srgb, var(--accent-glow) 10%, transparent);
+  --landing-day-ink: rgba(30, 41, 59, 0.055);
+  --landing-day-line: rgba(71, 85, 105, 0.12);
+}
+
+:global(html.light .di-landing) {
+  background:
+    radial-gradient(1080px circle at 86% 10%, var(--landing-day-glow), transparent 58%),
+    radial-gradient(920px circle at 12% 36%, color-mix(in srgb, var(--landing-day-wash) 34%, transparent), transparent 62%),
+    linear-gradient(180deg, #f8fafc 0%, var(--bg-color) 34%, #f6f8fc 100%);
 }
 
 .di-landing,
@@ -513,7 +539,8 @@ onUnmounted(() => {
 }
 
 .hero-shader-field,
-.hero-grid {
+.hero-grid,
+.hero-day-map {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -528,10 +555,13 @@ onUnmounted(() => {
   -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,0.95), rgba(0,0,0,0.74) 76%, rgba(0,0,0,0.22) 96%, transparent 100%);
 }
 
-:global(.light) .hero-shader-field {
-  display: none !important;
-  opacity: 0.44;
+:global(html.light .hero-shader-field) {
+  display: block !important;
+  opacity: 0.34;
   mix-blend-mode: normal;
+  filter: saturate(84%) contrast(102%);
+  mask-image: linear-gradient(180deg, rgba(0,0,0,0.62), rgba(0,0,0,0.42) 60%, rgba(0,0,0,0.12) 92%, transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,0.62), rgba(0,0,0,0.42) 60%, rgba(0,0,0,0.12) 92%, transparent 100%);
 }
 
 .hero-grid {
@@ -543,11 +573,12 @@ onUnmounted(() => {
   mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.88), rgba(0, 0, 0, 0.76) 78%, rgba(0, 0, 0, 0.18) 96%, transparent 100%);
 }
 
-:global(.light) .hero-grid {
-  opacity: 0.38;
+:global(html.light .hero-grid) {
+  opacity: 0.5;
   background-image:
-    linear-gradient(90deg, rgba(var(--primary-rgb), 0.025) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(var(--primary-rgb), 0.02) 1px, transparent 1px);
+    linear-gradient(90deg, rgba(15, 23, 42, 0.035) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(71, 85, 105, 0.026) 1px, transparent 1px);
+  background-size: 68px 68px;
 }
 
 .hero-grid::before {
@@ -568,11 +599,11 @@ onUnmounted(() => {
   animation: perspective-grid-drift 18s linear infinite;
 }
 
-:global(.light) .hero-grid::before {
-  opacity: 0.18;
+:global(html.light .hero-grid::before) {
+  opacity: 0.26;
   background-image:
-    linear-gradient(90deg, rgba(var(--primary-rgb), 0.045) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(var(--primary-rgb), 0.032) 1px, transparent 1px);
+    linear-gradient(90deg, rgba(71, 85, 105, 0.05) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(15, 23, 42, 0.032) 1px, transparent 1px);
 }
 
 .hero-grid::after {
@@ -585,9 +616,10 @@ onUnmounted(() => {
   opacity: 0.72;
 }
 
-:global(.light) .hero-grid::after {
-  opacity: 0.24;
-  box-shadow: 0 0 14px rgba(var(--primary-rgb), 0.12);
+:global(html.light .hero-grid::after) {
+  background: linear-gradient(90deg, transparent, rgba(96, 165, 250, 0.24), rgba(var(--primary-rgb), 0.12), transparent);
+  opacity: 0.34;
+  box-shadow: 0 0 22px rgba(96, 165, 250, 0.1);
 }
 
 .hero-section::after {
@@ -601,11 +633,103 @@ onUnmounted(() => {
     linear-gradient(180deg, transparent 58%, var(--bg-color));
 }
 
-:global(.light) .hero-section::after {
+:global(html.light .hero-section::after) {
   background:
-    radial-gradient(620px circle at var(--mx) var(--my), rgba(var(--primary-rgb), 0.1), transparent 50%),
-    linear-gradient(180deg, transparent 48%, var(--bg-color));
+    radial-gradient(680px circle at var(--mx) var(--my), rgba(var(--primary-rgb), 0.055), transparent 54%),
+    radial-gradient(860px circle at 78% 26%, color-mix(in srgb, var(--accent-glow) 11%, transparent), transparent 58%),
+    radial-gradient(820px circle at 18% 14%, rgba(148, 163, 184, 0.08), transparent 58%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.44), transparent 44%, var(--bg-color));
 }
+
+.hero-day-map {
+  z-index: -3;
+  display: none;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+:global(html.light .hero-day-map) {
+  display: block;
+  background:
+    radial-gradient(720px circle at 68% 32%, rgba(96, 165, 250, 0.085), transparent 58%),
+    radial-gradient(520px circle at 24% 72%, color-mix(in srgb, var(--accent-glow) 7%, transparent), transparent 62%),
+    repeating-linear-gradient(118deg, transparent 0 28px, rgba(15, 23, 42, 0.018) 29px 30px, transparent 31px 72px);
+  opacity: 0.72;
+  mask-image: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.44) 20%, rgba(0, 0, 0, 0.74) 48%, rgba(0, 0, 0, 0.66) 92%, transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.44) 20%, rgba(0, 0, 0, 0.74) 48%, rgba(0, 0, 0, 0.66) 92%, transparent 100%);
+}
+
+.map-line,
+.map-node {
+  position: absolute;
+  display: block;
+}
+
+.map-line {
+  height: 1px;
+  transform-origin: left center;
+  background: linear-gradient(90deg, transparent, rgba(96, 165, 250, 0.22), rgba(var(--primary-rgb), 0.13), transparent);
+  box-shadow: 0 0 18px rgba(96, 165, 250, 0.08);
+  animation: day-map-scan 8.8s ease-in-out infinite;
+}
+
+.line-1 {
+  width: 36vw;
+  top: 26%;
+  left: 46%;
+  transform: rotate(-15deg);
+}
+
+.line-2 {
+  width: 30vw;
+  top: 40%;
+  left: 55%;
+  transform: rotate(13deg);
+  animation-delay: 900ms;
+}
+
+.line-3 {
+  width: 42vw;
+  top: 58%;
+  left: 34%;
+  transform: rotate(-4deg);
+  animation-delay: 1600ms;
+}
+
+.line-4 {
+  width: 28vw;
+  top: 70%;
+  left: 60%;
+  transform: rotate(-22deg);
+  animation-delay: 2400ms;
+}
+
+.line-5 {
+  width: 34vw;
+  top: 18%;
+  left: 66%;
+  transform: rotate(48deg);
+  animation-delay: 3200ms;
+}
+
+.map-node {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary-color) 42%, #60a5fa);
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  box-shadow:
+    0 0 0 8px rgba(96, 165, 250, 0.055),
+    0 0 28px rgba(96, 165, 250, 0.16);
+  animation: day-node-pulse 3.8s ease-in-out infinite;
+}
+
+.node-1 { left: 49%; top: 25%; }
+.node-2 { left: 71%; top: 31%; animation-delay: 420ms; }
+.node-3 { left: 58%; top: 44%; animation-delay: 760ms; }
+.node-4 { left: 79%; top: 57%; animation-delay: 1100ms; }
+.node-5 { left: 44%; top: 66%; animation-delay: 1500ms; }
+.node-6 { left: 88%; top: 22%; animation-delay: 1900ms; }
 
 .hero-shell {
   max-width: 920px;
@@ -620,7 +744,7 @@ onUnmounted(() => {
 .feed-header {
   font-size: 12px;
   line-height: 1;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
   letter-spacing: 0;
   text-transform: uppercase;
   color: var(--text-secondary);
@@ -655,7 +779,7 @@ p {
   overflow: visible;
   font-size: 96px;
   line-height: 1.08;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   letter-spacing: 0;
 }
 
@@ -670,12 +794,17 @@ p {
 .hero-copy {
   max-width: 700px;
   margin-top: 22px;
-  color: color-mix(in srgb, #ffffff 72%, var(--primary-color));
+  color: color-mix(in srgb, var(--text-primary) 78%, var(--primary-color));
   font-size: 20px;
   line-height: 1.62;
   text-shadow:
     0 0 22px rgba(var(--primary-rgb), 0.14),
     0 2px 12px rgba(0, 0, 0, 0.28);
+}
+
+:global(html.light .hero-copy) {
+  color: color-mix(in srgb, var(--text-secondary) 82%, var(--primary-color));
+  text-shadow: 0 12px 32px rgba(var(--primary-rgb), 0.12);
 }
 
 .hero-code-ribbon,
@@ -700,7 +829,7 @@ p {
   color: var(--text-secondary);
   font-family: "JetBrains Mono", Consolas, monospace;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: var(--font-weight-body);
   white-space: nowrap;
   backdrop-filter: blur(12px);
 }
@@ -731,7 +860,7 @@ p {
   border: 1px solid var(--border-strong);
   font: inherit;
   font-size: 14px;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
   color: var(--text-primary);
   background: var(--surface-2);
   cursor: pointer;
@@ -903,6 +1032,13 @@ p {
     );
 }
 
+:global(html.light .fluid-stage-band) {
+  background:
+    radial-gradient(1100px circle at 24% 38%, rgba(96, 165, 250, 0.13), transparent 58%),
+    radial-gradient(900px circle at 80% 22%, color-mix(in srgb, var(--accent-glow) 10%, transparent), transparent 60%),
+    linear-gradient(180deg, #f7f9fd 0%, var(--bg-color) 54%, color-mix(in srgb, var(--surface-1) 74%, #eef3fb) 100%);
+}
+
 .fluid-stage-band :deep(.fluid-glass-stage) {
   min-height: clamp(1780px, 258svh, 2520px);
 }
@@ -935,7 +1071,7 @@ p {
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.35;
-  font-weight: 850;
+  font-weight: var(--font-weight-label);
   overflow-wrap: anywhere;
 }
 
@@ -955,7 +1091,7 @@ p {
   margin-top: 14px;
   font-size: 46px;
   line-height: 1.08;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
   letter-spacing: 0;
 }
 
@@ -963,6 +1099,12 @@ p {
   background:
     radial-gradient(680px circle at var(--mx) var(--my), rgba(var(--primary-rgb), 0.09), transparent 42%),
     var(--bg-color);
+}
+
+:global(html.light .work-band) {
+  background:
+    radial-gradient(680px circle at var(--mx) var(--my), rgba(96, 165, 250, 0.075), transparent 42%),
+    linear-gradient(180deg, #f8fafc 0%, var(--bg-color) 100%);
 }
 
 .work-grid {
@@ -1099,7 +1241,7 @@ p {
   margin-bottom: 14px;
   color: var(--text-muted);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
 }
 
 .work-card-copy h3 {
@@ -1147,7 +1289,7 @@ p {
 
 .flow-index {
   color: var(--text-muted);
-  font-weight: 900;
+  font-weight: var(--font-weight-title);
 }
 
 .flow-step h3 {
@@ -1168,6 +1310,13 @@ p {
   background:
     radial-gradient(520px circle at 84% 16%, rgba(var(--primary-rgb), 0.1), transparent 44%),
     var(--bg-color);
+}
+
+:global(html.light .studio-band) {
+  background:
+    radial-gradient(560px circle at 84% 16%, rgba(96, 165, 250, 0.08), transparent 46%),
+    radial-gradient(680px circle at 16% 82%, color-mix(in srgb, var(--primary-color) 5%, transparent), transparent 58%),
+    linear-gradient(180deg, var(--bg-color), #f8fafc);
 }
 
 .studio-wall {
@@ -1202,6 +1351,15 @@ p {
     radial-gradient(circle at 68% 38%, rgba(var(--primary-rgb), 0.18), transparent 28%),
     var(--surface-3);
   background-size: auto, 42px 42px, 42px 42px, auto, auto;
+}
+
+:global(html.light .feed-screen) {
+  background:
+    radial-gradient(300px circle at var(--mx) var(--my), rgba(96, 165, 250, 0.12), transparent 40%),
+    linear-gradient(90deg, rgba(71, 85, 105, 0.06) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(71, 85, 105, 0.06) 1px, transparent 1px),
+    radial-gradient(circle at 68% 38%, color-mix(in srgb, var(--primary-color) 8%, transparent), transparent 28%),
+    var(--surface-3);
 }
 
 .signal-map span {
@@ -1263,6 +1421,12 @@ p {
   background: var(--surface-solid);
 }
 
+:global(html.light .closing-band) {
+  background:
+    radial-gradient(760px circle at 82% 28%, rgba(96, 165, 250, 0.08), transparent 58%),
+    linear-gradient(180deg, var(--surface-solid), #f8fafc);
+}
+
 .closing-band h2 {
   max-width: 780px;
 }
@@ -1312,6 +1476,30 @@ p {
   }
 }
 
+@keyframes day-map-scan {
+  0%,
+  100% {
+    opacity: 0.32;
+    filter: blur(0);
+  }
+  48% {
+    opacity: 0.82;
+    filter: blur(0.2px);
+  }
+}
+
+@keyframes day-node-pulse {
+  0%,
+  100% {
+    opacity: 0.56;
+    transform: translate3d(0, 0, 0) scale(0.92);
+  }
+  50% {
+    opacity: 1;
+    transform: translate3d(0, -2px, 0) scale(1.12);
+  }
+}
+
 @keyframes work-node-pulse {
   0%,
   100% {
@@ -1351,6 +1539,21 @@ p {
     min-height: auto;
     padding: 84px 18px 34px;
     gap: 24px;
+  }
+
+  :global(html.light .hero-day-map) {
+    opacity: 0.52;
+    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.46), rgba(0, 0, 0, 0.24) 70%, transparent 100%);
+    -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.46), rgba(0, 0, 0, 0.24) 70%, transparent 100%);
+  }
+
+  .map-line {
+    opacity: 0.58;
+  }
+
+  .map-node {
+    width: 8px;
+    height: 8px;
   }
 
   .hero-shell h1 {

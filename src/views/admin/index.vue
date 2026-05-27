@@ -190,12 +190,12 @@ onMounted(async () => {
 .denied h2 { color: var(--text-primary); margin: 16px 0 8px; }
 .denied p { margin: 0 0 20px; }
 .admin-header { margin-bottom: 20px; }
-.admin-header h1 { font-size: 24px; font-weight: 900; color: var(--text-primary); margin: 0 0 8px; }
+.admin-header h1 { font-size: 24px; font-weight: var(--font-weight-title); color: var(--text-primary); margin: 0 0 8px; }
 .header-info { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--text-secondary); }
 .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .dot.online { background: #4ade80; }
 .stat-chip { background: var(--bg-input); padding: 2px 8px; border-radius: 6px; font-size: 11px; }
 .admin-tabs { border-radius: 16px; overflow: hidden; }
-.section-title { font-size: 13px; font-weight: 800; color: var(--text-primary); margin: 8px 0 8px; }
+.section-title { font-size: 13px; font-weight: var(--font-weight-body); color: var(--text-primary); margin: 8px 0 8px; }
 .mt-4 { margin-top: 16px }
 </style>
