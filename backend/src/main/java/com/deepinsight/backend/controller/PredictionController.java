@@ -14,6 +14,7 @@ import java.util.*;
 public class PredictionController {
 
     private final ModelRegistryRepository modelRepository;
+    private final com.deepinsight.backend.service.BSARecClientService bsarecClientService;
 
     private static final String[] IMAGE_LABELS = {
         "golden retriever", "tabby cat", "german shepherd", "siberian husky",
@@ -88,13 +89,37 @@ public class PredictionController {
         return Result.success(result);
     }
 
+    @PostMapping("/recommend")
+    public Result<Map<String, Object>> recommend(@RequestBody Map<String, Object> request) {
+        return Result.success(bsarecClientService.recommend(request));
+    }
+
     @GetMapping("/models")
     public Result<List<Map<String, Object>>> listModels() {
-        List<Map<String, Object>> models = modelRepository.findByIsOfficialTrueOrderByNameAsc()
+        List<Map<String, Object>> models = new ArrayList<>(modelRepository.findByIsOfficialTrueOrderByNameAsc()
             .stream()
             .map(this::modelToMap)
-            .toList();
+            .toList());
+        models.add(bsarecModel());
         return Result.success(models);
+    }
+
+    private Map<String, Object> bsarecModel() {
+        Map<String, Object> entry = new LinkedHashMap<>();
+        entry.put("id", -1001);
+        entry.put("name", "BSARec-Job");
+        entry.put("displayNameZh", "BSARec 岗位推荐模型");
+        entry.put("taskType", "recommendation");
+        entry.put("taskTypeZh", "推荐系统");
+        entry.put("params", "0.2M");
+        entry.put("paramCountM", 0.2);
+        entry.put("inputSize", "50 item ids");
+        entry.put("framework", "pytorch/cpu");
+        entry.put("description", "BSARec sequential recommendation model served by the local Flask API.");
+        entry.put("descriptionZh", "通过本地 Flask API 提供 CPU 推理的 BSARec 序列推荐模型。");
+        entry.put("isOfficial", true);
+        entry.put("integrationType", "external-api");
+        return entry;
     }
 
     private Map<String, Object> modelToMap(ModelRegistry model) {

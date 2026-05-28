@@ -41,6 +41,7 @@ public final class Constants {
         "/api/v1/auth/**",
         "/api/v1/forum/**",
         "/api/v1/models/articles/**",
+        "/api/v1/prediction/recommend",
         "/uploads/forum/**",
         "/uploads/runs/**"
     };
@@ -48,7 +49,8 @@ public final class Constants {
     /** 公开只读接口（仅 GET 请求无需 JWT 认证） */
     public static final String[] PUBLIC_GET_PATHS = {
         "/api/v1/models",
-        "/api/v1/models/official"
+        "/api/v1/models/official",
+        "/api/v1/prediction/models"
     };
 
     // ==================== 用户角色 ====================

@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Principal;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -55,11 +56,12 @@ public class ModelController {
             userModels = repository.findByCreatedByOrderByNameAsc(uid);
         }
 
-        List<Map<String, Object>> officialWithArticles = official.stream().map(model -> {
+        List<Map<String, Object>> officialWithArticles = new ArrayList<>(official.stream().map(model -> {
             Map<String, Object> map = modelToMap(model);
             articleRepository.findByModelId(model.getId()).ifPresent(article -> map.put("articleId", article.getId()));
             return map;
-        }).toList();
+        }).toList());
+        officialWithArticles.add(bsarecModel());
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("official", officialWithArticles);
@@ -123,6 +125,27 @@ public class ModelController {
     public Result<String> seedOfficialModels(Principal principal) {
         if (!isAdmin(principal)) return Result.error(403, "Admin required");
         return Result.success(modelCatalogService.seedOfficialModels());
+    }
+
+    private Map<String, Object> bsarecModel() {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", -1001);
+        map.put("name", "BSARec-Job");
+        map.put("displayNameZh", "BSARec 岗位推荐模型");
+        map.put("taskType", "recommendation");
+        map.put("taskTypeZh", "推荐系统");
+        map.put("paramCountM", 0.2);
+        map.put("inputSize", "50 item ids");
+        map.put("framework", "pytorch/cpu");
+        map.put("isOfficial", true);
+        map.put("official", true);
+        map.put("readOnly", true);
+        map.put("canManage", false);
+        map.put("canSync", false);
+        map.put("description", "BSARec sequential recommendation model served by the local Flask API.");
+        map.put("descriptionZh", "通过本地 Flask API 提供 CPU 推理的 BSARec 序列推荐模型。");
+        map.put("integrationType", "external-api");
+        return map;
     }
 
     private Map<String, Object> modelToMap(ModelRegistry model) {

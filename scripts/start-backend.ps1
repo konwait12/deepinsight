@@ -27,13 +27,13 @@ function Test-JavaHome {
 }
 
 function Resolve-JavaExe {
-  $home = @($env:DEEPINSIGHT_JAVA_HOME, $env:JAVA_HOME) |
+  $javaHome = @($env:DEEPINSIGHT_JAVA_HOME, $env:JAVA_HOME) |
     Where-Object { Test-JavaHome $_ } |
     Select-Object -First 1
 
-  if ($home) {
-    $env:JAVA_HOME = $home
-    return Join-Path $home "bin\java.exe"
+  if ($javaHome) {
+    $env:JAVA_HOME = $javaHome
+    return Join-Path $javaHome "bin\java.exe"
   }
 
   $java = Get-Command java -CommandType Application -ErrorAction SilentlyContinue

@@ -11,4 +11,8 @@ export const predictionApi = {
   classify(data: { model: string }) {
     return apiClient.post<ApiResponse<any>>(API_ENDPOINTS.PREDICTION.CLASSIFY, data)
   },
+
+  recommend(data: { user_history: number[]; user_id?: string; top_k?: number; include_job_info?: boolean }) {
+    return apiClient.post<ApiResponse<any>>(API_ENDPOINTS.PREDICTION.RECOMMEND, data)
+  },
 }

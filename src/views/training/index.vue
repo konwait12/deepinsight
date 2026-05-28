@@ -1,740 +1,1238 @@
 <template>
   <div class="training-page">
-    <div class="page-header entrance-hero"><h2>{{ $t('nav.training') }}</h2><p>{{ $t('training.subtitle') }}</p></div>
+    <div class="page-header entrance-hero">
+      <div>
+        <span class="hierarchy-eyebrow">{{ copy.eyebrow }}</span>
+        <h2>{{ $t('nav.training') }}</h2>
+        <p>{{ $t('training.subtitle') }}</p>
+      </div>
+      <div v-if="isLoggedIn" class="header-count">
+        <strong>{{ modelCatalog.length }}</strong>
+        <span>{{ copy.modelCount }}</span>
+      </div>
+    </div>
 
     <el-card v-if="!isLoggedIn" shadow="never" class="login-hint">
       <div class="hint-content">
-        <el-icon :size="40"><WarningFilled /></el-icon>
-        <h3>{{ pageText.loginRequired }}</h3>
-        <p>{{ pageText.loginRequiredDesc }}</p>
-        <el-button type="primary" @click="$router.push('/login')" :style="{backgroundColor:'var(--primary-color)'}">{{ pageText.goLogin }}</el-button>
+        <AlertCircle :size="40" />
+        <h3>{{ copy.loginRequired }}</h3>
+        <p>{{ copy.loginRequiredDesc }}</p>
+        <el-button type="primary" @click="$router.push('/login')" :style="{ backgroundColor: 'var(--primary-color)' }">
+          {{ copy.goLogin }}
+        </el-button>
       </div>
     </el-card>
 
-    <template v-else>
-      <section class="training-guide entrance-up">
-        <article v-for="step in trainingGuide" :key="step.title">
-          <span>{{ step.index }}</span>
-          <strong>{{ step.title }}</strong>
-          <p>{{ step.desc }}</p>
-        </article>
-      </section>
-
-      <div class="model-step-section entrance-up" style="animation-delay: 0.1s">
-        <div class="step-header">
-          <div>
-            <span class="step-badge">1</span>
-            <span>{{ pageText.selectModel }}</span>
-            <small>{{ pageText.selectModelHint }}</small>
-          </div>
-          <span v-if="selectedModel" class="selected-hint">{{ pageText.selected }}: <strong>{{ selectedModelLabel }}</strong></span>
+    <section v-else class="model-overview-shell entrance-up">
+      <aside class="model-directory" :aria-label="copy.modelDirectory">
+        <div class="directory-head">
+          <span>{{ copy.modelDirectory }}</span>
+          <strong>{{ copy.clickHint }}</strong>
         </div>
-        <div class="model-browser">
-          <aside class="model-group-menu" :aria-label="pageText.modelScope">
-            <button
-              v-for="group in modelGroupTabs"
-              :key="group.key"
-              type="button"
-              class="model-group-tab"
-              :class="{ active: activeModelGroup === group.key }"
-              @click="selectModelGroup(group.key)"
-            >
-              <span class="group-copy">
-                <strong>{{ group.label }}</strong>
-                <small>{{ group.desc }}</small>
-              </span>
-              <em>{{ group.count }}</em>
-            </button>
+
+        <div class="directory-list">
+          <button
+            v-for="model in modelCatalog"
+            :key="model.id"
+            type="button"
+            class="model-entry"
+            :class="{ active: selectedModelId === model.id }"
+            :style="accentStyle(model)"
+            :aria-pressed="selectedModelId === model.id"
+            @click="selectedModelId = model.id"
+          >
+            <span class="entry-glyph" :class="`visual-${model.visual}`" aria-hidden="true">
+              <component :is="model.icon" :size="24" />
+            </span>
+            <span class="entry-copy">
+              <strong>{{ displayName(model) }}</strong>
+              <small>{{ model.slug }}</small>
+              <em>{{ displayTask(model) }}</em>
+            </span>
+            <span class="entry-status" :class="`status-${model.evidenceLevel}`">
+              {{ selectedModelId === model.id ? copy.viewing : model.status }}
+            </span>
+          </button>
+        </div>
+      </aside>
+
+      <main v-if="selectedModel" class="model-detail" :style="accentStyle(selectedModel)">
+        <section class="model-evaluation-hero">
+          <div class="model-identity">
+            <div class="model-mark" :class="`visual-${selectedModel.visual}`" aria-hidden="true">
+              <component :is="selectedModel.icon" :size="34" />
+              <span>{{ selectedModel.mark }}</span>
+            </div>
+            <div>
+              <span class="model-kicker">{{ selectedModel.source }}</span>
+              <h3>{{ displayName(selectedModel) }}</h3>
+              <p>{{ displayDescription(selectedModel) }}</p>
+              <div class="hero-badges">
+                <span>{{ selectedModel.status }}</span>
+                <span>{{ selectedModel.integration }}</span>
+                <span>{{ selectedModel.metricStatus }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="model-facts">
+            <article v-for="fact in selectedModel.profile" :key="fact.label">
+              <span>{{ fact.label }}</span>
+              <strong>{{ fact.value }}</strong>
+              <small>{{ fact.basis }}</small>
+            </article>
+          </div>
+        </section>
+
+        <section class="metric-band">
+          <article
+            v-for="metric in selectedModel.metrics"
+            :key="metric.label"
+            class="metric-tile"
+            :class="{ muted: !metric.available }"
+          >
+            <div>
+              <span>{{ metric.label }}</span>
+              <strong>{{ metric.value }}</strong>
+            </div>
+            <div v-if="metric.available" class="metric-bar" :aria-label="metric.label">
+              <i :style="{ width: metric.percent + '%' }"></i>
+            </div>
+            <p>{{ metric.explain }}</p>
+            <small>{{ metric.basis }}</small>
+          </article>
+        </section>
+
+        <section class="overview-workbench">
+          <div class="parameter-panel">
+            <div class="section-heading">
+              <span>{{ copy.parameterMethods }}</span>
+              <strong>{{ copy.parameterMethodsTitle }}</strong>
+            </div>
+
+            <div class="method-list">
+              <article v-for="param in selectedModel.parameterMethods" :key="param.name">
+                <header>
+                  <code>{{ param.name }}</code>
+                  <strong>{{ param.currentValue }}</strong>
+                </header>
+                <p>{{ param.changeMethod }}</p>
+                <div class="method-meta">
+                  <span>{{ param.whenToAdjust }}</span>
+                  <small>{{ param.basis }}</small>
+                </div>
+              </article>
+            </div>
+          </div>
+
+          <aside class="detail-side">
+            <section class="service-card">
+              <div class="section-heading compact">
+                <span>{{ copy.serviceFlow }}</span>
+                <strong>{{ selectedModel.flowTitle }}</strong>
+              </div>
+              <ol>
+                <li v-for="step in selectedModel.flow" :key="step">{{ step }}</li>
+              </ol>
+            </section>
+
+            <section class="guardrail-card">
+              <div class="section-heading compact">
+                <span>{{ copy.noFakeData }}</span>
+                <strong>{{ selectedModel.guardrailTitle }}</strong>
+              </div>
+              <p>{{ selectedModel.guardrail }}</p>
+              <div class="evidence-pills">
+                <span v-for="pill in selectedModel.evidencePills" :key="pill">{{ pill }}</span>
+              </div>
+            </section>
           </aside>
-
-          <div class="model-results-panel">
-            <div class="model-filter-bar">
-              <div class="task-filter-list" :aria-label="pageText.modelTaskFilter">
-                <button
-                  v-for="task in taskFilterTabs"
-                  :key="task.key"
-                  type="button"
-                  class="task-filter-btn"
-                  :class="{ active: activeTaskType === task.key }"
-                  @click="selectTaskFilter(task.key)"
-                >
-                  <span>{{ task.label }}</span>
-                  <em>{{ task.count }}</em>
-                </button>
-              </div>
-              <button type="button" class="model-register-btn" @click="showAddModel = true">
-                <span>+</span>
-                {{ pageText.registerModel }}
-              </button>
-            </div>
-
-            <div class="model-result-head">
-              <span>{{ activeModelGroupLabel }} / {{ activeTaskFilterLabel }}</span>
-              <em>{{ pageText.modelsCount.replace('{count}', String(filteredModelOptions.length)) }}</em>
-            </div>
-
-            <div v-if="filteredModelOptions.length" class="model-grid stagger-fast">
-              <div v-for="m in filteredModelOptions" :key="m.id||m.name" class="model-chip" :class="{ active: selectedModel===m.name }">
-                <span class="chip-body" @click="selectModel(m)">
-                  <span class="chip-copy">
-                    <span class="chip-name">{{ displayModelName(m) }}</span>
-                    <span class="chip-meta">{{ formatParams(m) }} · {{ displayTaskType(m) }}</span>
-                    <span v-if="displayModelDesc(m)" class="chip-desc">{{ displayModelDesc(m) }}</span>
-                  </span>
-                  <span v-if="m.isOfficial" class="chip-flag">{{ pageText.official }}</span>
-                  <span v-else class="chip-flag custom-flag">{{ pageText.custom }}</span>
-                </span>
-                <el-button v-if="m.articleId" link size="small" class="learn-btn" @click.stop="openModelArticle(m.articleId)"><el-icon><Document /></el-icon></el-button>
-              </div>
-            </div>
-
-            <div v-else class="model-empty-state">
-              <strong>{{ pageText.noModelsInFilter }}</strong>
-              <span>{{ activeModelGroup === 'custom' ? pageText.customEmptyHint : pageText.switchModelFilter }}</span>
-              <button v-if="activeModelGroup === 'custom'" type="button" @click="showAddModel = true">{{ pageText.registerModel }}</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <el-row :gutter="20" class="mt-4">
-        <el-col :span="8" class="entrance-up" style="animation-delay: 0.15s">
-          <el-card shadow="never" class="config-card">
-            <template #header>
-              <div class="card-header stacked-card-header">
-                <span><span class="step-badge">2</span> {{ pageText.config }}</span>
-                <small>{{ pageText.configHint }}</small>
-              </div>
-            </template>
-            <div class="selected-model-card" v-if="selectedModelOption">
-              <span>{{ pageText.currentModel }}</span>
-              <strong>{{ selectedModelLabel }}</strong>
-              <em>{{ formatParams(selectedModelOption) }} · {{ displayTaskType(selectedModelOption) }} · {{ selectedModelOption.framework || 'PyTorch' }}</em>
-            </div>
-            <el-form label-position="top" size="small">
-              <el-form-item :label="pageText.jobName"><el-input v-model="jobName"/></el-form-item>
-              <el-form-item :label="metricLabel('learningRate')"><el-input v-model.number="lr" type="number" step="0.0001"/></el-form-item>
-              <el-form-item :label="pageText.batchSize"><el-input v-model.number="bs" type="number"/></el-form-item>
-              <el-form-item :label="pageText.epochs"><el-slider v-model="epochs" :min="1" :max="500" show-input style="width:100%"/></el-form-item>
-              <el-form-item :label="pageText.optimizer"><el-select v-model="optimizer" style="width:100%"><el-option label="Adam" value="adam"/><el-option label="SGD" value="sgd"/><el-option label="AdamW" value="adamw"/><el-option label="RMSprop" value="rmsprop"/></el-select></el-form-item>
-              <el-form-item :label="pageText.device"><el-radio-group v-model="device"><el-radio label="cpu">CPU</el-radio><el-radio label="cuda:0">GPU:0</el-radio></el-radio-group></el-form-item>
-              <el-form-item><el-button type="primary" @click="startTraining" :loading="submitting" :disabled="!selectedModel" style="width:100%" :style="{ backgroundColor:'var(--primary-color)' }"><el-icon><VideoPlay /></el-icon> {{ pageText.start }}</el-button></el-form-item>
-            </el-form>
-          </el-card>
-        </el-col>
-        <el-col :span="16" class="entrance-up" style="animation-delay: 0.22s">
-          <el-card shadow="never" class="chart-card mb-4">
-            <template #header>
-              <div class="card-header chart-card-header">
-                <span><span class="step-badge">3</span> {{ pageText.liveCurve }}</span>
-                <small>{{ pageText.curveHint }}</small>
-              </div>
-            </template>
-            <div ref="trainChartRef" class="chart-box"></div>
-            <div class="metric-explainers">
-              <span><strong>{{ metricShortLabel('loss') }}</strong>{{ metricDescription('loss') }}</span>
-              <span><strong>{{ metricShortLabel('accuracy') }}</strong>{{ metricDescription('accuracy') }}</span>
-              <span><strong>{{ metricShortLabel('learningRate') }}</strong>{{ metricDescription('learningRate') }}</span>
-            </div>
-          </el-card>
-          <el-card shadow="never" class="job-card" v-loading="loading">
-            <template #header>{{ pageText.jobList }} ({{ jobs.length }})</template>
-            <div v-for="j in jobs" :key="j.id" class="job-item">
-              <div class="job-info"><span class="job-name">{{ j.name }}</span><span class="job-model">{{ displayArchitecture(j.modelArchitecture) }}</span></div>
-              <div class="job-progress"><el-progress :percentage="jobProgress(j)" :status="j.status==='running'?'':j.status==='completed'?'success':'warning'" :stroke-width="8"/></div>
-              <div class="job-meta"><el-tag :type="statusTag(j.status)" size="small">{{ statusLabel(j.status) }}</el-tag><span>{{ metricShortLabel('loss') }}: {{ j.currentLoss?.toFixed(4) || '--' }}</span><span>{{ metricShortLabel('accuracy') }}: {{ j.currentAccuracy ? (j.currentAccuracy*100).toFixed(1)+'%' : '--' }}</span></div>
-              <div class="job-actions">
-                <el-button v-if="j.status==='queued'||j.status==='paused'" size="small" type="primary" @click="startJob(j)"><el-icon><VideoPlay /></el-icon>{{ pageText.resume }}</el-button>
-                <el-button v-if="j.status==='running'" size="small" @click="pauseJob(j)"><el-icon><VideoPause /></el-icon>{{ pageText.pause }}</el-button>
-                <el-button v-if="j.status==='running'" size="small" type="warning" @click="stopJob(j)"><el-icon><Close /></el-icon>{{ pageText.stop }}</el-button>
-                <el-button size="small" type="danger" @click="deleteJob(j)"><el-icon><Delete /></el-icon>{{ pageText.deleteAction }}</el-button>
-              </div>
-            </div>
-            <el-empty v-if="!jobs.length" :description="pageText.noJobs"/>
-          </el-card>
-        </el-col>
-      </el-row>
-    </template>
-
-    <el-dialog v-model="showAddModel" :title="pageText.registerCustomModel" width="500px">
-      <el-form label-position="top" size="small">
-        <el-form-item :label="pageText.modelName"><el-input v-model="newModel.name"/></el-form-item>
-        <el-form-item :label="pageText.taskType"><el-select v-model="newModel.taskType" style="width:100%"><el-option v-for="task in taskOptions" :key="task.value" :label="task.label" :value="task.value"/></el-select></el-form-item>
-        <el-form-item :label="pageText.params"><el-input v-model.number="newModel.paramCountM" type="number"/></el-form-item>
-        <el-form-item :label="pageText.framework"><el-select v-model="newModel.framework" style="width:100%"><el-option label="PyTorch" value="pytorch"/><el-option label="TensorFlow" value="tensorflow"/><el-option label="JAX" value="jax"/></el-select></el-form-item>
-        <el-form-item :label="pageText.description"><el-input v-model="newModel.description" type="textarea" :rows="2"/></el-form-item>
-      </el-form>
-      <template #footer><el-button @click="showAddModel=false">{{ pageText.cancel }}</el-button><el-button type="primary" @click="createModel" :style="{backgroundColor:'var(--primary-color)'}">{{ pageText.register }}</el-button></template>
-    </el-dialog>
-
-    <ArticleReaderDrawer
-      v-model="articleDrawerOpen"
-      :article="activeArticle"
-      :loading="articleLoading"
-      :source-label="pageText.modelIntro"
-    />
+        </section>
+      </main>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick, computed, watch } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
-import { VideoPlay, VideoPause, Close, WarningFilled, Document, Delete } from '@element-plus/icons-vue';
-import * as echarts from 'echarts';
-import { trainingApi, analysisApi } from '@/api';
-import type { TrainingJob, ModelOption } from '@/types/models';
+import { computed, ref, type Component } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { metricText, modelDescription, modelDisplayName, taskTypeLabel } from '@/utils/modelDisplay';
-import ArticleReaderDrawer from '@/components/common/ArticleReaderDrawer.vue';
+import {
+  AlertCircle,
+  BrainCircuit,
+  Boxes,
+  Layers3,
+  ScanSearch,
+} from 'lucide-vue-next';
 import { hasStoredAuthToken } from '@/utils/authState';
 
+type LocalizedText = {
+  zh: string
+  en: string
+}
+
+type EvidenceItem = {
+  label: string
+  value: string
+  basis: string
+}
+
+type MetricCard = {
+  label: string
+  value: string
+  percent: number
+  explain: string
+  basis: string
+  available: boolean
+}
+
+type ParameterMethod = {
+  name: string
+  currentValue: string
+  changeMethod: string
+  whenToAdjust: string
+  basis: string
+}
+
+type ModelEntry = {
+  id: string
+  mark: string
+  accent: string
+  visual: 'sequence' | 'residual' | 'patch' | 'detect'
+  icon: Component
+  evidenceLevel: 'live' | 'planned'
+  name: LocalizedText
+  slug: string
+  task: LocalizedText
+  status: string
+  source: string
+  integration: string
+  metricStatus: string
+  description: LocalizedText
+  profile: EvidenceItem[]
+  metrics: MetricCard[]
+  parameterMethods: ParameterMethod[]
+  flowTitle: string
+  flow: string[]
+  guardrailTitle: string
+  guardrail: string
+  evidencePills: string[]
+}
+
 const { locale } = useI18n();
-const isLoggedIn = computed(() => hasStoredAuthToken());
-const selectedModel = ref('');
-const jobName = ref('training-1');
-const lr = ref(0.001); const bs = ref(32); const epochs = ref(100); const optimizer = ref('adam'); const device = ref('cpu');
-const trainChartRef = ref<HTMLDivElement>();
-const loading = ref(false); const submitting = ref(false);
-const articleDrawerOpen = ref(false);
-const articleLoading = ref(false);
-const activeArticle = ref<any>(null);
-let chart: echarts.ECharts | null = null;
-let pollTimer: ReturnType<typeof setInterval> | null = null;
-
-const modelOptions = ref<ModelOption[]>([]);
-const showAddModel = ref(false);
-const newModel = ref({ name: '', taskType: 'classification', description: '', paramCountM: 0, framework: 'pytorch' });
-type ModelGroupKey = 'all' | 'vision' | 'language' | 'audio' | 'recommendation' | 'multimodal' | 'custom';
-type TaskFilterKey = 'all' | string;
-const activeModelGroup = ref<ModelGroupKey>('all');
-const activeTaskType = ref<TaskFilterKey>('all');
-const featuredOfficialModelNames = new Set([
-  'ResNet-50',
-  'EfficientNet-B4',
-  'ViT-B/16',
-  'YOLOv8n',
-  'DeepLabV3-RN50',
-  'DeepFM',
-  'NCF',
-  'BERT-Base',
-  'T5-Small',
-]);
-
 const isZh = computed(() => locale.value.startsWith('zh'));
-const pageText = computed(() => isZh.value ? {
+const isLoggedIn = computed(() => hasStoredAuthToken());
+const selectedModelId = ref('bsarec-job');
+
+const copy = computed(() => (isZh.value ? {
+  eyebrow: '模型总栏',
+  modelCount: '个模型条目',
   loginRequired: '请先登录',
-  loginRequiredDesc: '训练功能需要登录后使用',
+  loginRequiredDesc: '模型总览需要登录后查看。',
   goLogin: '前往登录',
-  selectModel: '选择模型',
-  selectModelHint: '先选一个官方或自定义模型，下面的训练任务会基于它创建',
-  selected: '已选',
-  official: '官方',
-  custom: '自定义',
-  registerModel: '注册新模型',
-  modelScope: '模型领域',
-  modelTaskFilter: '任务类型筛选',
-  modelsCount: '{count} 个模型',
-  allTasks: '全部任务',
-  noModelsInFilter: '当前分类下暂无模型',
-  customEmptyHint: '可以先注册一个自定义模型。',
-  switchModelFilter: '切换左侧领域或上方任务类型。',
-  config: '训练配置',
-  configHint: '只填本次实验最关键的参数，后续曲线和矩阵分析会读取这些真实配置',
-  currentModel: '当前模型',
-  jobName: '任务名称',
-  batchSize: '批次大小',
-  epochs: '训练轮次',
-  optimizer: '优化器',
-  device: '计算设备',
-  start: '开始训练',
-  liveCurve: '训练曲线',
-  curveHint: '真实日志优先；无日志时仅根据当前任务状态预览',
-  jobList: '训练任务列表',
-  noJobs: '暂无训练任务',
-  registerCustomModel: '注册自定义模型',
-  modelName: '模型名称',
-  taskType: '任务类型',
-  params: '参数量(M)',
-  framework: '框架',
-  description: '描述',
-  cancel: '取消',
-  register: '注册',
-  modelCreated: '模型已创建',
-  pickModel: '请先选择一个模型',
-  jobCreated: '训练任务已创建',
-  createFailed: '创建失败',
-  networkFailed: '网络请求失败',
-  backendHint: '请确认后端已启动',
-  deleteAction: '删除',
-  resume: '启动',
-  pause: '暂停',
-  stop: '停止',
-  deleteConfirm: '确认删除',
-  deleted: '已删除',
-  modelIntro: '模型介绍',
+  modelDirectory: '模型列表',
+  clickHint: '点击切换参数',
+  viewing: '正在查看',
+  parameterMethods: '参数改变方法',
+  parameterMethodsTitle: '只给有依据的当前值；未接入模型只给调整方法',
+  serviceFlow: '接入链路',
+  noFakeData: '数据边界',
 } : {
+  eyebrow: 'Model Overview',
+  modelCount: 'model entries',
   loginRequired: 'Login Required',
-  loginRequiredDesc: 'Training requires a signed-in account.',
+  loginRequiredDesc: 'Model overview requires a signed-in account.',
   goLogin: 'Go to Login',
-  selectModel: 'Select Model',
-  selectModelHint: 'Pick an official or custom model before creating a training job',
-  selected: 'Selected',
-  official: 'Official',
-  custom: 'Custom',
-  registerModel: 'Register model',
-  modelScope: 'Model scope',
-  modelTaskFilter: 'Task filter',
-  modelsCount: '{count} models',
-  allTasks: 'All tasks',
-  noModelsInFilter: 'No models in this filter',
-  customEmptyHint: 'Register a custom model first.',
-  switchModelFilter: 'Switch the scope or task filter.',
-  config: 'Training Config',
-  configHint: 'Set the key experiment parameters that will feed charts and matrix analysis',
-  currentModel: 'Current model',
-  jobName: 'Job Name',
-  batchSize: 'Batch Size',
-  epochs: 'Epochs',
-  optimizer: 'Optimizer',
-  device: 'Device',
-  start: 'Start Training',
-  liveCurve: 'Training Curves',
-  curveHint: 'Uses real logs first; falls back to current job status preview when logs are absent',
-  jobList: 'Training Jobs',
-  noJobs: 'No training jobs',
-  registerCustomModel: 'Register Custom Model',
-  modelName: 'Model Name',
-  taskType: 'Task Type',
-  params: 'Params (M)',
-  framework: 'Framework',
-  description: 'Description',
-  cancel: 'Cancel',
-  register: 'Register',
-  modelCreated: 'Model created',
-  pickModel: 'Please select a model first',
-  jobCreated: 'Training job created',
-  createFailed: 'Create failed',
-  networkFailed: 'Network request failed',
-  backendHint: 'Please confirm the backend is running',
-  deleteAction: 'Delete',
-  resume: 'Start',
-  pause: 'Pause',
-  stop: 'Stop',
-  deleteConfirm: 'Confirm Delete',
-  deleted: 'Deleted',
-  modelIntro: 'Model Guide',
-});
-
-const trainingGuide = computed(() => isZh.value ? [
-  { index: '01', title: '选模型', desc: '决定这次实验要训练哪一种架构。' },
-  { index: '02', title: '配参数', desc: '设置学习率、批次、轮次和设备。' },
-  { index: '03', title: '看曲线', desc: '用 Loss / Accuracy 判断训练是否正常。' },
-  { index: '04', title: '进分析', desc: '训练记录会进入可视化矩阵和 AI 面板。' },
-] : [
-  { index: '01', title: 'Pick model', desc: 'Choose the architecture for this experiment.' },
-  { index: '02', title: 'Tune config', desc: 'Set learning rate, batch, epochs, and device.' },
-  { index: '03', title: 'Watch curves', desc: 'Use Loss / Accuracy to judge training health.' },
-  { index: '04', title: 'Analyze', desc: 'Training logs feed the matrix and AI panels.' },
-]);
-
-const taskOptions = computed(() => ['classification', 'detection', 'segmentation', 'recommendation', 'nlp', 'audio', 'multimodal', 'other'].map((value) => ({
-  value,
-  label: taskTypeLabel(value, undefined, locale),
-})));
-
-const modelTaskGroups: Record<Exclude<ModelGroupKey, 'all' | 'custom'>, Set<string>> = {
-  vision: new Set(['classification', 'detection', 'segmentation']),
-  language: new Set(['nlp']),
-  audio: new Set(['audio', 'speech']),
-  recommendation: new Set(['recommendation']),
-  multimodal: new Set(['multimodal']),
-};
-
-const normalizeTaskType = (model: ModelOption) => (model.taskType || 'other').toLowerCase();
-const modelMatchesGroup = (model: ModelOption, group: ModelGroupKey) => {
-  if (group === 'all') return true;
-  if (group === 'custom') return !model.isOfficial;
-  return modelTaskGroups[group].has(normalizeTaskType(model));
-};
-
-const modelGroupBase = computed<Array<{ key: ModelGroupKey; label: string; desc: string }>>(() => isZh.value ? [
-  { key: 'all', label: '全部模型', desc: '官方与自定义' },
-  { key: 'vision', label: '视觉', desc: '分类 / 检测 / 分割' },
-  { key: 'language', label: '语言', desc: '文本理解与生成' },
-  { key: 'audio', label: '音频', desc: '语音与频谱分析' },
-  { key: 'recommendation', label: '推荐', desc: '排序与兴趣建模' },
-  { key: 'multimodal', label: '多模态', desc: '图文联合表示' },
-  { key: 'custom', label: '自定义', desc: '自己注册的模型' },
-] : [
-  { key: 'all', label: 'All', desc: 'Official and custom' },
-  { key: 'vision', label: 'Vision', desc: 'Classify / detect / segment' },
-  { key: 'language', label: 'Language', desc: 'Understanding and generation' },
-  { key: 'audio', label: 'Audio', desc: 'Speech and spectrograms' },
-  { key: 'recommendation', label: 'Recsys', desc: 'Ranking and interests' },
-  { key: 'multimodal', label: 'Multimodal', desc: 'Image-text representation' },
-  { key: 'custom', label: 'Custom', desc: 'User registered models' },
-]);
-
-const modelGroupTabs = computed(() => modelGroupBase.value
-  .map((group) => ({
-    ...group,
-    count: modelOptions.value.filter((model) => modelMatchesGroup(model, group.key)).length,
-  }))
-  .filter((group) => group.key === 'all' || group.key === 'custom' || group.count > 0));
-
-const taskFilterTabs = computed(() => {
-  const groupModels = modelOptions.value.filter((model) => modelMatchesGroup(model, activeModelGroup.value));
-  const counts = new Map<string, number>();
-  groupModels.forEach((model) => {
-    const task = normalizeTaskType(model);
-    counts.set(task, (counts.get(task) || 0) + 1);
-  });
-  const order = ['classification', 'detection', 'segmentation', 'nlp', 'audio', 'recommendation', 'multimodal', 'other'];
-  const keys = [...counts.keys()].sort((a, b) => {
-    const ai = order.indexOf(a);
-    const bi = order.indexOf(b);
-    if (ai === -1 && bi === -1) return a.localeCompare(b);
-    if (ai === -1) return 1;
-    if (bi === -1) return -1;
-    return ai - bi;
-  });
-  return [
-    { key: 'all', label: pageText.value.allTasks, count: groupModels.length },
-    ...keys.map((key) => ({ key, label: taskTypeLabel(key, undefined, locale), count: counts.get(key) || 0 })),
-  ];
-});
-
-const filteredModelOptions = computed(() => modelOptions.value.filter((model) => {
-  const groupMatch = modelMatchesGroup(model, activeModelGroup.value);
-  const taskMatch = activeTaskType.value === 'all' || normalizeTaskType(model) === activeTaskType.value;
-  return groupMatch && taskMatch;
+  modelDirectory: 'Model List',
+  clickHint: 'Click to switch params',
+  viewing: 'Viewing',
+  parameterMethods: 'Parameter Change Methods',
+  parameterMethodsTitle: 'Known values only; planned models show methods, not fake metrics',
+  serviceFlow: 'Integration Flow',
+  noFakeData: 'Data Boundary',
 }));
 
-const activeModelGroupLabel = computed(() => modelGroupTabs.value.find((group) => group.key === activeModelGroup.value)?.label || pageText.value.modelScope);
-const activeTaskFilterLabel = computed(() => taskFilterTabs.value.find((task) => task.key === activeTaskType.value)?.label || pageText.value.allTasks);
-const selectModelGroup = (key: ModelGroupKey) => {
-  activeModelGroup.value = key;
-  activeTaskType.value = 'all';
-};
-const selectTaskFilter = (key: TaskFilterKey) => {
-  activeTaskType.value = key;
-};
-
-watch(modelOptions, () => {
-  if (!modelGroupTabs.value.some((group) => group.key === activeModelGroup.value)) activeModelGroup.value = 'all';
-  if (!taskFilterTabs.value.some((task) => task.key === activeTaskType.value)) activeTaskType.value = 'all';
+const noProjectMetrics = computed(() => isZh.value ? {
+  value: '暂无项目实测指标',
+  explain: '该模型目前只有注册资料和接入方法，项目内还没有评估集、推理服务或日志结果。',
+  basis: 'ModelCatalogService 注册信息；未找到项目实测结果',
+} : {
+  value: 'No project metric yet',
+  explain: 'This model currently has registry metadata and integration guidance only. No project evaluation set, serving endpoint, or logged result is connected yet.',
+  basis: 'ModelCatalogService registry; no project evaluation result found',
 });
 
-const selectedModelOption = computed(() => modelOptions.value.find((model) => model.name === selectedModel.value));
-const selectedModelLabel = computed(() => selectedModelOption.value ? modelDisplayName(selectedModelOption.value, locale) : modelDisplayName(selectedModel.value, locale));
-const selectModel = (m: ModelOption) => { selectedModel.value = m.name; jobName.value = m.name + '-exp'; };
-const displayModelName = (m: ModelOption) => modelDisplayName(m, locale);
-const displayArchitecture = (name: string) => {
-  const model = modelOptions.value.find((item) => item.name === name);
-  return model ? modelDisplayName(model, locale) : modelDisplayName(name, locale);
-};
-const displayTaskType = (m: ModelOption) => taskTypeLabel(m.taskType, m.taskTypeZh, locale);
-const displayModelDesc = (m: ModelOption) => {
-  const desc = modelDescription(m, locale);
-  return desc.length > 84 ? desc.slice(0, 84) + '...' : desc;
-};
-const formatParams = (m: ModelOption) => {
-  const value = m.paramCountM ?? m.params;
-  if (typeof value === 'number') return `${value}M`;
-  return value ? String(value) : '--';
-};
-const metricLabel = (key: Parameters<typeof metricText>[0]) => metricText(key, locale).label;
-const metricShortLabel = (key: Parameters<typeof metricText>[0]) => metricText(key, locale).shortLabel;
-const metricDescription = (key: Parameters<typeof metricText>[0]) => metricText(key, locale).description;
-const statusLabel = (status: string) => {
-  if (!isZh.value) return status;
-  const labels: Record<string, string> = { queued: '排队中', running: '运行中', completed: '已完成', failed: '失败', paused: '已暂停', stopped: '已停止' };
-  return labels[status] || status;
-};
+const bsarecModel = computed<ModelEntry>(() => ({
+  id: 'bsarec-job',
+  mark: 'BSA',
+  accent: '#22c55e',
+  visual: 'sequence',
+  icon: BrainCircuit,
+  evidenceLevel: 'live',
+  name: {
+    zh: 'BSARec 岗位推荐模型',
+    en: 'BSARec Job Recommendation',
+  },
+  slug: 'BSARec-Job / sequential recommendation',
+  task: {
+    zh: '序列推荐 / 岗位推荐',
+    en: 'Sequential job recommendation',
+  },
+  status: isZh.value ? '已接入' : 'Integrated',
+  source: isZh.value ? '项目内真实接入模型' : 'Project-backed model',
+  integration: isZh.value ? '外部 Flask API' : 'External Flask API',
+  metricStatus: isZh.value ? '有项目记录指标' : 'Recorded project metrics',
+  description: {
+    zh: '当前平台真正接入的是 BSARec：通过用户历史岗位 ID 序列请求本地 Flask 服务，返回 Top-K 岗位推荐。这里展示它的接口参数、已录入推荐指标，以及这些参数该怎么改。',
+    en: 'BSARec is the model actually integrated in this platform. It sends historical job item ids to a local Flask service and returns Top-K job recommendations. This page shows its API parameters, recorded ranking metrics, and how each parameter should be changed.',
+  },
+  profile: [
+    { label: isZh.value ? '模型标识' : 'Model id', value: 'BSARec-Job', basis: 'PredictionController / ModelController' },
+    { label: isZh.value ? '参数规模' : 'Parameters', value: '0.2M', basis: 'paramCountM = 0.2' },
+    { label: isZh.value ? '输入长度' : 'Input length', value: '50 item ids', basis: 'inputSize = 50 item ids' },
+    { label: isZh.value ? '运行框架' : 'Runtime', value: 'pytorch/cpu', basis: 'framework = pytorch/cpu' },
+    { label: isZh.value ? '模型服务' : 'Model service', value: '127.0.0.1:5000/recommend', basis: 'bsarec.api.base-url default' },
+    { label: isZh.value ? '平台入口' : 'Platform endpoint', value: '/prediction/recommend', basis: 'predictionApi.recommend' },
+  ],
+  metrics: [
+    {
+      label: 'HR@10',
+      value: '0.0992',
+      percent: 9.92,
+      available: true,
+      explain: isZh.value ? 'Top-10 推荐命中能力，适合看候选召回是否覆盖目标岗位。' : 'Top-10 hit rate for candidate coverage.',
+      basis: isZh.value ? '项目已录入 BSARec 展示指标' : 'Recorded BSARec project metric',
+    },
+    {
+      label: 'NDCG@10',
+      value: '0.0405',
+      percent: 4.05,
+      available: true,
+      explain: isZh.value ? '考虑排序位置的推荐质量，越靠前命中贡献越大。' : 'Ranking-aware recommendation quality metric.',
+      basis: isZh.value ? '项目已录入 BSARec 展示指标' : 'Recorded BSARec project metric',
+    },
+    {
+      label: 'Recall@10',
+      value: '0.0901',
+      percent: 9.01,
+      available: true,
+      explain: isZh.value ? 'Top-10 候选覆盖真实相关岗位的比例，反映召回覆盖面。' : 'Top-10 relevant-item coverage.',
+      basis: isZh.value ? '项目已录入 BSARec 展示指标' : 'Recorded BSARec project metric',
+    },
+    {
+      label: 'AUC',
+      value: '0.7515',
+      percent: 75.15,
+      available: true,
+      explain: isZh.value ? '排序区分能力指标，用于观察正负样本相对排序是否可靠。' : 'Ranking separability metric for positive versus negative samples.',
+      basis: isZh.value ? '项目已录入 BSARec 展示指标' : 'Recorded BSARec project metric',
+    },
+  ],
+  parameterMethods: [
+    {
+      name: 'user_history',
+      currentValue: isZh.value ? '最近岗位 ID，最长 50' : 'recent item ids, max 50',
+      changeMethod: isZh.value
+        ? '从用户最近浏览、收藏或投递过的岗位 ID 里取序列，按时间保留最近记录；超过 50 个时裁剪到 50，少于 1 个时不要发起推荐。'
+        : 'Build the sequence from recent viewed, saved, or applied job ids. Keep the newest ids, trim to 50, and do not call recommendation with an empty history.',
+      whenToAdjust: isZh.value ? '推荐太泛时优先检查历史是否过短或混入无关岗位。' : 'If recommendations are too broad, first check whether history is too short or noisy.',
+      basis: 'inputSize = 50 item ids; BSARecClientService.normalizeRequest',
+    },
+    {
+      name: 'top_k',
+      currentValue: '10',
+      changeMethod: isZh.value
+        ? '通过 /prediction/recommend 请求体调整返回数量；当前 HR、NDCG、Recall 都按 @10 记录，所以默认保持 10，改大时要重新做 @K 评估。'
+        : 'Change the returned count through the /prediction/recommend request body. Current HR, NDCG, and Recall are reported at @10, so changing it requires a new @K evaluation.',
+      whenToAdjust: isZh.value ? '页面需要更多候选时调大；只需要首屏结果时调小。' : 'Increase it when the UI needs more candidates; decrease it for a compact first-screen result.',
+      basis: 'BSARecClientService top_k default = 10; recorded metrics are @10',
+    },
+    {
+      name: 'include_job_info',
+      currentValue: 'true',
+      changeMethod: isZh.value
+        ? '需要岗位名称、公司、薪资等可读信息时保持 true；只做内部排序或压测时可以改为 false，减少返回体。'
+        : 'Keep true when readable job title, company, or salary is needed. Set false for ranking-only or load-test calls to reduce response size.',
+      whenToAdjust: isZh.value ? '展示页保持 true；批量评估可考虑 false。' : 'Keep true for display pages; consider false for batch evaluation.',
+      basis: 'include_job_info default = true',
+    },
+    {
+      name: 'user_id',
+      currentValue: 'deepinsight-user',
+      changeMethod: isZh.value
+        ? '未传时后端使用默认用户；后续接真实账号后，把登录态里的用户标识写入请求，保证推荐和用户上下文一致。'
+        : 'The backend uses a default user when omitted. After account context is connected, pass the signed-in user id so recommendations match the user context.',
+      whenToAdjust: isZh.value ? '接入真实用户画像或多用户推荐时必须替换。' : 'Replace it when real user profiles or multi-user recommendation are connected.',
+      basis: 'user_id default = deepinsight-user',
+    },
+    {
+      name: 'item_size',
+      currentValue: isZh.value ? '默认不传' : 'omit by default',
+      changeMethod: isZh.value
+        ? '后端只在请求出现该字段时透传，当前项目没有固定值；只有当 Flask 服务明确要求 item_size 时才补充。'
+        : 'The backend only passes this field through when present. There is no fixed project value; add it only if the Flask service explicitly requires it.',
+      whenToAdjust: isZh.value ? '服务端模型版本要求词表/物品空间大小时再填。' : 'Set it only when the model service version requires an item-space size.',
+      basis: 'optional pass-through field in BSARecClientService',
+    },
+  ],
+  flowTitle: isZh.value ? '当前可运行链路' : 'Current runnable path',
+  flow: [
+    'DeepInsight /training',
+    '/api/v1/prediction/recommend',
+    'BSARecClientService.normalizeRequest',
+    'http://127.0.0.1:5000/recommend',
+  ],
+  guardrailTitle: isZh.value ? '实测和方法分开显示' : 'Metrics and methods are separated',
+  guardrail: isZh.value
+    ? 'BSARec 的数值来自项目已录入记录；参数建议来自后端默认值、接口请求体和模型注册输入，不把实时训练曲线或随机演示当成评估结论。'
+    : 'BSARec numbers come from recorded project data. Parameter guidance comes from backend defaults, request fields, and registered input constraints.',
+  evidencePills: ['PredictionController', 'BSARecClientService', 'predictionApi.recommend'],
+}));
 
-const fetchModels = async () => {
-  try {
-    const res = await trainingApi.listModels();
-    if (res.data.code === 200) {
-      const official = (res.data.data.official || []).filter((model: ModelOption) => featuredOfficialModelNames.has(model.name));
-      const userModels = res.data.data.userModels || [];
-      modelOptions.value = [...official, ...userModels];
-      if (!modelOptions.value.some((model) => model.name === selectedModel.value)) {
-        if (modelOptions.value.length) selectModel(modelOptions.value[0]);
-        else selectedModel.value = '';
-      }
-    }
-  } catch { /* API unavailable */ }
-};
-
-const openModelArticle = async (articleId: number) => {
-  articleDrawerOpen.value = true;
-  articleLoading.value = true;
-  activeArticle.value = null;
-  try {
-    const res = await trainingApi.getArticle(articleId);
-    activeArticle.value = res.data.data || res.data;
-  } catch {
-    activeArticle.value = null;
-  }
-  articleLoading.value = false;
-};
-
-const createModel = async () => {
-  try {
-    const res = await trainingApi.createModel(newModel.value);
-    if (res.data.code === 200) { showAddModel.value = false; fetchModels(); ElMessage.success(pageText.value.modelCreated); }
-  } catch { /* API unavailable */ }
-};
-
-const jobs = ref<TrainingJob[]>([]);
-const statusTag = (s: string) => s === 'running' ? 'primary' : s === 'completed' ? 'success' : s === 'failed' ? 'danger' : s === 'paused' ? 'warning' : 'info';
-const jobProgress = (j: any) => j.epochs > 0 ? Math.round((j.currentEpoch || 0) / j.epochs * 100) : 0;
-
-const fetchJobs = async () => {
-  try { const res = await trainingApi.list(); if (res.data.code === 200) jobs.value = res.data.data || []; } catch { /* API unavailable */ }
-};
-
-const startTraining = async () => {
-  if (!selectedModel.value) { ElMessage.warning(pageText.value.pickModel); return; }
-  submitting.value = true;
-  try {
-    const res = await trainingApi.create({
-      name: jobName.value, modelArchitecture: selectedModel.value,
-      learningRate: lr.value, batchSize: bs.value, epochs: epochs.value,
-      optimizer: optimizer.value, device: device.value,
-    });
-    if (res.data.code === 200) { ElMessage.success(pageText.value.jobCreated); await fetchJobs(); }
-    else { ElMessage.error((res.data.message || pageText.value.createFailed) + ' [' + res.data.code + ']'); }
-  } catch (e: any) { ElMessage.error(pageText.value.networkFailed + ': ' + (e.message || pageText.value.backendHint)); }
-  submitting.value = false;
-};
-
-const startJob = async (j: TrainingJob) => { await trainingApi.start(j.id); fetchJobs(); };
-const pauseJob = async (j: TrainingJob) => { await trainingApi.pause(j.id); fetchJobs(); };
-const stopJob = async (j: TrainingJob) => { await trainingApi.stop(j.id); fetchJobs(); };
-const deleteJob = async (j: TrainingJob) => {
-  try { await ElMessageBox.confirm(pageText.value.deleteAction + ' ' + j.name + '?', pageText.value.deleteConfirm, { type: 'warning' }); await trainingApi.delete(j.id); ElMessage.success(pageText.value.deleted); fetchJobs(); } catch { /* cancelled */ }
-};
-
-const curveData = ref<{ loss: number[]; accuracy: number[]; valLoss: number[]; valAccuracy: number[] } | null>(null);
-
-const fetchCurve = async (jobId: number) => {
-  try {
-    const res = await analysisApi.trainingCurve(jobId);
-    if (res.data.code === 200 && res.data.data) {
-      const d = res.data.data;
-      curveData.value = {
-        loss: d.loss || [],
-        accuracy: d.accuracy || [],
-        valLoss: d.valLoss || [],
-        valAccuracy: d.valAccuracy || [],
-      };
-    }
-  } catch { curveData.value = null; }
-};
-
-const updateChart = (job?: any) => {
-  if (!chart) return;
-  const cd = curveData.value;
-  const hasRealData = cd && cd.loss.length > 0;
-  const epochsArr = hasRealData
-    ? Array.from({ length: cd!.loss.length }, (_, i) => i + 1)
-    : (job?.currentEpoch ? Array.from({ length: job.currentEpoch }, (_, i) => i + 1) : Array.from({ length: 50 }, (_, i) => i + 1));
-  const loss = hasRealData ? cd!.loss : epochsArr.map((_: any, i: number) => {
-    const totalEpochs = job?.epochs || 100;
-    const finalLoss = job?.currentLoss || 0.1;
-    return +(2.5 * Math.exp(-3.5 * i / totalEpochs) + finalLoss + Math.random() * 0.05).toFixed(3);
-  });
-  const acc = hasRealData ? cd!.accuracy.map((v: number) => +(v * 100).toFixed(1)) : epochsArr.map((_: any, i: number) => {
-    const totalEpochs = job?.epochs || 100;
-    const finalAcc = job?.currentAccuracy || 0.9;
-    return +(finalAcc * 100 * (1 - Math.exp(-4 * i / totalEpochs)) + Math.random() * 2).toFixed(1);
-  });
-  const valLoss = hasRealData && cd!.valLoss.length > 0 ? cd!.valLoss : [];
-  const lossName = metricLabel('loss');
-  const accuracyName = metricLabel('accuracy');
-  const valLossName = metricLabel('valLoss');
-  const series: any[] = [
-    { name: lossName, type: 'line', data: loss, smooth: true, symbol: 'none', lineStyle: { color: '#f87171' }, areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(248,113,113,0.2)' }, { offset: 1, color: 'rgba(248,113,113,0)' }]) } },
-    { name: accuracyName, type: 'line', yAxisIndex: 1, data: acc, smooth: true, symbol: 'none', lineStyle: { color: '#4ade80' }, areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(74,222,128,0.2)' }, { offset: 1, color: 'rgba(74,222,128,0)' }]) } },
+const plannedModels = computed<ModelEntry[]>(() => {
+  const unavailable = noProjectMetrics.value;
+  return [
+    {
+      id: 'resnet-50',
+      mark: 'R50',
+      accent: '#0ea5e9',
+      visual: 'residual',
+      icon: Layers3,
+      evidenceLevel: 'planned',
+      name: { zh: '残差网络 50 层', en: 'ResNet-50' },
+      slug: 'ResNet-50 / image classification',
+      task: { zh: '图像分类 / CNN 骨干网络', en: 'Image classification / CNN backbone' },
+      status: isZh.value ? '待接入评估' : 'Evaluation pending',
+      source: isZh.value ? '官方模型注册信息' : 'Official registry metadata',
+      integration: isZh.value ? '未接真实推理服务' : 'No real serving endpoint yet',
+      metricStatus: isZh.value ? '暂无项目实测指标' : 'No project metric yet',
+      description: {
+        zh: 'ResNet-50 已在项目官方模型目录中登记参数量、输入尺寸和框架，但当前平台没有它的真实权重推理、评估集或日志结果；这里只展示接入后参数该如何改变。',
+        en: 'ResNet-50 has parameter count, input size, and framework metadata in the official model registry, but no real weights, evaluation set, or logs are connected in this platform yet.',
+      },
+      profile: [
+        { label: isZh.value ? '模型标识' : 'Model id', value: 'ResNet-50', basis: 'ModelCatalogService.OFFICIAL_MODELS' },
+        { label: isZh.value ? '参数规模' : 'Parameters', value: '25.6M', basis: 'paramCountM = 25.6' },
+        { label: isZh.value ? '输入尺寸' : 'Input size', value: '224x224x3', basis: 'inputSize = 224x224x3' },
+        { label: isZh.value ? '任务类型' : 'Task', value: isZh.value ? '图像分类' : 'classification', basis: 'taskType = classification' },
+        { label: isZh.value ? '运行框架' : 'Runtime', value: 'pytorch', basis: 'framework = pytorch' },
+        { label: isZh.value ? '接入状态' : 'Integration', value: isZh.value ? '待接入' : 'Pending', basis: 'no project endpoint wired' },
+      ],
+      metrics: ['Top-1 Accuracy', 'Validation Loss', 'Latency', 'Confusion Matrix'].map((label) => ({
+        label,
+        value: unavailable.value,
+        percent: 0,
+        available: false,
+        explain: unavailable.explain,
+        basis: unavailable.basis,
+      })),
+      parameterMethods: [
+        {
+          name: 'input_size',
+          currentValue: '224x224x3',
+          changeMethod: isZh.value
+            ? '接入图像管线后，在预处理层统一 resize/crop 到注册尺寸；如果要改尺寸，需要同步检查模型权重、首层输入和评估脚本。'
+            : 'After image pipeline integration, resize/crop inputs to the registered size. If this changes, validate weights, first-layer input, and evaluation scripts together.',
+          whenToAdjust: isZh.value ? '迁移到不同分辨率数据集时再调整。' : 'Adjust only when moving to a dataset with a different resolution requirement.',
+          basis: 'ModelCatalogService inputSize = 224x224x3',
+        },
+        {
+          name: 'top_k',
+          currentValue: isZh.value ? '待接入' : 'pending',
+          changeMethod: isZh.value
+            ? '需要先扩展真实分类接口，让请求体支持 top_k；当前 classify 是演示接口，不能拿随机返回当 ResNet 实测。'
+            : 'First connect a real classification endpoint that accepts top_k. The current classify path is a demo and must not be treated as ResNet evaluation.',
+          whenToAdjust: isZh.value ? '类别很多或需要候选解释时使用。' : 'Use it when many classes or candidate explanations are needed.',
+          basis: 'PredictionController.classify is not a real ResNet evaluation path',
+        },
+        {
+          name: 'batch_size',
+          currentValue: isZh.value ? '待接入日志后决定' : 'decide after logs',
+          changeMethod: isZh.value
+            ? '接入训练或评估日志后，结合显存占用、吞吐和验证损失波动调整；不要在没有运行记录时写死。'
+            : 'After logs are connected, tune it with memory, throughput, and validation-loss stability. Do not hard-code a value without run records.',
+          whenToAdjust: isZh.value ? '显存不足、吞吐太低或验证曲线震荡时。' : 'Adjust when memory is tight, throughput is low, or validation curves become unstable.',
+          basis: 'visual-analysis profiler / scalars modules after integration',
+        },
+      ],
+      flowTitle: isZh.value ? '后续接入路径' : 'Future integration path',
+      flow: ['ModelCatalogService registry', 'image preprocessing 224x224x3', 'real classification endpoint', 'evaluation logs / visual-analysis'],
+      guardrailTitle: isZh.value ? '只展示注册依据' : 'Registry evidence only',
+      guardrail: isZh.value
+        ? 'ResNet-50 的参数量和输入尺寸有项目注册依据；准确率、延迟、混淆矩阵都没有项目实测，所以页面明确标为暂无。'
+        : 'ResNet-50 parameter count and input size are project registry values. Accuracy, latency, and confusion matrix are not project-measured yet.',
+      evidencePills: ['ModelCatalogService', 'model_registry', '待接入评估集'],
+    },
+    {
+      id: 'vit-b16',
+      mark: 'ViT',
+      accent: '#8b5cf6',
+      visual: 'patch',
+      icon: Boxes,
+      evidenceLevel: 'planned',
+      name: { zh: '视觉 Transformer 基础版', en: 'ViT-B/16' },
+      slug: 'ViT-B/16 / patch transformer',
+      task: { zh: '图像分类 / Patch 序列', en: 'Image classification / patch sequence' },
+      status: isZh.value ? '待接入评估' : 'Evaluation pending',
+      source: isZh.value ? '官方模型注册信息' : 'Official registry metadata',
+      integration: isZh.value ? '未接真实推理服务' : 'No real serving endpoint yet',
+      metricStatus: isZh.value ? '暂无项目实测指标' : 'No project metric yet',
+      description: {
+        zh: 'ViT-B/16 在项目目录中登记为 384x384x3 输入的视觉 Transformer。由于还没有接入权重、评估集和日志，参数区只说明 patch 类模型接入后该怎么改。',
+        en: 'ViT-B/16 is registered as a visual Transformer with 384x384x3 input. Since weights, evaluation data, and logs are not connected, this section only explains how patch-model parameters should change after integration.',
+      },
+      profile: [
+        { label: isZh.value ? '模型标识' : 'Model id', value: 'ViT-B/16', basis: 'ModelCatalogService.OFFICIAL_MODELS' },
+        { label: isZh.value ? '参数规模' : 'Parameters', value: '86.6M', basis: 'paramCountM = 86.6' },
+        { label: isZh.value ? '输入尺寸' : 'Input size', value: '384x384x3', basis: 'inputSize = 384x384x3' },
+        { label: isZh.value ? '任务类型' : 'Task', value: isZh.value ? '图像分类' : 'classification', basis: 'taskType = classification' },
+        { label: isZh.value ? '运行框架' : 'Runtime', value: 'pytorch', basis: 'framework = pytorch' },
+        { label: isZh.value ? '接入状态' : 'Integration', value: isZh.value ? '待接入' : 'Pending', basis: 'no project endpoint wired' },
+      ],
+      metrics: ['Top-1 Accuracy', 'Attention Map', 'Embedding Drift', 'Latency'].map((label) => ({
+        label,
+        value: unavailable.value,
+        percent: 0,
+        available: false,
+        explain: unavailable.explain,
+        basis: unavailable.basis,
+      })),
+      parameterMethods: [
+        {
+          name: 'input_size',
+          currentValue: '384x384x3',
+          changeMethod: isZh.value
+            ? '保持预处理尺寸与注册信息一致；ViT-B/16 的 patch 粒度要求输入尺寸能被 16 整除，改尺寸时要重新核对位置编码处理。'
+            : 'Keep preprocessing aligned with the registered size. ViT-B/16 patching requires dimensions divisible by 16, and position embeddings must be checked when size changes.',
+          whenToAdjust: isZh.value ? '数据源分辨率或权重版本改变时。' : 'Adjust when dataset resolution or weight version changes.',
+          basis: 'ModelCatalogService inputSize = 384x384x3; ViT-B/16 patch naming',
+        },
+        {
+          name: 'patch_size',
+          currentValue: '16',
+          changeMethod: isZh.value
+            ? '这里的 16 来自模型名称 B/16，不是项目实测参数；除非更换模型变体，否则不要在页面里让用户随意改。'
+            : 'The 16 comes from the B/16 model variant name, not a measured project hyperparameter. Do not expose it as a casual runtime knob unless the model variant changes.',
+          whenToAdjust: isZh.value ? '更换 ViT 模型变体时才调整。' : 'Change only when switching ViT variants.',
+          basis: 'model name ViT-B/16',
+        },
+        {
+          name: 'embedding_analysis',
+          currentValue: isZh.value ? '待接入向量日志' : 'requires embedding logs',
+          changeMethod: isZh.value
+            ? '接入 embedding 日志后，用可视化分析的向量投影模块看类别是否聚团，再决定是否调整增强策略或微调层。'
+            : 'After embedding logs are connected, use the embedding module to inspect clustering before changing augmentation or fine-tuning layers.',
+          whenToAdjust: isZh.value ? '类别混叠、聚类不明显时。' : 'Adjust when classes overlap or clusters are weak.',
+          basis: 'visual-analysis embeddings module',
+        },
+      ],
+      flowTitle: isZh.value ? '后续接入路径' : 'Future integration path',
+      flow: ['ModelCatalogService registry', 'image preprocessing 384x384x3', 'patch / embedding logs', 'visual-analysis embeddings'],
+      guardrailTitle: isZh.value ? '不把通用知识当实测' : 'No generic facts as measured data',
+      guardrail: isZh.value
+        ? 'ViT-B/16 的尺寸、参数量来自项目注册；注意力图、准确率和向量分布必须等项目日志接入后再展示。'
+        : 'ViT-B/16 size and parameter count come from the project registry. Attention maps, accuracy, and embeddings must wait for connected project logs.',
+      evidencePills: ['ModelCatalogService', 'ViT-B/16', 'visual-analysis embeddings'],
+    },
+    {
+      id: 'yolov8s',
+      mark: 'Y8S',
+      accent: '#f97316',
+      visual: 'detect',
+      icon: ScanSearch,
+      evidenceLevel: 'planned',
+      name: { zh: 'YOLOv8 Small 目标检测', en: 'YOLOv8s Object Detection' },
+      slug: 'YOLOv8s / object detection',
+      task: { zh: '目标检测 / 阈值评估', en: 'Object detection / threshold evaluation' },
+      status: isZh.value ? '待接入评估' : 'Evaluation pending',
+      source: isZh.value ? '官方模型注册信息' : 'Official registry metadata',
+      integration: isZh.value ? '未接真实检测服务' : 'No real detection endpoint yet',
+      metricStatus: isZh.value ? '暂无项目实测指标' : 'No project metric yet',
+      description: {
+        zh: 'YOLOv8s 已在官方模型目录中登记输入尺寸和参数量，但当前检测接口没有接入真实 YOLOv8s 服务。这里把阈值、NMS 和返回数量作为后续接入时的调参方法展示。',
+        en: 'YOLOv8s has registered input size and parameter count, but the current detection path is not wired to a real YOLOv8s service. This section shows threshold, NMS, and detection-count tuning methods for future integration.',
+      },
+      profile: [
+        { label: isZh.value ? '模型标识' : 'Model id', value: 'YOLOv8s', basis: 'ModelCatalogService.OFFICIAL_MODELS' },
+        { label: isZh.value ? '参数规模' : 'Parameters', value: '11.2M', basis: 'paramCountM = 11.2' },
+        { label: isZh.value ? '输入尺寸' : 'Input size', value: '640x640x3', basis: 'inputSize = 640x640x3' },
+        { label: isZh.value ? '任务类型' : 'Task', value: isZh.value ? '目标检测' : 'detection', basis: 'taskType = detection' },
+        { label: isZh.value ? '运行框架' : 'Runtime', value: 'pytorch', basis: 'framework = pytorch' },
+        { label: isZh.value ? '接入状态' : 'Integration', value: isZh.value ? '待接入' : 'Pending', basis: 'no project endpoint wired' },
+      ],
+      metrics: ['mAP', 'Precision', 'Recall', 'Detection Latency'].map((label) => ({
+        label,
+        value: unavailable.value,
+        percent: 0,
+        available: false,
+        explain: unavailable.explain,
+        basis: unavailable.basis,
+      })),
+      parameterMethods: [
+        {
+          name: 'confidence_threshold',
+          currentValue: isZh.value ? '待接入' : 'pending',
+          changeMethod: isZh.value
+            ? '真实检测服务接入后，把它作为请求参数或服务配置暴露；误检多时调高，漏检多时调低，并用 PR/ROC 模块复核。'
+            : 'After a real detection service is connected, expose this through request or service config. Raise it for false positives, lower it for missed detections, and verify with PR/ROC analysis.',
+          whenToAdjust: isZh.value ? '误检/漏检平衡不符合业务目标时。' : 'Adjust when the false-positive / false-negative balance misses business needs.',
+          basis: 'visual-analysis prCurves module after detection logs exist',
+        },
+        {
+          name: 'nms_iou_threshold',
+          currentValue: isZh.value ? '待接入' : 'pending',
+          changeMethod: isZh.value
+            ? '接入后用于控制重叠框合并；同一目标出现多个框时调低，邻近目标被误合并时调高。'
+            : 'Use it to control duplicate-box suppression. Lower it when one object has duplicate boxes; raise it when nearby objects are merged incorrectly.',
+          whenToAdjust: isZh.value ? '框重复或密集目标漏框时。' : 'Adjust for duplicate boxes or crowded-object misses.',
+          basis: 'detection post-processing method; no project value yet',
+        },
+        {
+          name: 'max_detections',
+          currentValue: isZh.value ? '待接入' : 'pending',
+          changeMethod: isZh.value
+            ? '接入后按业务画面复杂度限制最大返回框数；过小会截断目标，过大会增加前端渲染和人工审核成本。'
+            : 'After integration, limit returned boxes by scene complexity. Too low truncates objects; too high increases rendering and review cost.',
+          whenToAdjust: isZh.value ? '检测结果太多或被截断时。' : 'Adjust when detections are too many or truncated.',
+          basis: 'future detection response contract',
+        },
+      ],
+      flowTitle: isZh.value ? '后续接入路径' : 'Future integration path',
+      flow: ['ModelCatalogService registry', 'image preprocessing 640x640x3', 'real detection service', 'PR/ROC + profiler logs'],
+      guardrailTitle: isZh.value ? '检测指标必须等标注集' : 'Detection metrics need labeled data',
+      guardrail: isZh.value
+        ? 'YOLOv8s 只有注册信息有依据；mAP、Precision、Recall 必须基于项目标注集和检测日志生成，不能提前填。'
+        : 'YOLOv8s has registry evidence only. mAP, Precision, and Recall require project labels and detection logs before display.',
+      evidencePills: ['ModelCatalogService', 'YOLOv8s', 'PR/ROC 待接入'],
+    },
   ];
-  if (valLoss.length > 0) {
-    series.push({ name: valLossName, type: 'line', data: valLoss, smooth: true, symbol: 'none', lineStyle: { color: '#fbbf24', type: 'dashed' } });
-  }
-  const legendData = valLoss.length > 0 ? [lossName, accuracyName, valLossName] : [lossName, accuracyName];
-  chart.setOption({
-    tooltip: { trigger: 'axis' }, legend: { data: legendData, bottom: 0 },
-    grid: { left: 60, right: 60, top: 10, bottom: 30 },
-    xAxis: { type: 'category', data: epochsArr }, yAxis: [{ type: 'value', name: metricShortLabel('loss'), min: 0 }, { type: 'value', name: metricShortLabel('accuracy') + ' %', max: 100 }],
-    series,
-  }, true);
-};
-
-onMounted(() => {
-  if (isLoggedIn.value) { fetchModels(); fetchJobs(); }
-  nextTick(() => { if (trainChartRef.value) { chart = echarts.init(trainChartRef.value); updateChart(); } });
-  pollTimer = setInterval(async () => {
-    if (!isLoggedIn.value) return;
-    await fetchJobs();
-    const running = jobs.value.find((j: any) => j.status === 'running');
-    if (running) {
-      await fetchCurve(running.id);
-      updateChart(running);
-    } else if (jobs.value.length > 0) {
-      await fetchCurve(jobs.value[0].id);
-      updateChart(jobs.value[0]);
-    }
-  }, 5000);
 });
-onUnmounted(() => { if (pollTimer) clearInterval(pollTimer); });
+
+const modelCatalog = computed(() => [
+  bsarecModel.value,
+  ...plannedModels.value,
+]);
+const selectedModel = computed(() => modelCatalog.value.find((model) => model.id === selectedModelId.value) || modelCatalog.value[0]);
+
+function displayName(model: ModelEntry) {
+  return isZh.value ? model.name.zh : model.name.en;
+}
+
+function displayTask(model: ModelEntry) {
+  return isZh.value ? model.task.zh : model.task.en;
+}
+
+function displayDescription(model: ModelEntry) {
+  return isZh.value ? model.description.zh : model.description.en;
+}
+
+function accentStyle(model: ModelEntry) {
+  return { '--model-accent': model.accent };
+}
 </script>
 
 <style scoped>
-.training-page { padding: 24px; max-width: 1400px; margin: 0 auto }
-.page-header h2 { font-size: 22px; font-weight: var(--font-weight-body); color: var(--text-primary); margin: 0 0 4px }
-.page-header p { font-size: 13px; color: var(--text-secondary); margin: 0 0 20px }
-.login-hint { border-radius: 20px; text-align: center; padding: 60px }
-.hint-content { display: flex; flex-direction: column; align-items: center; gap: 12px }
-.hint-content h3 { font-size: 18px; font-weight: var(--font-weight-body); color: var(--text-primary); margin: 0 }
-.hint-content p { font-size: 13px; color: var(--text-secondary); margin: 0 }
-.training-guide { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px }
-.training-guide article { position: relative; min-height: 112px; padding: 16px; border: 1px solid rgba(var(--primary-rgb), .14); border-radius: 18px; background: radial-gradient(circle at 12% 0%, rgba(var(--primary-rgb), .16), transparent 46%), color-mix(in srgb, var(--surface-1) 78%, transparent); overflow: hidden }
-.training-guide article::after { content: ""; position: absolute; right: -18px; bottom: -28px; width: 92px; height: 92px; border-radius: 50%; border: 1px solid rgba(var(--primary-rgb), .16) }
-.training-guide span { display: block; color: var(--primary-color); font-size: 11px; font-weight: var(--font-weight-title); letter-spacing: .12em }
-.training-guide strong { display: block; margin-top: 10px; color: var(--text-primary); font-size: 15px; font-weight: var(--font-weight-title) }
-.training-guide p { margin: 6px 0 0; color: var(--text-secondary); font-size: 12px; line-height: 1.55 }
-.model-step-section { width: 100%; box-sizing: border-box; margin-bottom: 16px; padding: 14px; border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01) 40%, rgba(0, 0, 0, 0.03)), rgba(var(--glass-bg-rgb), var(--glass-opacity)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), inset 0 -1px 0 rgba(0, 0, 0, 0.06), var(--shadow-soft); backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)); -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) }
-.step-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; font-size: 14px; font-weight: var(--font-weight-body); color: var(--text-primary); margin-bottom: 12px }
-.step-header > div { display: flex; align-items: center; flex-wrap: wrap; gap: 8px }
-.step-header small { width: 100%; margin-left: 30px; color: var(--text-muted); font-size: 11px; font-weight: var(--font-weight-body); line-height: 1.45 }
-.step-badge { width: 22px; height: 22px; border-radius: 50%; background: var(--primary-color); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: var(--font-weight-title); flex-shrink: 0 }
-.selected-hint { font-size: 12px; color: var(--text-secondary); font-weight: 600 }
-.selected-hint strong { color: var(--primary-color) }
-.selected-model-name { font-size: 11px; color: var(--primary-color); font-weight: var(--font-weight-body) }
-.model-browser { display: grid; grid-template-columns: minmax(180px, 220px) minmax(0, 1fr); gap: 14px; align-items: start; width: 100%; min-width: 0; box-sizing: border-box }
-.model-group-menu { display: grid; align-content: start; gap: 8px; padding: 10px; border: 1px solid var(--border-color); border-radius: 16px; background: color-mix(in srgb, var(--surface-1) 78%, transparent) }
-.model-group-tab { width: 100%; min-height: 58px; padding: 10px 12px; border: 1px solid transparent; border-radius: 12px; background: transparent; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between; gap: 10px; text-align: left; cursor: pointer; transition: border-color .2s ease, background .2s ease, color .2s ease, transform .2s ease }
-.model-group-tab:hover { color: var(--text-primary); background: color-mix(in srgb, var(--surface-2) 76%, transparent); transform: translateX(2px) }
-.model-group-tab.active { color: var(--text-primary); border-color: rgba(var(--primary-rgb), .32); background: linear-gradient(135deg, rgba(var(--primary-rgb), .16), rgba(var(--primary-rgb), .04)); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08) }
-.group-copy { display: grid; gap: 4px; min-width: 0 }
-.group-copy strong { font-size: 13px; font-weight: var(--font-weight-title); line-height: 1.2 }
-.group-copy small { font-size: 10px; color: var(--text-muted); line-height: 1.35; white-space: normal }
-.model-group-tab em { min-width: 28px; height: 22px; padding: 0 8px; border-radius: 999px; background: rgba(var(--primary-rgb), .1); color: var(--primary-color); display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-style: normal; font-weight: var(--font-weight-title) }
-.model-results-panel { min-width: 0; width: 100%; box-sizing: border-box; padding: 12px; border: 1px solid var(--border-color); border-radius: 16px; background: color-mix(in srgb, var(--surface-1) 66%, transparent) }
-.model-filter-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px }
-.task-filter-list { display: flex; align-items: center; gap: 8px; overflow-x: auto; scrollbar-width: thin; padding-bottom: 2px }
-.task-filter-btn,
-.model-register-btn { min-height: 34px; border: 1px solid var(--border-color); border-radius: 999px; background: color-mix(in srgb, var(--surface-2) 72%, transparent); color: var(--text-secondary); display: inline-flex; align-items: center; gap: 7px; padding: 6px 11px; font-size: 12px; font-weight: var(--font-weight-body); white-space: nowrap; cursor: pointer; transition: border-color .2s ease, background .2s ease, color .2s ease, transform .2s ease }
-.task-filter-btn:hover,
-.model-register-btn:hover { color: var(--text-primary); border-color: rgba(var(--primary-rgb), .36); transform: translateY(-1px) }
-.task-filter-btn.active { color: var(--primary-color); border-color: rgba(var(--primary-rgb), .44); background: rgba(var(--primary-rgb), .12) }
-.task-filter-btn em { color: inherit; font-style: normal; opacity: .76 }
-.model-register-btn { flex-shrink: 0; border-style: dashed }
-.model-register-btn span { width: 17px; height: 17px; border-radius: 50%; background: var(--primary-color); color: white; display: inline-flex; align-items: center; justify-content: center; font-weight: var(--font-weight-title) }
-.model-result-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; color: var(--text-muted); font-size: 11px }
-.model-result-head span { color: var(--text-secondary); font-weight: var(--font-weight-title) }
-.model-result-head em { font-style: normal }
-.model-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px; min-width: 0 }
-.model-chip { position: relative; display: flex; align-items: stretch; gap: 6px; min-height: 74px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border-color); background: var(--panel-bg); cursor: pointer; overflow: hidden; transition: border-color .2s ease, background .2s ease, box-shadow .2s ease, transform .2s ease }
-.model-chip:hover { border-color: rgba(var(--primary-rgb), 0.58); transform: translateY(-1px); box-shadow: 0 10px 24px rgba(var(--primary-rgb), 0.1) }
-.model-chip.active {
-  border-color: var(--primary-color);
-  background:
-    radial-gradient(circle at 18% 0%, rgba(var(--primary-rgb), 0.22), transparent 42%),
-    rgba(var(--primary-rgb), 0.12);
-  box-shadow:
-    0 0 0 2px rgba(var(--primary-rgb), 0.34),
-    0 14px 34px rgba(var(--primary-rgb), 0.22),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+.training-page {
+  padding: 24px;
+  max-width: 1460px;
+  margin: 0 auto;
 }
-.model-chip.active::after {
-  content: "";
-  position: absolute;
-  inset: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 9px;
-  pointer-events: none;
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+  margin-bottom: 20px;
 }
-.model-chip.active::before {
-  content: "";
-  position: absolute;
-  top: 8px;
-  right: 9px;
-  width: 7px;
-  height: 12px;
-  border-right: 2px solid var(--primary-color);
-  border-bottom: 2px solid var(--primary-color);
-  filter: drop-shadow(0 0 6px rgba(var(--primary-rgb), 0.68));
-  pointer-events: none;
-  transform: rotate(42deg);
-}
-.chip-body { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; flex: 1; min-width: 0 }
-.chip-copy { display: grid; gap: 4px; min-width: 0; flex: 1 }
-.chip-name { font-size: 13px; font-weight: var(--font-weight-body); color: var(--text-primary) }
-.chip-meta { font-size: 10px; color: var(--text-secondary) }
-.chip-desc { max-width: 420px; color: var(--text-muted); font-size: 10px; line-height: 1.45 }
-.chip-flag {
-  flex-shrink: 0;
-  align-self: flex-start;
-  margin-top: 1px;
-  padding: 1px 6px;
-  border: 1px solid rgba(var(--primary-rgb), 0.22);
-  border-radius: 999px;
-  background: rgba(var(--primary-rgb), 0.08);
+
+.hierarchy-eyebrow,
+.model-kicker {
+  display: block;
   color: var(--primary-color);
-  font-size: 9px;
+  font-size: 11px;
+  font-weight: var(--font-weight-title);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 7px;
+}
+
+.page-header h2 {
+  font-size: 22px;
   font-weight: var(--font-weight-body);
+  color: var(--text-primary);
+  margin: 0 0 4px;
+}
+
+.page-header p {
+  max-width: 760px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin: 0;
+}
+
+.header-count {
+  min-width: 136px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-1) 82%, transparent);
+  text-align: right;
+}
+
+.header-count strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 26px;
+  line-height: 1;
+}
+
+.header-count span {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.login-hint {
+  border-radius: 20px;
+  text-align: center;
+  padding: 60px;
+}
+
+.hint-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.hint-content svg {
+  color: var(--primary-color);
+}
+
+.hint-content h3 {
+  font-size: 18px;
+  font-weight: var(--font-weight-body);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.hint-content p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.model-overview-shell {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.model-directory,
+.model-detail {
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.015)),
+    color-mix(in srgb, var(--surface-1) 82%, transparent);
+  box-shadow: var(--shadow-soft);
+}
+
+.model-directory {
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+  position: sticky;
+  top: 96px;
+}
+
+.directory-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.directory-head strong {
+  font-size: 12px;
+  color: var(--primary-color);
+}
+
+.directory-list {
+  display: grid;
+  gap: 10px;
+}
+
+.model-entry {
+  width: 100%;
+  min-height: 126px;
+  padding: 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-2) 72%, transparent);
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 180ms ease, background 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+}
+
+.model-entry:hover,
+.model-entry.active {
+  border-color: color-mix(in srgb, var(--model-accent, var(--primary-color)) 48%, var(--border-color));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--model-accent, var(--primary-color)) 13%, transparent), transparent 55%),
+    var(--surface-2);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+
+.entry-glyph,
+.model-mark {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background:
+    radial-gradient(circle at 28% 20%, color-mix(in srgb, var(--model-accent, var(--primary-color)) 50%, transparent), transparent 30%),
+    linear-gradient(145deg, #101827, #263143);
+}
+
+.entry-glyph {
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
+}
+
+.entry-glyph::before,
+.model-mark::before {
+  content: '';
+  position: absolute;
+  border-color: color-mix(in srgb, var(--model-accent, var(--primary-color)) 62%, transparent);
+}
+
+.visual-sequence::before {
+  inset: 10px;
+  border: 2px dashed;
+  border-radius: 999px;
+}
+
+.visual-residual::before {
+  width: 70%;
+  height: 46%;
+  border: 2px solid;
+  border-left-width: 6px;
+  border-radius: 10px;
+}
+
+.visual-patch::before {
+  width: 62%;
+  height: 62%;
+  border: 2px solid;
+  border-radius: 6px;
+  box-shadow:
+    14px 0 0 -8px color-mix(in srgb, var(--model-accent, var(--primary-color)) 52%, transparent),
+    0 14px 0 -8px color-mix(in srgb, var(--model-accent, var(--primary-color)) 52%, transparent);
+}
+
+.visual-detect::before {
+  inset: 13px;
+  border: 2px solid;
+  border-radius: 4px;
+  box-shadow: 18px -10px 0 -12px #fff, -18px 14px 0 -12px #fff;
+}
+
+.entry-glyph svg,
+.model-mark svg,
+.model-mark span {
+  position: relative;
+  z-index: 1;
+}
+
+.entry-copy {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.entry-copy strong {
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: var(--font-weight-title);
+  line-height: 1.25;
+}
+
+.entry-copy small,
+.entry-copy em,
+.entry-status {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+  font-style: normal;
+}
+
+.entry-status {
+  grid-column: 2;
+  width: max-content;
+  align-self: end;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--model-accent, var(--primary-color)) 12%, transparent);
+  color: color-mix(in srgb, var(--model-accent, var(--primary-color)) 72%, var(--text-primary));
+}
+
+.entry-status.status-planned {
+  color: var(--text-secondary);
+}
+
+.model-detail {
+  min-width: 0;
+  padding: clamp(18px, 2vw, 26px);
+}
+
+.model-evaluation-hero,
+.parameter-panel,
+.service-card,
+.guardrail-card {
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-2) 72%, transparent);
+}
+
+.model-evaluation-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(420px, 0.95fr);
+  gap: 24px;
+  padding: clamp(22px, 2.3vw, 34px);
+}
+
+.model-identity {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  min-width: 0;
+}
+
+.model-mark {
+  width: 78px;
+  height: 78px;
+  flex-shrink: 0;
+  border-radius: 20px;
+}
+
+.model-mark span {
+  position: absolute;
+  right: 8px;
+  bottom: 7px;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.model-identity h3 {
+  color: var(--text-primary);
+  font-size: clamp(30px, 3.2vw, 46px);
+  line-height: 1.05;
+  letter-spacing: 0;
+  margin: 0;
+}
+
+.model-identity p {
+  color: var(--text-secondary);
+  max-width: 720px;
+  margin: 12px 0 0;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.hero-badges,
+.evidence-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.hero-badges span,
+.evidence-pills span {
+  min-height: 30px;
+  padding: 6px 11px;
+  border: 1px solid color-mix(in srgb, var(--model-accent, var(--primary-color)) 28%, var(--border-color));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--model-accent, var(--primary-color)) 9%, transparent);
+  color: color-mix(in srgb, var(--model-accent, var(--primary-color)) 76%, var(--text-primary));
+  font-size: 12px;
+}
+
+.model-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.model-facts article,
+.metric-tile,
+.method-list article {
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: var(--panel-bg);
+}
+
+.model-facts article {
+  min-height: 92px;
+  padding: 14px;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+}
+
+.model-facts span,
+.metric-tile span,
+.section-heading span {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.model-facts strong {
+  color: var(--text-primary);
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.model-facts small,
+.metric-tile small,
+.method-meta small,
+.guardrail-card p {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.metric-band {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.metric-tile {
+  min-height: 184px;
+  padding: 16px;
+  display: grid;
+  align-content: start;
+  gap: 11px;
+}
+
+.metric-tile.muted {
+  border-style: dashed;
+}
+
+.metric-tile strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: clamp(17px, 2vw, 30px);
+  line-height: 1.15;
+  margin-top: 6px;
+}
+
+.metric-tile.muted strong {
+  font-size: 18px;
+  color: var(--text-secondary);
+}
+
+.metric-bar {
+  height: 9px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.16);
+  overflow: hidden;
+}
+
+.metric-bar i {
+  display: block;
+  height: 100%;
+  min-width: 8px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--model-accent, var(--primary-color)), #38bdf8);
+}
+
+.metric-tile p,
+.method-list p,
+.guardrail-card p {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.7;
+  margin: 0;
+}
+
+.overview-workbench {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 410px);
+  gap: 18px;
+  margin-top: 18px;
+  align-items: start;
+}
+
+.parameter-panel,
+.service-card,
+.guardrail-card {
+  padding: 18px;
+}
+
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.section-heading.compact {
+  display: grid;
+  gap: 4px;
+}
+
+.section-heading strong {
+  color: var(--text-primary);
+  font-size: 16px;
   line-height: 1.35;
 }
-.custom-flag { color: var(--accent-glow); border-color: color-mix(in srgb, var(--accent-glow) 32%, transparent); background: color-mix(in srgb, var(--accent-glow) 11%, transparent) }
-.model-empty-state { min-height: 170px; border: 1px dashed rgba(var(--primary-rgb), .24); border-radius: 14px; background: rgba(var(--primary-rgb), .04); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; color: var(--text-secondary) }
-.model-empty-state strong { color: var(--text-primary); font-size: 14px }
-.model-empty-state span { font-size: 12px }
-.model-empty-state button { min-height: 34px; padding: 6px 13px; border: 1px solid rgba(var(--primary-rgb), .36); border-radius: 999px; background: rgba(var(--primary-rgb), .12); color: var(--primary-color); cursor: pointer }
-.card-header { display: flex; align-items: center; gap: 8px; font-weight: var(--font-weight-body); color: var(--text-primary) }
-.stacked-card-header { display: grid; align-items: start; gap: 5px }
-.stacked-card-header > span { display: flex; align-items: center; gap: 8px }
-.stacked-card-header small { color: var(--text-muted); font-size: 11px; font-weight: var(--font-weight-body); line-height: 1.45 }
-.selected-model-card { margin-bottom: 14px; padding: 13px 14px; border: 1px solid rgba(var(--primary-rgb), .18); border-radius: 14px; background: linear-gradient(135deg, rgba(var(--primary-rgb), .12), transparent 66%), color-mix(in srgb, var(--surface-2) 70%, transparent) }
-.selected-model-card span { display: block; color: var(--text-muted); font-size: 10px; font-weight: var(--font-weight-title); text-transform: uppercase }
-.selected-model-card strong { display: block; margin-top: 5px; color: var(--text-primary); font-size: 15px; font-weight: var(--font-weight-title) }
-.selected-model-card em { display: block; margin-top: 4px; color: var(--text-secondary); font-size: 11px; font-style: normal; font-weight: var(--font-weight-body) }
-.chart-card-header { justify-content: space-between; align-items: flex-start }
-.chart-card-header span { display: flex; align-items: center; gap: 8px }
-.chart-card-header small { max-width: 320px; color: var(--text-muted); font-size: 11px; font-weight: var(--font-weight-body); line-height: 1.45; text-align: right }
-.config-card, .chart-card, .job-card { border-radius: 16px; margin-bottom: 16px }
-.chart-box { width: 100%; height: 300px }
-.metric-explainers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px }
-.metric-explainers span { padding: 9px 10px; border: 1px solid var(--border-color); border-radius: 10px; background: color-mix(in srgb, var(--surface-2) 76%, transparent); color: var(--text-secondary); font-size: 11px; line-height: 1.55 }
-.metric-explainers strong { display: block; margin-bottom: 3px; color: var(--text-primary); font-size: 12px }
-.job-item { display: flex; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--border-color) }
-.job-info { width: 180px }
-.job-name { font-weight: var(--font-weight-body); display: block; color: var(--text-primary) }
-.job-model { font-size: 11px; color: var(--text-secondary) }
-.job-progress { flex: 1 }
-.job-meta { display: flex; gap: 12px; align-items: center; width: 200px; font-size: 12px; color: var(--text-primary) }
-.job-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; min-width: 190px }
-.job-actions :deep(.el-button) { min-height: 34px !important; padding: 6px 12px !important }
-.mt-4 { margin-top: 16px }
-@media (max-width: 980px) {
-  .training-guide { grid-template-columns: repeat(2, minmax(0, 1fr)) }
-  .model-browser { grid-template-columns: 1fr }
-  .model-group-menu { grid-template-columns: repeat(2, minmax(0, 1fr)) }
-  .model-group-tab:hover { transform: translateY(-1px) }
-  .metric-explainers { grid-template-columns: 1fr }
-  .chart-card-header { display: grid; gap: 6px }
-  .chart-card-header small { text-align: left }
-  .job-item { align-items: flex-start; flex-wrap: wrap }
-  .job-info, .job-meta { width: auto; min-width: 180px }
-  .job-actions { justify-content: flex-start }
+
+.method-list {
+  display: grid;
+  gap: 10px;
 }
-@media (max-width: 640px) {
-  .training-guide { grid-template-columns: 1fr }
-  .step-header { align-items: flex-start; display: grid }
-  .model-group-menu { grid-template-columns: 1fr }
-  .model-filter-bar { align-items: stretch; flex-direction: column }
-  .model-register-btn { justify-content: center }
-  .model-grid { grid-template-columns: 1fr }
+
+.method-list article {
+  padding: 15px;
+}
+
+.method-list header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 9px;
+}
+
+.method-list code {
+  color: color-mix(in srgb, var(--model-accent, var(--primary-color)) 72%, var(--text-primary));
+  font-size: 13px;
+  background: color-mix(in srgb, var(--model-accent, var(--primary-color)) 9%, transparent);
+  border-radius: 8px;
+  padding: 4px 8px;
+}
+
+.method-list strong {
+  color: var(--text-primary);
+  font-size: 15px;
+  text-align: right;
+}
+
+.method-meta {
+  display: grid;
+  gap: 6px;
+  margin-top: 9px;
+}
+
+.method-meta span {
+  color: color-mix(in srgb, var(--model-accent, var(--primary-color)) 70%, var(--text-primary));
+  font-size: 12px;
+}
+
+.detail-side {
+  display: grid;
+  gap: 18px;
+  align-content: start;
+}
+
+.service-card ol {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+  counter-reset: flow;
+}
+
+.service-card li {
+  counter-increment: flow;
+  position: relative;
+  min-height: 44px;
+  padding: 12px 12px 12px 44px;
+  border-radius: 12px;
+  background: var(--panel-bg);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.service-card li::before {
+  content: counter(flow);
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
+  background: var(--text-primary);
+  color: var(--bg-color);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+@media (max-width: 1180px) {
+  .model-overview-shell,
+  .model-evaluation-hero,
+  .overview-workbench {
+    grid-template-columns: 1fr;
+  }
+
+  .model-directory {
+    position: static;
+  }
+
+  .metric-band {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .training-page {
+    padding: 16px;
+  }
+
+  .page-header,
+  .model-identity,
+  .section-heading,
+  .method-list header {
+    display: grid;
+    justify-items: start;
+  }
+
+  .header-count {
+    text-align: left;
+  }
+
+  .model-facts,
+  .metric-band {
+    grid-template-columns: 1fr;
+  }
+
+  .model-mark {
+    width: 64px;
+    height: 64px;
+  }
+
+  .model-detail {
+    padding: 16px;
+  }
 }
 </style>

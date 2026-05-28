@@ -45,9 +45,11 @@ deploy/*dump*.sql
 deploy/*backup*.sql
 
 # Browser/test artifacts and screenshots
+.playwright-mcp/
 artifacts/
 .tmp*/
 .tmp-*
+tmp-jar-check/
 tmp_*.png
 *.local.png
 

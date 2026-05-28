@@ -245,18 +245,18 @@
             <div class="lp-grid">
               <label>
                 <span>内容</span>
-                <select v-model="localSaveKind">
-                  <option value="summary">材料摘要</option>
-                  <option value="json">完整 JSON</option>
-                </select>
+                <el-select v-model="localSaveKind" popper-class="glass-select-popper">
+                  <el-option label="材料摘要" value="summary" />
+                  <el-option label="完整 JSON" value="json" />
+                </el-select>
               </label>
               <label>
                 <span>格式</span>
-                <select v-model="localSaveFormat">
-                  <option value="md">Markdown</option>
-                  <option value="word">Word</option>
-                  <option value="json">JSON</option>
-                </select>
+                <el-select v-model="localSaveFormat" popper-class="glass-select-popper">
+                  <el-option label="Markdown" value="md" />
+                  <el-option label="Word" value="word" />
+                  <el-option label="JSON" value="json" />
+                </el-select>
               </label>
               <button type="button" @click="saveMaterialsToLocal">导出</button>
             </div>
@@ -554,10 +554,45 @@ function exportChat() { if (!messages.value.length) { ElMessage.warning('暂无�
 
 /* 操作下拉 */
 .action-trigger-wrap { position: relative; }
-.action-drop { position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 38; min-width: 160px; display: grid; gap: 2px; padding: 6px; border: 1px solid rgba(255,255,255,0.12); border-radius: 14px; background: var(--workbench-overlay-bg); backdrop-filter: blur(16px); box-shadow: 0 12px 40px rgba(0,0,0,0.28); }
-.action-drop button { height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 0; border-radius: 9px; background: transparent; color: var(--text-secondary); font-size: 12px; cursor: pointer; white-space: nowrap; }
-.action-drop button:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
-.action-drop button:disabled { opacity: 0.35; cursor: not-allowed; }
+.action-drop {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  z-index: 38;
+  min-width: 178px;
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02) 42%, rgba(0,0,0,0.12)),
+    var(--workbench-overlay-bg);
+  backdrop-filter: blur(18px) saturate(118%);
+  -webkit-backdrop-filter: blur(18px) saturate(118%);
+  box-shadow: 0 18px 52px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+.action-drop button {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+.action-drop button:hover:not(:disabled) {
+  border-color: rgba(var(--primary-rgb), 0.2);
+  background: rgba(var(--primary-rgb), 0.1);
+  color: var(--primary-color);
+}
+.action-drop button:disabled { opacity: 0.38; cursor: not-allowed; }
 .material-count { color: var(--text-muted); font-size: 11px; margin-left: 6px; }
 
 /* ====== 消息区 ====== */
@@ -625,10 +660,41 @@ function exportChat() { if (!messages.value.length) { ElMessage.warning('暂无�
 
 /* 推理下拉 */
 .reasoning-trigger-wrap { position: relative; }
-.reasoning-drop { position: absolute; left: 0; bottom: calc(100% + 8px); z-index: 40; width: 200px; display: grid; gap: 4px; padding: 8px; border: 1px solid rgba(255,255,255,0.12); border-radius: 16px; background: var(--workbench-overlay-bg); backdrop-filter: blur(16px); box-shadow: 0 16px 48px rgba(0,0,0,0.32); }
-.reasoning-drop button { height: 36px; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; border: 1px solid transparent; border-radius: 10px; background: transparent; color: var(--text-secondary); font-size: 12px; cursor: pointer; }
-.reasoning-drop button:hover { background: rgba(255,255,255,0.04); }
-.reasoning-drop button.active { border-color: rgba(var(--primary-rgb), 0.2); background: rgba(var(--primary-rgb), 0.08); color: var(--primary-color); }
+.reasoning-drop {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 40;
+  width: 210px;
+  max-width: calc(100vw - 42px);
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02) 42%, rgba(0,0,0,0.12)),
+    var(--workbench-overlay-bg);
+  backdrop-filter: blur(18px) saturate(118%);
+  -webkit-backdrop-filter: blur(18px) saturate(118%);
+  box-shadow: 0 18px 52px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+.reasoning-drop button {
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+.reasoning-drop button:hover { background: rgba(var(--primary-rgb), 0.09); color: var(--text-primary); }
+.reasoning-drop button.active { border-color: rgba(var(--primary-rgb), 0.24); background: rgba(var(--primary-rgb), 0.12); color: var(--primary-color); }
 .reasoning-drop em { color: var(--text-muted); font-size: 10px; font-style: normal; }
 
 /* 温度 */
@@ -637,7 +703,7 @@ function exportChat() { if (!messages.value.length) { ElMessage.warning('暂无�
 .temp-control input { width: 64px; accent-color: var(--primary-color); }
 
 /* 资源面板 */
-.resource-panel { position: absolute; left: 4px; right: 4px; bottom: calc(100% + 8px); z-index: 35; max-height: 340px; overflow: hidden; display: grid; grid-template-rows: auto 1fr; padding: 14px; border: 1px solid rgba(255,255,255,0.12); border-radius: 18px; background: var(--workbench-overlay-bg); backdrop-filter: blur(16px); box-shadow: 0 16px 48px rgba(0,0,0,0.32); }
+.resource-panel { position: absolute; left: 4px; right: 4px; bottom: calc(100% + 8px); z-index: 35; max-height: 340px; overflow: hidden; display: grid; grid-template-rows: auto 1fr; padding: 14px; border: 1px solid var(--border-color); border-radius: 18px; background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02) 42%, rgba(0,0,0,0.12)), var(--workbench-overlay-bg); backdrop-filter: blur(18px) saturate(118%); -webkit-backdrop-filter: blur(18px) saturate(118%); box-shadow: 0 18px 52px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.08); }
 .rp-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .rp-head strong { color: var(--text-primary); font-size: 13px; font-weight: 600; }
 .rp-head button { height: 28px; padding: 0 10px; border: 1px solid rgba(255,255,255,0.1); border-radius: 999px; background: transparent; color: var(--text-secondary); font-size: 11px; cursor: pointer; }
@@ -649,11 +715,11 @@ function exportChat() { if (!messages.value.length) { ElMessage.warning('暂无�
 .rp-grid em { color: var(--text-muted); font-size: 10px; font-style: normal; line-height: 1.4; }
 
 /* 本地保存面板 */
-.local-save-panel { position: absolute; left: 4px; right: 4px; bottom: calc(100% + 8px); z-index: 36; padding: 14px; border: 1px solid rgba(255,255,255,0.12); border-radius: 18px; background: var(--workbench-overlay-bg); backdrop-filter: blur(16px); box-shadow: 0 16px 48px rgba(0,0,0,0.32); }
+.local-save-panel { position: absolute; left: 4px; right: 4px; bottom: calc(100% + 8px); z-index: 36; padding: 14px; border: 1px solid var(--border-color); border-radius: 18px; background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02) 42%, rgba(0,0,0,0.12)), var(--workbench-overlay-bg); backdrop-filter: blur(18px) saturate(118%); -webkit-backdrop-filter: blur(18px) saturate(118%); box-shadow: 0 18px 52px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.08); }
 .lp-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) auto; gap: 8px; margin-top: 10px; }
 .lp-grid label { display: grid; gap: 4px; }
 .lp-grid span { color: var(--text-muted); font-size: 10px; font-weight: 600; }
-.lp-grid select { height: 36px; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; background: var(--workbench-control-bg); color: var(--text-primary); padding: 0 10px; outline: none; }
+.lp-grid :deep(.el-select__wrapper) { min-height: 36px; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; background: var(--workbench-control-bg); color: var(--text-primary); box-shadow: none; }
 .lp-grid > button { align-self: end; height: 36px; padding: 0 14px; border: 1px solid rgba(var(--primary-rgb), 0.2); border-radius: 10px; background: rgba(var(--primary-rgb), 0.08); color: var(--primary-color); font-size: 12px; cursor: pointer; }
 
 /* 发送按钮 */

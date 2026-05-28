@@ -21,10 +21,19 @@
         </button>
       </div>
 
-      <div class="nav-item-wrap has-children explore-wrap">
+      <div
+        ref="exploreWrapRef"
+        class="nav-item-wrap has-children explore-wrap"
+        @mouseenter="exploreMenuOpen = true"
+        @mouseleave="exploreMenuOpen = false"
+        @focusin="exploreMenuOpen = true"
+        @focusout="closeExploreOnFocusOut"
+      >
         <button
           type="button"
           :class="{ active: isExploreActive }"
+          aria-haspopup="menu"
+          :aria-expanded="exploreMenuOpen ? 'true' : 'false'"
           @click="navigateExplore"
         >
           <Compass :size="15" stroke-width="2.3" />
@@ -32,16 +41,18 @@
           <ChevronDown class="nav-chevron" :size="13" stroke-width="2.5" />
         </button>
 
-        <div class="top-nav-submenu">
+        <div class="top-nav-submenu" role="menu">
           <button
             v-for="item in exploreItems"
             :key="item.path"
             type="button"
+            role="menuitem"
             :class="{ active: isExploreItemActive(item) }"
             @click="navigateTo(item.path)"
           >
             <component :is="item.icon" :size="15" stroke-width="2.2" />
             <span>{{ navLabel(item.path) }}</span>
+            <ChevronRight class="submenu-arrow" :size="13" stroke-width="2.5" />
           </button>
         </div>
       </div>
@@ -152,6 +163,7 @@ import {
 } from '@/constants/navigation'
 import {
   ChevronDown,
+  ChevronRight,
   Compass,
   PanelLeftClose,
   PanelTop,
@@ -168,6 +180,8 @@ const { t } = useI18n()
 const isScrolled = ref(false)
 const isLanding = computed(() => route.name === 'Landing')
 const showTopNav = computed(() => isLanding.value || themeStore.isHorizontalMenu)
+const exploreWrapRef = ref<HTMLElement | null>(null)
+const exploreMenuOpen = ref(false)
 const navItems = mainNavItems
 const exploreItems = exploreNavItems
 const featuredPalettes = computed(() => themeStore.palettes.slice(0, 4))
@@ -222,8 +236,14 @@ const isExploreActive = computed(() => isExploreNavActive(route.path))
 const isExploreItemActive = (item: NavItem) => isExploreNavActive(route.path, item)
 
 const goHome = () => router.push('/')
-const navigateTo = (path: string) => router.push(path)
-const navigateExplore = () => router.push(exploreItems[0]?.path || '/knowledge')
+const navigateTo = (path: string) => {
+  exploreMenuOpen.value = false
+  router.push(path)
+}
+const navigateExplore = () => {
+  exploreMenuOpen.value = false
+  router.push(exploreItems[0]?.path || '/knowledge')
+}
 const handleAccount = () => router.push(authStore.isAuthenticated ? '/profile' : '/login')
 const navLabel = (path: string) => t(navLabelKey(path))
 const paletteVars = (palette: Palette) => ({
@@ -238,6 +258,12 @@ const handleHueInput = (event: Event) => {
 const handleLangToggle = (event: MouseEvent) => window.dispatchEvent(new CustomEvent(APP_EVENTS.TOGGLE_LANG, {
   detail: { x: event.clientX, y: event.clientY },
 }))
+const closeExploreOnFocusOut = (event: FocusEvent) => {
+  const nextTarget = event.relatedTarget as Node | null
+  if (!nextTarget || !exploreWrapRef.value?.contains(nextTarget)) {
+    exploreMenuOpen.value = false
+  }
+}
 
 onMounted(() => {
   window.addEventListener('scroll', handleScroll, { passive: true })
@@ -395,30 +421,35 @@ onUnmounted(() => {
   top: calc(100% + 10px);
   left: 50%;
   z-index: 140;
-  width: 196px;
-  padding: 8px;
+  width: 224px;
+  display: grid;
+  gap: 4px;
+  padding: 9px;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  border-radius: 16px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.035) 38%, rgba(0, 0, 0, 0.18)),
-    rgba(var(--glass-bg-rgb), 0.86);
-  backdrop-filter: blur(14px) saturate(115%);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.026) 42%, rgba(0, 0, 0, 0.14)),
+    var(--workbench-overlay-bg);
+  backdrop-filter: blur(18px) saturate(118%);
+  -webkit-backdrop-filter: blur(18px) saturate(118%);
   box-shadow:
-    0 22px 60px rgba(0, 0, 0, 0.34),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    0 18px 52px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
   transform: translate(-50%, 8px);
+  transform-origin: top center;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 160ms ease, transform 160ms ease;
+  transition: opacity 160ms ease, transform 160ms ease, border-color 160ms ease;
 }
 
 :global(html.light .top-nav-submenu) {
+  border-color: rgba(20, 49, 60, 0.12);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.56) 38%, rgba(0, 0, 0, 0.015)),
-    rgba(var(--glass-bg-rgb), 0.86);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(245, 251, 249, 0.66) 46%, rgba(28, 75, 88, 0.035)),
+    rgba(var(--glass-bg-rgb), 0.9);
   box-shadow:
-    0 18px 46px rgba(15, 23, 42, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+    0 18px 46px rgba(15, 23, 42, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
 }
 
 .top-nav-submenu::before {
@@ -430,6 +461,24 @@ onUnmounted(() => {
   height: 12px;
 }
 
+.top-nav-submenu::after {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border-left: 1px solid var(--border-color);
+  border-top: 1px solid var(--border-color);
+  background: color-mix(in srgb, var(--workbench-overlay-bg) 92%, white 8%);
+  transform: translateX(-50%) rotate(45deg);
+}
+
+:global(html.light .top-nav-submenu::after) {
+  border-color: rgba(20, 49, 60, 0.12);
+  background: rgba(249, 253, 251, 0.94);
+}
+
 .has-children:hover .top-nav-submenu,
 .has-children:focus-within .top-nav-submenu {
   opacity: 1;
@@ -438,10 +487,48 @@ onUnmounted(() => {
 }
 
 .top-nav .top-nav-submenu button {
+  position: relative;
+  z-index: 1;
   width: 100%;
-  height: 36px;
+  height: 40px;
   justify-content: flex-start;
   padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.top-nav .top-nav-submenu button:hover,
+.top-nav .top-nav-submenu button.active {
+  border-color: rgba(var(--primary-rgb), 0.22);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent),
+    rgba(var(--primary-rgb), 0.1);
+  color: var(--primary-color);
+  transform: none;
+}
+
+.top-nav .top-nav-submenu button span {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.submenu-arrow {
+  flex: 0 0 auto;
+  opacity: 0;
+  transform: translateX(-3px);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.top-nav .top-nav-submenu button:hover .submenu-arrow,
+.top-nav .top-nav-submenu button.active .submenu-arrow {
+  opacity: 0.9;
+  transform: translateX(0);
 }
 
 .top-actions {

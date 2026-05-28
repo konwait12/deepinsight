@@ -63,17 +63,12 @@
             <el-icon><Search /></el-icon>
             <input v-model="search" type="search" placeholder="搜索名称、类型、状态、摘要..." />
           </div>
-          <select v-model="statusFilter" aria-label="状态筛选">
-            <option value="">全部状态</option>
-            <option value="ready">可用 / 已保存</option>
-            <option value="pending">待处理</option>
-            <option value="error">异常</option>
-          </select>
-          <div class="view-switch" :class="`is-${viewMode}`">
-            <i />
-            <button type="button" :class="{ active: viewMode === 'cards' }" @click="viewMode = 'cards'">封面</button>
-            <button type="button" :class="{ active: viewMode === 'table' }" @click="viewMode = 'table'">清单</button>
-          </div>
+          <el-select v-model="statusFilter" aria-label="状态筛选" popper-class="glass-select-popper">
+            <el-option label="全部状态" value="" />
+            <el-option label="可用 / 已保存" value="ready" />
+            <el-option label="待处理" value="pending" />
+            <el-option label="异常" value="error" />
+          </el-select>
         </div>
 
         <div class="selection-bar">
@@ -87,78 +82,30 @@
           <button type="button" :disabled="!selectedKeys.length" @click="selectedKeys = []">清空选择</button>
         </div>
 
-        <Transition name="asset-mode" mode="out-in">
-          <div v-if="viewMode === 'cards'" key="cards" class="asset-cards" v-loading="loading">
-            <article
-              v-for="(asset, index) in filteredAssets"
-              :key="asset.key"
-              class="asset-card"
-              :class="{ active: activeAsset?.key === asset.key, selected: selectedKeys.includes(asset.key), saved: asset.cloudSaved, readonly: isReadOnly(asset) }"
-              :style="{ '--delay': `${Math.min(index, 10) * 42}ms` }"
-              @click="activeAsset = asset"
-            >
-              <button
-                type="button"
-                class="select-dot"
-                :disabled="!canSyncAsset(asset)"
-                :aria-label="`选择 ${asset.title}`"
-                @click.stop="toggleSelect(asset)"
-              >
-                <el-icon v-if="selectedKeys.includes(asset.key)"><Select /></el-icon>
-              </button>
-              <span v-if="isReadOnly(asset)" class="readonly-badge">官方只读</span>
-              <div class="asset-cover">
-                <span>{{ asset.typeLabel }}</span>
-                <strong>{{ coverText(asset) }}</strong>
-                <em>{{ asset.subtype }}</em>
-              </div>
-              <div class="asset-card-copy">
-                <div>
-                  <span>{{ asset.format }}</span>
-                  <b :class="statusClass(asset)">{{ statusText(asset) }}</b>
-                </div>
-                <h3>{{ asset.title }}</h3>
-                <p>{{ asset.summary }}</p>
-              </div>
-              <div class="asset-card-foot">
-                <small>{{ asset.readiness }}</small>
-                <button type="button" :disabled="!canSyncAsset(asset) || syncing" @click.stop="syncOne(asset)">
-                  {{ syncActionText(asset) }}
-                </button>
-              </div>
-            </article>
-            <div v-if="!filteredAssets.length" class="empty-state">暂无匹配的数据资产</div>
-          </div>
-
-          <div v-else key="table" class="asset-table" v-loading="loading">
-            <button
-              v-for="asset in filteredAssets"
-              :key="asset.key"
-              type="button"
-              class="asset-row"
-              :class="{ active: activeAsset?.key === asset.key, selected: selectedKeys.includes(asset.key), readonly: isReadOnly(asset) }"
-              @click="activeAsset = asset"
-            >
-              <span class="row-type">{{ typeCode(asset) }}</span>
-              <strong>{{ asset.title }}</strong>
-              <em>{{ asset.typeLabel }}</em>
-              <i>{{ asset.readiness }}</i>
-              <small>{{ isReadOnly(asset) ? '官方只读' : asset.cloudSaved ? '已同步' : '未同步' }}</small>
-              <b :class="{ disabled: !canSyncAsset(asset) }" @click.stop="toggleSelect(asset)">
-                {{ selectedKeys.includes(asset.key) ? '已选' : canSyncAsset(asset) ? '选择' : '只读' }}
-              </b>
-            </button>
-            <div v-if="!filteredAssets.length" class="empty-state">暂无匹配的数据资产</div>
-          </div>
-        </Transition>
+        <div class="asset-table" v-loading="loading">
+          <button
+            v-for="asset in filteredAssets"
+            :key="asset.key"
+            type="button"
+            class="asset-row"
+            :class="{ active: activeAsset?.key === asset.key, selected: selectedKeys.includes(asset.key), readonly: isReadOnly(asset) }"
+            @click="activeAsset = asset"
+          >
+            <span class="row-type">{{ typeCode(asset) }}</span>
+            <strong>{{ asset.title }}</strong>
+            <em>{{ asset.typeLabel }}</em>
+            <i>{{ asset.readiness }}</i>
+            <small>{{ isReadOnly(asset) ? '官方只读' : asset.cloudSaved ? '已同步' : '未同步' }}</small>
+            <b :class="{ disabled: !canSyncAsset(asset) }" @click.stop="toggleSelect(asset)">
+              {{ selectedKeys.includes(asset.key) ? '已选' : canSyncAsset(asset) ? '选择' : '只读' }}
+            </b>
+          </button>
+          <div v-if="!filteredAssets.length" class="empty-state">暂无匹配的数据资产</div>
+        </div>
       </main>
 
       <aside class="asset-detail entrance-up">
         <template v-if="activeAsset">
-          <div class="detail-cover">
-            <span>{{ activeAsset.typeLabel }}</span>
-            <strong>{{ coverText(activeAsset) }}</strong>
-          </div>
           <div class="detail-title">
             <span>{{ activeAsset.subtype }}</span>
             <h2>{{ activeAsset.title }}</h2>
@@ -228,7 +175,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Refresh, Search, Select, Upload } from '@element-plus/icons-vue'
+import { Refresh, Search, Upload } from '@element-plus/icons-vue'
 import { datasetApi } from '@/api'
 import type { DataAsset, DataAssetOverview } from '@/api/modules/data.api'
 
@@ -241,7 +188,6 @@ const uploading = ref(false)
 const search = ref('')
 const activeTab = ref('all')
 const statusFilter = ref('')
-const viewMode = ref<'cards' | 'table'>('cards')
 const selectedKeys = ref<string[]>([])
 const overview = ref<DataAssetOverview | null>(null)
 const activeAsset = ref<DataAsset | null>(null)
@@ -344,10 +290,6 @@ function syncActionText(asset: DataAsset) {
   return '同步云端'
 }
 
-function statusClass(asset: DataAsset) {
-  return `is-${statusBucket(asset)}`
-}
-
 function statusText(asset: DataAsset) {
   const labels: Record<string, string> = {
     ready: '可用',
@@ -364,16 +306,6 @@ function statusText(asset: DataAsset) {
     unknown: '未知',
   }
   return labels[asset.status] || asset.status || '未知'
-}
-
-function coverText(asset: DataAsset) {
-  const compact = asset.typeLabel || asset.type || '数据'
-  if (compact.length <= 2) return compact
-  if (asset.type === 'run_log') return 'LOG'
-  if (asset.type === 'analysis_result') return 'AI'
-  if (asset.type === 'saved_view') return 'VIEW'
-  if (asset.type === 'cloud_item') return '云'
-  return compact.slice(0, 2)
 }
 
 function typeCode(asset: DataAsset) {
@@ -501,7 +433,6 @@ onMounted(loadAssets)
 
 .data-hero::before,
 .summary-card::before,
-.asset-card::before,
 .asset-sidebar::before,
 .asset-main::before,
 .asset-detail::before {
@@ -573,7 +504,6 @@ onMounted(loadAssets)
 .primary-btn,
 .ghost-btn,
 .selection-bar button,
-.asset-card-foot button,
 .cloud-brief button {
   display: inline-flex;
   align-items: center;
@@ -597,7 +527,6 @@ onMounted(loadAssets)
 
 .ghost-btn,
 .selection-bar button,
-.asset-card-foot button,
 .cloud-brief button {
   background: rgba(var(--glass-bg-rgb), 0.26);
   color: var(--text-secondary);
@@ -606,7 +535,6 @@ onMounted(loadAssets)
 .primary-btn:hover,
 .ghost-btn:hover,
 .selection-bar button:not(:disabled):hover,
-.asset-card-foot button:hover,
 .cloud-brief button:hover {
   transform: translateY(-1px);
   border-color: rgba(255, 255, 255, 0.24);
@@ -765,7 +693,7 @@ onMounted(loadAssets)
 
 .asset-toolbar {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) 160px auto;
+  grid-template-columns: minmax(220px, 1fr) 160px;
   gap: 10px;
   margin-bottom: 12px;
 }
@@ -782,8 +710,7 @@ onMounted(loadAssets)
   color: var(--text-muted);
 }
 
-.search-shell input,
-.asset-toolbar select {
+.search-shell input {
   width: 100%;
   height: 100%;
   border: 0;
@@ -793,49 +720,13 @@ onMounted(loadAssets)
   font-size: 12px;
 }
 
-.asset-toolbar select {
-  height: 40px;
-  padding: 0 12px;
+.asset-toolbar :deep(.el-select__wrapper) {
+  min-height: 40px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 999px;
   background: var(--workbench-control-bg);
-}
-
-.view-switch {
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  min-width: 126px;
-  padding: 4px;
-  border-radius: 999px;
-  background: var(--workbench-soft-bg);
-}
-
-.view-switch i {
-  position: absolute;
-  top: 4px;
-  bottom: 4px;
-  left: 4px;
-  width: calc(50% - 4px);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
-  transition: transform 220ms ease;
-}
-
-.view-switch.is-table i {
-  transform: translateX(100%);
-}
-
-.view-switch button {
-  position: relative;
-  z-index: 1;
-  color: var(--text-muted);
-  font-size: 11px;
-  font-weight: var(--font-weight-title);
-}
-
-.view-switch button.active {
-  color: var(--primary-color);
+  box-shadow: none;
+  color: var(--text-primary);
 }
 
 .selection-bar {
@@ -863,136 +754,12 @@ onMounted(loadAssets)
   opacity: 0.45;
 }
 
-.asset-cards {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding-right: 4px;
-}
-
-.asset-card {
-  position: relative;
-  min-height: 320px;
-  overflow: hidden;
-  border: 1px solid var(--border-color);
-  border-radius: 22px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.064), rgba(255, 255, 255, 0.018) 42%, rgba(0, 0, 0, 0.08)),
-    var(--workbench-panel-bg);
-  cursor: pointer;
-  animation: assetIn 360ms ease both;
-  animation-delay: var(--delay);
-  transition: transform 200ms ease, border-color 200ms ease, background 200ms ease;
-}
-
-.asset-card:hover,
-.asset-card.active {
-  transform: translateY(-1px);
-  border-color: rgba(255, 255, 255, 0.24);
-}
-
-.asset-card.selected {
-  border-color: rgba(66, 230, 164, 0.8);
-  box-shadow: inset 0 0 0 1px rgba(66, 230, 164, 0.45), 0 0 34px rgba(66, 230, 164, 0.08);
-}
-
-.asset-card.saved::after {
-  content: "Cloud";
-  position: absolute;
-  top: 14px;
-  left: 14px;
-  z-index: 2;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: rgba(var(--primary-rgb), 0.16);
-  color: var(--primary-color);
-  font-size: 10px;
-  font-weight: var(--font-weight-title);
-}
-
-.asset-card.readonly {
-  border-color: rgba(251, 191, 36, 0.28);
-}
-
-.readonly-badge {
-  position: absolute;
-  top: 14px;
-  left: 14px;
-  z-index: 4;
-  padding: 4px 8px;
-  border: 1px solid rgba(251, 191, 36, 0.22);
-  border-radius: 999px;
-  background: rgba(251, 191, 36, 0.14);
-  color: #fbbf24;
-  font-size: 10px;
-  font-weight: var(--font-weight-title);
-}
-
-.asset-card.saved .readonly-badge {
-  left: 66px;
-}
-
-.select-dot {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 3;
-  width: 30px;
-  height: 30px;
-  display: grid;
-  place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 999px;
-  background: var(--workbench-control-bg);
-  color: #42e6a4;
-}
-
-.select-dot:disabled,
-.asset-card-foot button:disabled,
 .detail-actions button:disabled {
   cursor: not-allowed;
   opacity: 0.45;
   transform: none;
 }
 
-.asset-cover {
-  position: relative;
-  height: 132px;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 6px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.018) 42%, rgba(0, 0, 0, 0.14)),
-    var(--workbench-soft-bg);
-}
-
-.asset-cover span,
-.asset-cover em {
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 10px;
-  font-style: normal;
-  font-weight: var(--font-weight-title);
-}
-
-.asset-cover strong {
-  color: white;
-  font-size: 42px;
-  font-weight: var(--font-weight-title);
-  letter-spacing: -0.08em;
-}
-
-.asset-card-copy {
-  position: relative;
-  z-index: 1;
-  padding: 14px 14px 0;
-}
-
-.asset-card-copy > div,
-.asset-card-foot,
 .detail-tags {
   display: flex;
   flex-wrap: wrap;
@@ -1000,60 +767,12 @@ onMounted(loadAssets)
   gap: 8px;
 }
 
-.asset-card-copy > div {
-  justify-content: space-between;
-}
-
-.asset-card-copy span,
-.asset-card-foot small {
-  color: var(--text-muted);
-  font-size: 11px;
-  font-weight: var(--font-weight-title);
-}
-
-.asset-card-copy b,
 .detail-tags b {
   padding: 4px 8px;
   border-radius: 999px;
   background: rgba(var(--primary-rgb), 0.1);
   color: var(--primary-color);
   font-size: 10px;
-}
-
-.asset-card-copy b.is-pending {
-  background: rgba(251, 191, 36, 0.12);
-  color: #fbbf24;
-}
-
-.asset-card-copy b.is-error {
-  background: rgba(251, 113, 133, 0.12);
-  color: #fb7185;
-}
-
-.asset-card-copy h3 {
-  margin: 12px 0 8px;
-  color: var(--text-primary);
-  font-size: 17px;
-  font-weight: var(--font-weight-title);
-}
-
-.asset-card-copy p {
-  display: -webkit-box;
-  overflow: hidden;
-  min-height: 58px;
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: 12px;
-  line-height: 1.6;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-}
-
-.asset-card-foot {
-  position: relative;
-  z-index: 1;
-  justify-content: space-between;
-  padding: 14px;
 }
 
 .asset-table {
@@ -1141,30 +860,6 @@ onMounted(loadAssets)
   grid-auto-rows: max-content;
 }
 
-.detail-cover {
-  height: 134px;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 8px;
-  border-radius: 20px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.018) 42%, rgba(0, 0, 0, 0.14)),
-    var(--workbench-soft-bg);
-}
-
-.detail-cover span {
-  color: var(--primary-color);
-  font-size: 11px;
-  font-weight: var(--font-weight-title);
-}
-
-.detail-cover strong {
-  color: var(--text-primary);
-  font-size: 46px;
-  font-weight: var(--font-weight-title);
-}
-
 .detail-title h2 {
   margin: 6px 0;
   color: var(--text-primary);
@@ -1242,7 +937,6 @@ onMounted(loadAssets)
 
 :global(html.light .data-page .data-hero::before),
 :global(html.light .data-page .summary-card::before),
-:global(html.light .data-page .asset-card::before),
 :global(html.light .data-page .asset-sidebar::before),
 :global(html.light .data-page .asset-main::before),
 :global(html.light .data-page .asset-detail::before) {
@@ -1253,7 +947,6 @@ onMounted(loadAssets)
 :global(html.light .data-page .primary-btn),
 :global(html.light .data-page .ghost-btn),
 :global(html.light .data-page .selection-bar button),
-:global(html.light .data-page .asset-card-foot button),
 :global(html.light .data-page .cloud-brief button) {
   border-color: rgba(20, 49, 60, 0.13);
   background:
@@ -1274,7 +967,6 @@ onMounted(loadAssets)
 :global(html.light .data-page .primary-btn:hover),
 :global(html.light .data-page .ghost-btn:hover),
 :global(html.light .data-page .selection-bar button:not(:disabled):hover),
-:global(html.light .data-page .asset-card-foot button:hover),
 :global(html.light .data-page .cloud-brief button:hover) {
   border-color: rgba(var(--primary-rgb), 0.32);
   background:
@@ -1286,8 +978,7 @@ onMounted(loadAssets)
 :global(html.light .data-page .cloud-brief),
 :global(html.light .data-page .selection-bar),
 :global(html.light .data-page .search-shell),
-:global(html.light .data-page .asset-toolbar select),
-:global(html.light .data-page .view-switch),
+:global(html.light .data-page .asset-toolbar .el-select__wrapper),
 :global(html.light .data-page .metric-list div) {
   border-color: rgba(20, 49, 60, 0.11);
   background:
@@ -1305,14 +996,6 @@ onMounted(loadAssets)
     rgba(var(--primary-rgb), 0.08);
 }
 
-:global(html.light .data-page .view-switch i) {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(230, 247, 242, 0.72)),
-    rgba(var(--primary-rgb), 0.08);
-  box-shadow: 0 4px 12px rgba(31, 56, 68, 0.07);
-}
-
-:global(html.light .data-page .asset-card),
 :global(html.light .data-page .asset-row) {
   border-color: rgba(20, 49, 60, 0.11);
   background:
@@ -1324,8 +1007,6 @@ onMounted(loadAssets)
     0 10px 24px rgba(31, 56, 68, 0.055);
 }
 
-:global(html.light .data-page .asset-card:hover),
-:global(html.light .data-page .asset-card.active),
 :global(html.light .data-page .asset-row:hover),
 :global(html.light .data-page .asset-row.active) {
   border-color: rgba(var(--primary-rgb), 0.28);
@@ -1334,60 +1015,11 @@ onMounted(loadAssets)
     rgba(var(--primary-rgb), 0.055);
 }
 
-:global(html.light .data-page .asset-cover),
-:global(html.light .data-page .detail-cover) {
-  background:
-    radial-gradient(circle at 22% 22%, rgba(var(--primary-rgb), 0.18), transparent 36%),
-    radial-gradient(circle at 78% 20%, rgba(77, 201, 240, 0.13), transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(224, 242, 238, 0.46) 54%, rgba(28, 75, 88, 0.045)),
-    rgba(238, 248, 245, 0.62);
-}
-
-:global(html.light .data-page .asset-cover span),
-:global(html.light .data-page .asset-cover em) {
-  color: rgba(29, 29, 31, 0.58);
-}
-
-:global(html.light .data-page .asset-cover strong) {
-  color: #1f4a44;
-}
-
-:global(html.light .data-page .select-dot) {
-  border-color: rgba(20, 49, 60, 0.14);
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: 0 6px 16px rgba(31, 56, 68, 0.07);
-}
-
 :global(html.light .data-page .readonly-note) {
   border-color: rgba(191, 127, 20, 0.22);
   background:
     linear-gradient(180deg, rgba(255, 250, 232, 0.72), rgba(248, 239, 209, 0.46)),
     rgba(255, 255, 255, 0.42);
-}
-
-.asset-mode-enter-active,
-.asset-mode-leave-active {
-  transition: opacity 180ms ease, transform 180ms ease;
-}
-
-.asset-mode-enter-from,
-.asset-mode-leave-to {
-  opacity: 0;
-  transform: translateY(10px);
-}
-
-@keyframes assetIn {
-  from {
-    opacity: 0;
-    transform: translateY(24px);
-    filter: blur(8px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-    filter: blur(0);
-  }
 }
 
 @media (max-width: 1280px) {
@@ -1406,9 +1038,6 @@ onMounted(loadAssets)
     height: var(--asset-workbench-height);
   }
 
-  .asset-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 900px) {
@@ -1435,7 +1064,6 @@ onMounted(loadAssets)
     overflow: visible;
   }
 
-  .asset-cards,
   .asset-table {
     max-height: none;
     overflow: visible;
@@ -1460,8 +1088,7 @@ onMounted(loadAssets)
     padding: 16px;
   }
 
-  .asset-command-grid,
-  .asset-cards {
+  .asset-command-grid {
     grid-template-columns: 1fr;
   }
 }

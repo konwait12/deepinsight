@@ -766,13 +766,14 @@ onUnmounted(() => {
   display: grid;
   gap: 6px;
   padding: 9px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid var(--border-color);
   border-radius: 16px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.022) 40%, rgba(0, 0, 0, 0.14)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.022) 42%, rgba(0, 0, 0, 0.12)),
     var(--workbench-overlay-bg);
-  box-shadow: 0 20px 58px rgba(0, 0, 0, 0.38);
-  backdrop-filter: blur(18px);
+  box-shadow: 0 18px 52px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(18px) saturate(118%);
+  -webkit-backdrop-filter: blur(18px) saturate(118%);
   animation: assistantMenuRise 160ms ease both;
 }
 
@@ -788,12 +789,19 @@ onUnmounted(() => {
   background: var(--workbench-panel-bg);
   color: var(--text-secondary);
   box-shadow: none;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.assistant-reasoning-menu button:hover {
+  border-color: rgba(var(--primary-rgb), 0.2);
+  background: rgba(var(--primary-rgb), 0.1);
+  color: var(--text-primary);
 }
 
 .assistant-reasoning-menu button.active {
-  border-color: rgba(255, 255, 255, 0.24);
+  border-color: rgba(var(--primary-rgb), 0.24);
   background: rgba(var(--primary-rgb), 0.12);
-  color: var(--text-primary);
+  color: var(--primary-color);
 }
 
 .assistant-reasoning-menu strong {

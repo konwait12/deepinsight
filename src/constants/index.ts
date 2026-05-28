@@ -57,6 +57,7 @@ export const API_ENDPOINTS = {
   PREDICTION: {
     MODELS: '/prediction/models',
     CLASSIFY: '/prediction/classify',
+    RECOMMEND: '/prediction/recommend',
   },
   AI: {
     CHAT: '/ai/chat',

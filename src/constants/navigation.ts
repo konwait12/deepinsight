@@ -20,7 +20,7 @@ export type NavItem = {
 export const mainNavItems: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { label: 'Data', path: '/data', icon: Database },
-  { label: 'Training', path: '/training', icon: BrainCircuit },
+  { label: 'Model Overview', path: '/training', icon: BrainCircuit },
   { label: 'Analysis', path: '/viz', icon: BarChart3 },
   { label: 'Prediction', path: '/prediction', icon: Gauge },
 ]

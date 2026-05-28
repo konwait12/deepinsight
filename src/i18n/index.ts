@@ -5,7 +5,7 @@ const messages = {
     nav: {
       dashboard: '系统总览',
       data: '数据管理',
-      training: '模型训练',
+      training: '模型总览',
       analysis: '可视化分析',
       prediction: '预测推理',
       profile: '个人主页',
@@ -192,15 +192,7 @@ const messages = {
       confirm: '确认上传',
     },
     training: {
-      subtitle: '配置模型训练参数，启动训练任务并实时监控指标',
-      config: '训练配置',
-      jobName: '任务名称',
-      batchSize: '批次大小',
-      epochs: '训练轮次',
-      device: '计算设备',
-      start: '启动训练',
-      liveCurve: '实时训练曲线',
-      jobList: '训练任务列表',
+      subtitle: '查看已接入模型与待接入模型的依据、指标边界和参数调整方法',
     },
     analysis: {
       subtitle: '选择模型查看详细训练分析与 AI 解读',
@@ -229,7 +221,7 @@ const messages = {
       experimentCompare: '训练对比',
     },
     prediction: {
-      subtitle: '模型推理与批量测试，评估推理性能',
+      subtitle: '调用 BSARec 岗位推荐接口，用历史岗位 ID 验证真实推理链路',
     },
     knowledge: {
       galaxyTitle: '深度学习',
@@ -397,7 +389,7 @@ const messages = {
     nav: {
       dashboard: 'Dashboard',
       data: 'Data',
-      training: 'Training',
+      training: 'Model Overview',
       analysis: 'Visualization Analysis',
       prediction: 'Inference',
       profile: 'Profile',
@@ -584,15 +576,7 @@ const messages = {
       confirm: 'Confirm Upload',
     },
     training: {
-      subtitle: 'Configure model training parameters, launch jobs, and monitor metrics in real time',
-      config: 'Training Config',
-      jobName: 'Job Name',
-      batchSize: 'Batch Size',
-      epochs: 'Epochs',
-      device: 'Device',
-      start: 'Start Training',
-      liveCurve: 'Live Training Curve',
-      jobList: 'Training Jobs',
+      subtitle: 'Review integrated and planned models with evidence, metric boundaries, and parameter tuning methods',
     },
     analysis: {
       subtitle: 'Select a model to view detailed training analysis and AI insights',
@@ -621,7 +605,7 @@ const messages = {
       experimentCompare: 'Training Compare',
     },
     prediction: {
-      subtitle: 'Run model inference and batch tests, then evaluate inference performance',
+      subtitle: 'Call the BSARec job recommendation endpoint with historical job IDs',
     },
     knowledge: {
       galaxyTitle: 'Deep Learning',
