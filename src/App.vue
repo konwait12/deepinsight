@@ -368,7 +368,8 @@ const routeName = computed(() => String(route.name || ''))
 const isLandingPage = computed(() => routeName.value === 'Landing')
 const isPublicPreview = computed(() => ['Landing', 'Login'].includes(routeName.value))
 const usesIsolatedScroll = computed(() => isolatedScrollRoutes.has(routeName.value))
-const showFloatingAssistant = computed(() => !isPublicPreview.value)
+const isAiWorkspaceRoute = computed(() => route.path === '/ai')
+const showFloatingAssistant = computed(() => !isPublicPreview.value && !isAiWorkspaceRoute.value)
 const showSidebar = computed(() => {
   if (route.path === '/login') return false
   if (route.path === '/') return false

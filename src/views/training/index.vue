@@ -159,9 +159,10 @@ import { useI18n } from 'vue-i18n';
 import {
   AlertCircle,
   BrainCircuit,
-  Boxes,
-  Layers3,
-  ScanSearch,
+  Clock3,
+  GitBranch,
+  Layers,
+  Zap,
 } from 'lucide-vue-next';
 import { hasStoredAuthToken } from '@/utils/authState';
 
@@ -251,16 +252,6 @@ const copy = computed(() => (isZh.value ? {
   noFakeData: 'Data Boundary',
 }));
 
-const noProjectMetrics = computed(() => isZh.value ? {
-  value: '暂无项目实测指标',
-  explain: '该模型目前只有注册资料和接入方法，项目内还没有评估集、推理服务或日志结果。',
-  basis: 'ModelCatalogService 注册信息；未找到项目实测结果',
-} : {
-  value: 'No project metric yet',
-  explain: 'This model currently has registry metadata and integration guidance only. No project evaluation set, serving endpoint, or logged result is connected yet.',
-  basis: 'ModelCatalogService registry; no project evaluation result found',
-});
-
 const bsarecModel = computed<ModelEntry>(() => ({
   id: 'bsarec-job',
   mark: 'BSA',
@@ -269,17 +260,17 @@ const bsarecModel = computed<ModelEntry>(() => ({
   icon: BrainCircuit,
   evidenceLevel: 'live',
   name: {
-    zh: 'BSARec 岗位推荐模型',
-    en: 'BSARec Job Recommendation',
+    zh: 'BSARec Job',
+    en: 'BSARec Job',
   },
-  slug: 'BSARec-Job / sequential recommendation',
+  slug: 'BSARec / main online recommender',
   task: {
     zh: '序列推荐 / 岗位推荐',
     en: 'Sequential job recommendation',
   },
   status: isZh.value ? '已接入' : 'Integrated',
   source: isZh.value ? '项目内真实接入模型' : 'Project-backed model',
-  integration: isZh.value ? '外部 Flask API' : 'External Flask API',
+  integration: isZh.value ? '在线 / 推荐模型' : 'Online / recommendation model',
   metricStatus: isZh.value ? '有项目记录指标' : 'Recorded project metrics',
   description: {
     zh: '当前平台真正接入的是 BSARec：通过用户历史岗位 ID 序列请求本地 Flask 服务，返回 Top-K 岗位推荐。这里展示它的接口参数、已录入推荐指标，以及这些参数该怎么改。',
@@ -388,228 +379,391 @@ const bsarecModel = computed<ModelEntry>(() => ({
   evidencePills: ['PredictionController', 'BSARecClientService', 'predictionApi.recommend'],
 }));
 
-const plannedModels = computed<ModelEntry[]>(() => {
-  const unavailable = noProjectMetrics.value;
+function plannedMetrics(modelName: string, sourcePath: string): MetricCard[] {
   return [
     {
-      id: 'resnet-50',
-      mark: 'R50',
-      accent: '#0ea5e9',
-      visual: 'residual',
-      icon: Layers3,
-      evidenceLevel: 'planned',
-      name: { zh: '残差网络 50 层', en: 'ResNet-50' },
-      slug: 'ResNet-50 / image classification',
-      task: { zh: '图像分类 / CNN 骨干网络', en: 'Image classification / CNN backbone' },
-      status: isZh.value ? '待接入评估' : 'Evaluation pending',
-      source: isZh.value ? '官方模型注册信息' : 'Official registry metadata',
-      integration: isZh.value ? '未接真实推理服务' : 'No real serving endpoint yet',
-      metricStatus: isZh.value ? '暂无项目实测指标' : 'No project metric yet',
-      description: {
-        zh: 'ResNet-50 已在项目官方模型目录中登记参数量、输入尺寸和框架，但当前平台没有它的真实权重推理、评估集或日志结果；这里只展示接入后参数该如何改变。',
-        en: 'ResNet-50 has parameter count, input size, and framework metadata in the official model registry, but no real weights, evaluation set, or logs are connected in this platform yet.',
-      },
-      profile: [
-        { label: isZh.value ? '模型标识' : 'Model id', value: 'ResNet-50', basis: 'ModelCatalogService.OFFICIAL_MODELS' },
-        { label: isZh.value ? '参数规模' : 'Parameters', value: '25.6M', basis: 'paramCountM = 25.6' },
-        { label: isZh.value ? '输入尺寸' : 'Input size', value: '224x224x3', basis: 'inputSize = 224x224x3' },
-        { label: isZh.value ? '任务类型' : 'Task', value: isZh.value ? '图像分类' : 'classification', basis: 'taskType = classification' },
-        { label: isZh.value ? '运行框架' : 'Runtime', value: 'pytorch', basis: 'framework = pytorch' },
-        { label: isZh.value ? '接入状态' : 'Integration', value: isZh.value ? '待接入' : 'Pending', basis: 'no project endpoint wired' },
-      ],
-      metrics: ['Top-1 Accuracy', 'Validation Loss', 'Latency', 'Confusion Matrix'].map((label) => ({
-        label,
-        value: unavailable.value,
-        percent: 0,
-        available: false,
-        explain: unavailable.explain,
-        basis: unavailable.basis,
-      })),
-      parameterMethods: [
-        {
-          name: 'input_size',
-          currentValue: '224x224x3',
-          changeMethod: isZh.value
-            ? '接入图像管线后，在预处理层统一 resize/crop 到注册尺寸；如果要改尺寸，需要同步检查模型权重、首层输入和评估脚本。'
-            : 'After image pipeline integration, resize/crop inputs to the registered size. If this changes, validate weights, first-layer input, and evaluation scripts together.',
-          whenToAdjust: isZh.value ? '迁移到不同分辨率数据集时再调整。' : 'Adjust only when moving to a dataset with a different resolution requirement.',
-          basis: 'ModelCatalogService inputSize = 224x224x3',
-        },
-        {
-          name: 'top_k',
-          currentValue: isZh.value ? '待接入' : 'pending',
-          changeMethod: isZh.value
-            ? '需要先扩展真实分类接口，让请求体支持 top_k；当前 classify 是演示接口，不能拿随机返回当 ResNet 实测。'
-            : 'First connect a real classification endpoint that accepts top_k. The current classify path is a demo and must not be treated as ResNet evaluation.',
-          whenToAdjust: isZh.value ? '类别很多或需要候选解释时使用。' : 'Use it when many classes or candidate explanations are needed.',
-          basis: 'PredictionController.classify is not a real ResNet evaluation path',
-        },
-        {
-          name: 'batch_size',
-          currentValue: isZh.value ? '待接入日志后决定' : 'decide after logs',
-          changeMethod: isZh.value
-            ? '接入训练或评估日志后，结合显存占用、吞吐和验证损失波动调整；不要在没有运行记录时写死。'
-            : 'After logs are connected, tune it with memory, throughput, and validation-loss stability. Do not hard-code a value without run records.',
-          whenToAdjust: isZh.value ? '显存不足、吞吐太低或验证曲线震荡时。' : 'Adjust when memory is tight, throughput is low, or validation curves become unstable.',
-          basis: 'visual-analysis profiler / scalars modules after integration',
-        },
-      ],
-      flowTitle: isZh.value ? '后续接入路径' : 'Future integration path',
-      flow: ['ModelCatalogService registry', 'image preprocessing 224x224x3', 'real classification endpoint', 'evaluation logs / visual-analysis'],
-      guardrailTitle: isZh.value ? '只展示注册依据' : 'Registry evidence only',
-      guardrail: isZh.value
-        ? 'ResNet-50 的参数量和输入尺寸有项目注册依据；准确率、延迟、混淆矩阵都没有项目实测，所以页面明确标为暂无。'
-        : 'ResNet-50 parameter count and input size are project registry values. Accuracy, latency, and confusion matrix are not project-measured yet.',
-      evidencePills: ['ModelCatalogService', 'model_registry', '待接入评估集'],
+      label: 'HR@10',
+      value: isZh.value ? '待评估' : 'Pending',
+      percent: 0,
+      available: false,
+      explain: isZh.value
+        ? `${modelName} 还没有接入岗位推荐 API，不能把其他数据集结果当成本站在线命中率。`
+        : `${modelName} is not connected to the job recommendation API, so external dataset scores are not shown as platform hit rate.`,
+      basis: sourcePath,
     },
     {
-      id: 'vit-b16',
-      mark: 'ViT',
-      accent: '#8b5cf6',
-      visual: 'patch',
-      icon: Boxes,
-      evidenceLevel: 'planned',
-      name: { zh: '视觉 Transformer 基础版', en: 'ViT-B/16' },
-      slug: 'ViT-B/16 / patch transformer',
-      task: { zh: '图像分类 / Patch 序列', en: 'Image classification / patch sequence' },
-      status: isZh.value ? '待接入评估' : 'Evaluation pending',
-      source: isZh.value ? '官方模型注册信息' : 'Official registry metadata',
-      integration: isZh.value ? '未接真实推理服务' : 'No real serving endpoint yet',
-      metricStatus: isZh.value ? '暂无项目实测指标' : 'No project metric yet',
-      description: {
-        zh: 'ViT-B/16 在项目目录中登记为 384x384x3 输入的视觉 Transformer。由于还没有接入权重、评估集和日志，参数区只说明 patch 类模型接入后该怎么改。',
-        en: 'ViT-B/16 is registered as a visual Transformer with 384x384x3 input. Since weights, evaluation data, and logs are not connected, this section only explains how patch-model parameters should change after integration.',
-      },
-      profile: [
-        { label: isZh.value ? '模型标识' : 'Model id', value: 'ViT-B/16', basis: 'ModelCatalogService.OFFICIAL_MODELS' },
-        { label: isZh.value ? '参数规模' : 'Parameters', value: '86.6M', basis: 'paramCountM = 86.6' },
-        { label: isZh.value ? '输入尺寸' : 'Input size', value: '384x384x3', basis: 'inputSize = 384x384x3' },
-        { label: isZh.value ? '任务类型' : 'Task', value: isZh.value ? '图像分类' : 'classification', basis: 'taskType = classification' },
-        { label: isZh.value ? '运行框架' : 'Runtime', value: 'pytorch', basis: 'framework = pytorch' },
-        { label: isZh.value ? '接入状态' : 'Integration', value: isZh.value ? '待接入' : 'Pending', basis: 'no project endpoint wired' },
-      ],
-      metrics: ['Top-1 Accuracy', 'Attention Map', 'Embedding Drift', 'Latency'].map((label) => ({
-        label,
-        value: unavailable.value,
-        percent: 0,
-        available: false,
-        explain: unavailable.explain,
-        basis: unavailable.basis,
-      })),
-      parameterMethods: [
-        {
-          name: 'input_size',
-          currentValue: '384x384x3',
-          changeMethod: isZh.value
-            ? '保持预处理尺寸与注册信息一致；ViT-B/16 的 patch 粒度要求输入尺寸能被 16 整除，改尺寸时要重新核对位置编码处理。'
-            : 'Keep preprocessing aligned with the registered size. ViT-B/16 patching requires dimensions divisible by 16, and position embeddings must be checked when size changes.',
-          whenToAdjust: isZh.value ? '数据源分辨率或权重版本改变时。' : 'Adjust when dataset resolution or weight version changes.',
-          basis: 'ModelCatalogService inputSize = 384x384x3; ViT-B/16 patch naming',
-        },
-        {
-          name: 'patch_size',
-          currentValue: '16',
-          changeMethod: isZh.value
-            ? '这里的 16 来自模型名称 B/16，不是项目实测参数；除非更换模型变体，否则不要在页面里让用户随意改。'
-            : 'The 16 comes from the B/16 model variant name, not a measured project hyperparameter. Do not expose it as a casual runtime knob unless the model variant changes.',
-          whenToAdjust: isZh.value ? '更换 ViT 模型变体时才调整。' : 'Change only when switching ViT variants.',
-          basis: 'model name ViT-B/16',
-        },
-        {
-          name: 'embedding_analysis',
-          currentValue: isZh.value ? '待接入向量日志' : 'requires embedding logs',
-          changeMethod: isZh.value
-            ? '接入 embedding 日志后，用可视化分析的向量投影模块看类别是否聚团，再决定是否调整增强策略或微调层。'
-            : 'After embedding logs are connected, use the embedding module to inspect clustering before changing augmentation or fine-tuning layers.',
-          whenToAdjust: isZh.value ? '类别混叠、聚类不明显时。' : 'Adjust when classes overlap or clusters are weak.',
-          basis: 'visual-analysis embeddings module',
-        },
-      ],
-      flowTitle: isZh.value ? '后续接入路径' : 'Future integration path',
-      flow: ['ModelCatalogService registry', 'image preprocessing 384x384x3', 'patch / embedding logs', 'visual-analysis embeddings'],
-      guardrailTitle: isZh.value ? '不把通用知识当实测' : 'No generic facts as measured data',
-      guardrail: isZh.value
-        ? 'ViT-B/16 的尺寸、参数量来自项目注册；注意力图、准确率和向量分布必须等项目日志接入后再展示。'
-        : 'ViT-B/16 size and parameter count come from the project registry. Attention maps, accuracy, and embeddings must wait for connected project logs.',
-      evidencePills: ['ModelCatalogService', 'ViT-B/16', 'visual-analysis embeddings'],
+      label: 'NDCG@10',
+      value: isZh.value ? '待评估' : 'Pending',
+      percent: 0,
+      available: false,
+      explain: isZh.value
+        ? '接入后需要用同一批岗位行为序列和 Top-10 结果重新计算，才适合和 BSARec 对比。'
+        : 'After integration, compute this again on the same job behavior sequences and Top-10 outputs before comparing with BSARec.',
+      basis: isZh.value ? '本站暂无该模型在线排序日志' : 'No online ranking log in this platform yet',
     },
     {
-      id: 'yolov8s',
-      mark: 'Y8S',
-      accent: '#f97316',
-      visual: 'detect',
-      icon: ScanSearch,
-      evidenceLevel: 'planned',
-      name: { zh: 'YOLOv8 Small 目标检测', en: 'YOLOv8s Object Detection' },
-      slug: 'YOLOv8s / object detection',
-      task: { zh: '目标检测 / 阈值评估', en: 'Object detection / threshold evaluation' },
-      status: isZh.value ? '待接入评估' : 'Evaluation pending',
-      source: isZh.value ? '官方模型注册信息' : 'Official registry metadata',
-      integration: isZh.value ? '未接真实检测服务' : 'No real detection endpoint yet',
-      metricStatus: isZh.value ? '暂无项目实测指标' : 'No project metric yet',
-      description: {
-        zh: 'YOLOv8s 已在官方模型目录中登记输入尺寸和参数量，但当前检测接口没有接入真实 YOLOv8s 服务。这里把阈值、NMS 和返回数量作为后续接入时的调参方法展示。',
-        en: 'YOLOv8s has registered input size and parameter count, but the current detection path is not wired to a real YOLOv8s service. This section shows threshold, NMS, and detection-count tuning methods for future integration.',
-      },
-      profile: [
-        { label: isZh.value ? '模型标识' : 'Model id', value: 'YOLOv8s', basis: 'ModelCatalogService.OFFICIAL_MODELS' },
-        { label: isZh.value ? '参数规模' : 'Parameters', value: '11.2M', basis: 'paramCountM = 11.2' },
-        { label: isZh.value ? '输入尺寸' : 'Input size', value: '640x640x3', basis: 'inputSize = 640x640x3' },
-        { label: isZh.value ? '任务类型' : 'Task', value: isZh.value ? '目标检测' : 'detection', basis: 'taskType = detection' },
-        { label: isZh.value ? '运行框架' : 'Runtime', value: 'pytorch', basis: 'framework = pytorch' },
-        { label: isZh.value ? '接入状态' : 'Integration', value: isZh.value ? '待接入' : 'Pending', basis: 'no project endpoint wired' },
-      ],
-      metrics: ['mAP', 'Precision', 'Recall', 'Detection Latency'].map((label) => ({
-        label,
-        value: unavailable.value,
-        percent: 0,
-        available: false,
-        explain: unavailable.explain,
-        basis: unavailable.basis,
-      })),
-      parameterMethods: [
-        {
-          name: 'confidence_threshold',
-          currentValue: isZh.value ? '待接入' : 'pending',
-          changeMethod: isZh.value
-            ? '真实检测服务接入后，把它作为请求参数或服务配置暴露；误检多时调高，漏检多时调低，并用 PR/ROC 模块复核。'
-            : 'After a real detection service is connected, expose this through request or service config. Raise it for false positives, lower it for missed detections, and verify with PR/ROC analysis.',
-          whenToAdjust: isZh.value ? '误检/漏检平衡不符合业务目标时。' : 'Adjust when the false-positive / false-negative balance misses business needs.',
-          basis: 'visual-analysis prCurves module after detection logs exist',
-        },
-        {
-          name: 'nms_iou_threshold',
-          currentValue: isZh.value ? '待接入' : 'pending',
-          changeMethod: isZh.value
-            ? '接入后用于控制重叠框合并；同一目标出现多个框时调低，邻近目标被误合并时调高。'
-            : 'Use it to control duplicate-box suppression. Lower it when one object has duplicate boxes; raise it when nearby objects are merged incorrectly.',
-          whenToAdjust: isZh.value ? '框重复或密集目标漏框时。' : 'Adjust for duplicate boxes or crowded-object misses.',
-          basis: 'detection post-processing method; no project value yet',
-        },
-        {
-          name: 'max_detections',
-          currentValue: isZh.value ? '待接入' : 'pending',
-          changeMethod: isZh.value
-            ? '接入后按业务画面复杂度限制最大返回框数；过小会截断目标，过大会增加前端渲染和人工审核成本。'
-            : 'After integration, limit returned boxes by scene complexity. Too low truncates objects; too high increases rendering and review cost.',
-          whenToAdjust: isZh.value ? '检测结果太多或被截断时。' : 'Adjust when detections are too many or truncated.',
-          basis: 'future detection response contract',
-        },
-      ],
-      flowTitle: isZh.value ? '后续接入路径' : 'Future integration path',
-      flow: ['ModelCatalogService registry', 'image preprocessing 640x640x3', 'real detection service', 'PR/ROC + profiler logs'],
-      guardrailTitle: isZh.value ? '检测指标必须等标注集' : 'Detection metrics need labeled data',
-      guardrail: isZh.value
-        ? 'YOLOv8s 只有注册信息有依据；mAP、Precision、Recall 必须基于项目标注集和检测日志生成，不能提前填。'
-        : 'YOLOv8s has registry evidence only. mAP, Precision, and Recall require project labels and detection logs before display.',
-      evidencePills: ['ModelCatalogService', 'YOLOv8s', 'PR/ROC 待接入'],
+      label: 'Recall@10',
+      value: isZh.value ? '待评估' : 'Pending',
+      percent: 0,
+      available: false,
+      explain: isZh.value
+        ? '用于衡量候选覆盖面；当前卡片只展示模型结构和接入方法，不填模拟数值。'
+        : 'Used for candidate coverage. This card only shows model structure and integration methods for now.',
+      basis: isZh.value ? '待统一评估集' : 'Awaiting a shared evaluation set',
+    },
+    {
+      label: isZh.value ? '接入状态' : 'Integration',
+      value: isZh.value ? '待接入' : 'Planned',
+      percent: 0,
+      available: false,
+      explain: isZh.value
+        ? '已在 similar-models 中找到源码，可以作为后续离线训练和在线适配对象。'
+        : 'Source exists under similar-models and can be adapted for offline training and future serving.',
+      basis: sourcePath,
     },
   ];
-});
+}
+
+function plannedFlow(modelFolder: string): string[] {
+  return isZh.value
+    ? [
+        `similar-models/${modelFolder} 源码审阅`,
+        '统一岗位 item_id / 行为序列格式',
+        '离线训练并导出同口径 HR@10、NDCG@10、Recall@10',
+        '封装为 /prediction/recommend 可调用适配器',
+      ]
+    : [
+        `Review similar-models/${modelFolder}`,
+        'Unify job item_id and behavior sequence format',
+        'Train offline and export HR@10, NDCG@10, Recall@10 on the same protocol',
+        'Wrap as a /prediction/recommend adapter',
+      ];
+}
+
+function plannedGuardrail(modelName: string) {
+  return isZh.value
+    ? `${modelName} 当前只作为模型展示和后续对比接入对象。页面展示源码默认参数、适用场景和评估口径，不展示伪造的在线推理结果。`
+    : `${modelName} is currently shown as a model card and future comparison target. The page shows source-backed defaults, fit, and evaluation protocol without fake online inference results.`;
+}
+
+const sasrecModel = computed<ModelEntry>(() => ({
+  id: 'sasrec-base',
+  mark: 'SAS',
+  accent: '#2563eb',
+  visual: 'sequence',
+  icon: GitBranch,
+  evidenceLevel: 'planned',
+  name: {
+    zh: 'SASRec Base',
+    en: 'SASRec Base',
+  },
+  slug: 'SASRec / sequential baseline',
+  task: {
+    zh: '序列推荐 / 基线模型',
+    en: 'Sequential recommendation baseline',
+  },
+  status: isZh.value ? '待接入' : 'Planned',
+  source: 'similar-models/SASRec',
+  integration: isZh.value ? '序列推荐 / 基线模型' : 'Sequential / baseline model',
+  metricStatus: isZh.value ? '暂无在线指标' : 'No online metrics yet',
+  description: {
+    zh: 'SASRec 是经典自注意力序列推荐基线，适合放在 BSARec 旁边做结构对比。它只依赖用户历史 item 序列，便于解释“同样的岗位浏览历史，在基础 Transformer 序列模型下会怎样排序”。',
+    en: 'SASRec is a classic self-attention sequential recommendation baseline. It is useful beside BSARec because it uses the same item sequence idea and makes a clean baseline for ranking comparisons.',
+  },
+  profile: [
+    { label: isZh.value ? '模型标识' : 'Model id', value: 'SASRec Base', basis: 'similar-models/SASRec/model.py' },
+    { label: isZh.value ? '输入数据' : 'Input', value: 'item sequence', basis: 'input_seq placeholder: (None, args.maxlen)' },
+    { label: isZh.value ? '默认长度' : 'Default length', value: 'maxlen = 50', basis: 'SASRec/main.py default' },
+    { label: isZh.value ? '隐藏维度' : 'Hidden units', value: 'hidden_units = 50', basis: 'SASRec/main.py default' },
+    { label: isZh.value ? '结构层数' : 'Blocks', value: 'num_blocks = 2', basis: 'SASRec/main.py default' },
+    { label: isZh.value ? '运行框架' : 'Runtime', value: 'TensorFlow style', basis: 'SASRec/model.py tf.placeholder' },
+  ],
+  metrics: plannedMetrics('SASRec Base', 'similar-models/SASRec/main.py'),
+  parameterMethods: [
+    {
+      name: 'maxlen',
+      currentValue: '50',
+      changeMethod: isZh.value
+        ? '控制模型读取的最近岗位行为数量。岗位兴趣变化快时可保持 50；若用户历史较长且稳定，可以在离线实验中尝试 100 或 200。'
+        : 'Controls how many recent job events the model reads. Keep 50 for fast-changing interests; try 100 or 200 offline for long stable histories.',
+      whenToAdjust: isZh.value ? '召回过窄时增加；噪声浏览较多时降低。' : 'Increase for broader recall; decrease when browsing history is noisy.',
+      basis: 'SASRec/main.py --maxlen default=50; README example uses --maxlen=200',
+    },
+    {
+      name: 'hidden_units',
+      currentValue: '50',
+      changeMethod: isZh.value
+        ? '表示 item 序列的隐向量维度。岗位类别更复杂时可以上调，但要配合验证集观察过拟合。'
+        : 'Embedding width for item sequences. Increase for more complex job taxonomies, then watch validation overfitting.',
+      whenToAdjust: isZh.value ? '类别多、语义差异大时增加；小数据集先保持默认。' : 'Increase for many categories; keep default on small datasets.',
+      basis: 'SASRec/main.py --hidden_units default=50',
+    },
+    {
+      name: 'num_blocks',
+      currentValue: '2',
+      changeMethod: isZh.value
+        ? '控制自注意力块堆叠深度。作为基线模型建议先保持 2 层，方便和 BSARec 做清楚对比。'
+        : 'Controls the depth of stacked self-attention blocks. Keep 2 first so the baseline stays easy to compare with BSARec.',
+      whenToAdjust: isZh.value ? '长序列依赖明显时再增加。' : 'Increase only when long-range sequence dependency is clear.',
+      basis: 'SASRec/main.py --num_blocks default=2',
+    },
+    {
+      name: 'dropout_rate',
+      currentValue: '0.5',
+      changeMethod: isZh.value
+        ? '控制训练正则强度。岗位行为稀疏时较高 dropout 可降低记忆噪声，数据量增加后可下调。'
+        : 'Controls regularization. Higher dropout helps sparse job histories; lower it after data volume grows.',
+      whenToAdjust: isZh.value ? '训练集高、验证集低时增加；收敛慢时降低。' : 'Increase when validation lags training; lower if convergence is too slow.',
+      basis: 'SASRec/main.py --dropout_rate default=0.5',
+    },
+  ],
+  flowTitle: isZh.value ? '基线模型接入路线' : 'Baseline integration route',
+  flow: plannedFlow('SASRec'),
+  guardrailTitle: isZh.value ? '只展示基线证据' : 'Baseline evidence only',
+  guardrail: plannedGuardrail('SASRec Base'),
+  evidencePills: ['SASRec/main.py', 'SASRec/model.py', 'SASRec/modules.py', 'SASRec/README.md'],
+}));
+
+const bert4RecModel = computed<ModelEntry>(() => ({
+  id: 'bert4rec',
+  mark: 'BERT',
+  accent: '#7c3aed',
+  visual: 'patch',
+  icon: Layers,
+  evidenceLevel: 'planned',
+  name: {
+    zh: 'BERT4Rec',
+    en: 'BERT4Rec',
+  },
+  slug: 'BERT4Rec / masked sequence modeling',
+  task: {
+    zh: 'Transformer / 推荐模型',
+    en: 'Transformer recommendation model',
+  },
+  status: isZh.value ? '待接入' : 'Planned',
+  source: 'similar-models/BERT4Rec',
+  integration: isZh.value ? 'Transformer / 推荐模型' : 'Transformer / recommendation model',
+  metricStatus: isZh.value ? '暂无在线指标' : 'No online metrics yet',
+  description: {
+    zh: 'BERT4Rec 用掩码序列建模学习用户兴趣，名字识别度高，也适合解释“根据上下文补全下一类岗位”的推荐逻辑。它比 SASRec 更像双向 Transformer 表征模型，展示在网站里很直观。',
+    en: 'BERT4Rec learns preference through masked sequence modeling. It is recognizable, Transformer-shaped, and easy to explain as filling in the next likely job from sequence context.',
+  },
+  profile: [
+    { label: isZh.value ? '模型标识' : 'Model id', value: 'BERT4Rec', basis: 'similar-models/BERT4Rec/run.py' },
+    { label: isZh.value ? '输入数据' : 'Input', value: 'masked item sequence', basis: 'masked_lm_positions / masked_lm_ids' },
+    { label: isZh.value ? '序列长度' : 'Sequence length', value: '50 or 200', basis: 'run_beauty.sh = 50; run_ml-1m.sh = 200' },
+    { label: isZh.value ? '隐藏维度' : 'Hidden size', value: '64', basis: 'bert_config_ml-1m_64.json' },
+    { label: isZh.value ? '层数 / 头数' : 'Layers / heads', value: '2 layers / 2 heads', basis: 'bert_config_ml-1m_64.json' },
+    { label: isZh.value ? '运行框架' : 'Runtime', value: 'TensorFlow BERT', basis: 'BERT4Rec/run.py' },
+  ],
+  metrics: plannedMetrics('BERT4Rec', 'similar-models/BERT4Rec/run.py'),
+  parameterMethods: [
+    {
+      name: 'max_seq_length',
+      currentValue: '50 / 200',
+      changeMethod: isZh.value
+        ? '岗位浏览链路较短时用 50；如果要覆盖更长求职周期，可按 ml-1m 脚本思路扩到 200，并同步调整位置编码。'
+        : 'Use 50 for short job browsing paths. For longer job-search cycles, expand toward 200 and keep positional settings aligned.',
+      whenToAdjust: isZh.value ? '用户行为时间跨度变长时增加。' : 'Increase when user behavior spans longer time windows.',
+      basis: 'run_beauty.sh max_seq_length=50; run_ml-1m.sh max_seq_length=200',
+    },
+    {
+      name: 'masked_lm_prob',
+      currentValue: '0.2 - 0.6',
+      changeMethod: isZh.value
+        ? '控制训练时被遮蔽的历史岗位比例。行为很稀疏时不要过高，否则上下文不足；行为丰富时可提高以增强泛化。'
+        : 'Controls the masked portion during training. Keep it lower for sparse histories; raise it when sequences are rich enough.',
+      whenToAdjust: isZh.value ? '泛化不足时增加；训练不稳定时降低。' : 'Increase for generalization; lower when training becomes unstable.',
+      basis: 'run_ml-1m.sh masked_lm_prob=0.2; run_beauty.sh masked_lm_prob=0.6',
+    },
+    {
+      name: 'hidden_size',
+      currentValue: '64',
+      changeMethod: isZh.value
+        ? '表示 BERT 编码宽度。若岗位标签、行业、技能组合更多，可离线尝试更大 hidden_size，但要同步扩大中间层。'
+        : 'BERT encoder width. Try larger values offline when job labels, industries, and skill combinations grow.',
+      whenToAdjust: isZh.value ? '岗位语义空间明显增大时调整。' : 'Adjust when the semantic job space becomes larger.',
+      basis: 'bert_config_ml-1m_64.json hidden_size=64; intermediate_size=256',
+    },
+    {
+      name: 'num_hidden_layers',
+      currentValue: '2',
+      changeMethod: isZh.value
+        ? '当前配置是轻量 BERT4Rec。若未来数据充足，可以增加层数，但要重新记录训练耗时和推理延迟。'
+        : 'Current config is lightweight. Add layers only with enough data, and record training cost plus inference latency again.',
+      whenToAdjust: isZh.value ? '需要更强上下文建模且算力允许时增加。' : 'Increase when stronger context modeling is needed and compute allows it.',
+      basis: 'bert_config_ml-1m_64.json num_hidden_layers=2',
+    },
+  ],
+  flowTitle: isZh.value ? 'Transformer 接入路线' : 'Transformer integration route',
+  flow: plannedFlow('BERT4Rec'),
+  guardrailTitle: isZh.value ? '不混用预训练指标' : 'No mixed pretraining score',
+  guardrail: plannedGuardrail('BERT4Rec'),
+  evidencePills: ['BERT4Rec/run.py', 'BERT4Rec/modeling.py', 'bert_config_ml-1m_64.json', 'run_beauty.sh'],
+}));
+
+const tisasRecModel = computed<ModelEntry>(() => ({
+  id: 'tisasrec',
+  mark: 'Ti',
+  accent: '#0891b2',
+  visual: 'detect',
+  icon: Clock3,
+  evidenceLevel: 'planned',
+  name: {
+    zh: 'TiSASRec',
+    en: 'TiSASRec',
+  },
+  slug: 'TiSASRec / time-aware sequential recommendation',
+  task: {
+    zh: '时间感知 / 序列推荐',
+    en: 'Time-aware sequential recommendation',
+  },
+  status: isZh.value ? '待接入' : 'Planned',
+  source: 'similar-models/TiSASRec',
+  integration: isZh.value ? '时间感知 / 序列推荐' : 'Time-aware / sequential model',
+  metricStatus: isZh.value ? '暂无在线指标' : 'No online metrics yet',
+  description: {
+    zh: 'TiSASRec 在序列推荐里显式加入行为时间间隔，适合岗位浏览、收藏、投递这类有明显时间节奏的场景。它能帮助页面说明“同样点击过这些岗位，最近发生和很久以前发生的权重不同”。',
+    en: 'TiSASRec adds explicit time-interval signals to sequential recommendation. It fits job browsing, saving, and application timelines where recency and gaps matter.',
+  },
+  profile: [
+    { label: isZh.value ? '模型标识' : 'Model id', value: 'TiSASRec', basis: 'similar-models/TiSASRec/model.py' },
+    { label: isZh.value ? '输入数据' : 'Input', value: 'item sequence + time matrix', basis: 'time_matrix placeholder: (None, maxlen, maxlen)' },
+    { label: isZh.value ? '默认长度' : 'Default length', value: 'maxlen = 50', basis: 'TiSASRec/main.py default' },
+    { label: isZh.value ? '时间桶' : 'Time span', value: 'time_span = 256', basis: 'TiSASRec/main.py default' },
+    { label: isZh.value ? '结构层数' : 'Blocks', value: 'num_blocks = 2', basis: 'TiSASRec/main.py default' },
+    { label: isZh.value ? '运行框架' : 'Runtime', value: 'TensorFlow style', basis: 'TiSASRec/model.py tf.placeholder' },
+  ],
+  metrics: plannedMetrics('TiSASRec', 'similar-models/TiSASRec/main.py'),
+  parameterMethods: [
+    {
+      name: 'time_span',
+      currentValue: '256',
+      changeMethod: isZh.value
+        ? '控制时间间隔矩阵的截断上限。岗位行为按天记录时可把 256 理解为较长兴趣跨度；如果只看近期求职，应缩小这个窗口。'
+        : 'Controls the clipping limit of the time relation matrix. Treat 256 as a long interest window for day-level job events; shrink it for recent-only search intent.',
+      whenToAdjust: isZh.value ? '近期行为更重要时降低；长期职业偏好更重要时提高。' : 'Lower for stronger recency; raise for long-term career preference.',
+      basis: 'TiSASRec/main.py --time_span default=256; util.computeRePos',
+    },
+    {
+      name: 'maxlen',
+      currentValue: '50',
+      changeMethod: isZh.value
+        ? '和 SASRec 类似控制历史岗位长度，但 TiSASRec 还会生成 maxlen x maxlen 时间矩阵，调大后成本上升更明显。'
+        : 'Like SASRec, it controls history length, but TiSASRec also builds a maxlen x maxlen time matrix, so cost rises faster.',
+      whenToAdjust: isZh.value ? '需要更长行为链时增加，并同步检查延迟。' : 'Increase for longer histories and recheck latency.',
+      basis: 'TiSASRec/main.py --maxlen default=50; Relation(user_train, usernum, maxlen, time_span)',
+    },
+    {
+      name: 'hidden_units',
+      currentValue: '50',
+      changeMethod: isZh.value
+        ? '控制 item、绝对位置和时间关系表示的宽度。时间特征加入后，先保持默认更容易定位收益。'
+        : 'Controls item, absolute position, and time-relation representation width. Keep default first to isolate time-signal gains.',
+      whenToAdjust: isZh.value ? '时间特征有效但容量不足时增加。' : 'Increase when time features help but capacity is insufficient.',
+      basis: 'TiSASRec/main.py --hidden_units default=50',
+    },
+    {
+      name: 'dropout_rate',
+      currentValue: '0.2',
+      changeMethod: isZh.value
+        ? '比 SASRec 默认更低，适合先观察时间间隔信号本身是否有贡献；若验证集波动，再逐步上调。'
+        : 'Lower than SASRec default, useful for first measuring the time-interval signal. Raise gradually if validation is unstable.',
+      whenToAdjust: isZh.value ? '时间矩阵带来过拟合时增加。' : 'Increase when the time matrix overfits.',
+      basis: 'TiSASRec/main.py --dropout_rate default=0.2',
+    },
+  ],
+  flowTitle: isZh.value ? '时间序列接入路线' : 'Time-aware integration route',
+  flow: plannedFlow('TiSASRec'),
+  guardrailTitle: isZh.value ? '时间特征需要真实时间戳' : 'Real timestamps required',
+  guardrail: plannedGuardrail('TiSASRec'),
+  evidencePills: ['TiSASRec/main.py', 'TiSASRec/model.py', 'TiSASRec/util.py', 'time_matrix'],
+}));
+
+const fmlpRecModel = computed<ModelEntry>(() => ({
+  id: 'fmlp-rec',
+  mark: 'FMLP',
+  accent: '#ea580c',
+  visual: 'residual',
+  icon: Zap,
+  evidenceLevel: 'planned',
+  name: {
+    zh: 'FMLP-Rec',
+    en: 'FMLP-Rec',
+  },
+  slug: 'FMLP-Rec / lightweight filter model',
+  task: {
+    zh: '轻量模型 / 高效推荐',
+    en: 'Lightweight efficient recommendation',
+  },
+  status: isZh.value ? '待接入' : 'Planned',
+  source: 'similar-models/FMLP-Rec',
+  integration: isZh.value ? '轻量模型 / 高效推荐' : 'Lightweight / efficient recommender',
+  metricStatus: isZh.value ? '暂无在线指标' : 'No online metrics yet',
+  description: {
+    zh: 'FMLP-Rec 用 Filter-enhanced Blocks 替代多头自注意力，定位更轻量，能和 Transformer 类模型形成差异。放进网站后可以说明“如果更关注部署效率，可以怎样换一种序列建模结构”。',
+    en: 'FMLP-Rec replaces multi-head self-attention with filter-enhanced blocks. It gives the site a lightweight alternative to Transformer-style recommenders.',
+  },
+  profile: [
+    { label: isZh.value ? '模型标识' : 'Model id', value: 'FMLP-Rec', basis: 'similar-models/FMLP-Rec/models.py' },
+    { label: isZh.value ? '输入数据' : 'Input', value: 'item sequence', basis: 'FMLPRecModel.add_position_embedding' },
+    { label: isZh.value ? '默认长度' : 'Default length', value: 'max_seq_length = 50', basis: 'FMLP-Rec/main.py default' },
+    { label: isZh.value ? '隐藏维度' : 'Hidden size', value: '64', basis: 'FMLP-Rec/main.py default' },
+    { label: isZh.value ? '滤波块数' : 'Filter blocks', value: 'num_hidden_layers = 2', basis: 'FMLP-Rec/main.py default' },
+    { label: isZh.value ? '运行框架' : 'Runtime', value: 'PyTorch', basis: 'FMLP-Rec/models.py imports torch' },
+  ],
+  metrics: plannedMetrics('FMLP-Rec', 'similar-models/FMLP-Rec/main.py'),
+  parameterMethods: [
+    {
+      name: 'hidden_size',
+      currentValue: '64',
+      changeMethod: isZh.value
+        ? '控制岗位序列表示宽度。FMLP-Rec 目标是高效，建议先保持 64，再用延迟和 NDCG 共同判断是否上调。'
+        : 'Controls sequence representation width. Since FMLP-Rec targets efficiency, keep 64 first and use both latency and NDCG before increasing.',
+      whenToAdjust: isZh.value ? '精度不足且延迟预算充足时增加。' : 'Increase when accuracy is low and latency budget is available.',
+      basis: 'FMLP-Rec/main.py --hidden_size default=64',
+    },
+    {
+      name: 'num_hidden_layers',
+      currentValue: '2',
+      changeMethod: isZh.value
+        ? '控制 Filter-enhanced Blocks 数量。README 示例中也提供过 4 层训练方式，可作为离线对比候选。'
+        : 'Controls the number of filter-enhanced blocks. The README also shows a 4-layer run, which is a good offline comparison candidate.',
+      whenToAdjust: isZh.value ? '序列模式复杂但仍想保持轻量时尝试 4。' : 'Try 4 when sequence patterns are complex but the model should stay lightweight.',
+      basis: 'FMLP-Rec/main.py default=2; README example --num_hidden_layers=4',
+    },
+    {
+      name: 'no_filters',
+      currentValue: 'false',
+      changeMethod: isZh.value
+        ? '默认启用滤波层；加上该参数会退化到自注意力结构，可用于验证 FMLP 过滤结构是否真的带来收益。'
+        : 'Filters are enabled by default. Turning this on changes blocks toward self-attention and can test whether the filter structure helps.',
+      whenToAdjust: isZh.value ? '做消融实验时开启。' : 'Enable for ablation experiments.',
+      basis: 'FMLP-Rec/main.py --no_filters; modules.py FilterLayer',
+    },
+    {
+      name: 'hidden_dropout_prob',
+      currentValue: '0.5',
+      changeMethod: isZh.value
+        ? '控制隐藏层 dropout。岗位数据稀疏时保守保持 0.5，数据量更大时可以降低以提高表达能力。'
+        : 'Controls hidden dropout. Keep 0.5 for sparse job data, then lower it on larger datasets for more capacity.',
+      whenToAdjust: isZh.value ? '验证集稳定且欠拟合时降低。' : 'Lower when validation is stable and underfitting appears.',
+      basis: 'FMLP-Rec/main.py --hidden_dropout_prob default=0.5',
+    },
+  ],
+  flowTitle: isZh.value ? '高效模型接入路线' : 'Efficient-model integration route',
+  flow: plannedFlow('FMLP-Rec'),
+  guardrailTitle: isZh.value ? '效率模型也需同口径验证' : 'Efficiency still needs fair evaluation',
+  guardrail: plannedGuardrail('FMLP-Rec'),
+  evidencePills: ['FMLP-Rec/main.py', 'FMLP-Rec/models.py', 'FMLP-Rec/modules.py', 'fig/model.png'],
+}));
 
 const modelCatalog = computed(() => [
   bsarecModel.value,
-  ...plannedModels.value,
+  sasrecModel.value,
+  bert4RecModel.value,
+  tisasRecModel.value,
+  fmlpRecModel.value,
 ]);
 const selectedModel = computed(() => modelCatalog.value.find((model) => model.id === selectedModelId.value) || modelCatalog.value[0]);
 
@@ -648,12 +802,14 @@ function accentStyle(model: ModelEntry) {
 .hierarchy-eyebrow,
 .model-kicker {
   display: block;
+  max-width: 100%;
   color: var(--primary-color);
   font-size: 11px;
   font-weight: var(--font-weight-title);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   margin-bottom: 7px;
+  overflow-wrap: anywhere;
 }
 
 .page-header h2 {
@@ -865,6 +1021,7 @@ function accentStyle(model: ModelEntry) {
   font-size: 15px;
   font-weight: var(--font-weight-title);
   line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .entry-copy small,
@@ -874,11 +1031,13 @@ function accentStyle(model: ModelEntry) {
   font-size: 12px;
   line-height: 1.5;
   font-style: normal;
+  overflow-wrap: anywhere;
 }
 
 .entry-status {
   grid-column: 2;
-  width: max-content;
+  width: fit-content;
+  max-width: 100%;
   align-self: end;
   padding: 4px 9px;
   border-radius: 999px;
@@ -959,6 +1118,7 @@ function accentStyle(model: ModelEntry) {
 
 .hero-badges span,
 .evidence-pills span {
+  max-width: 100%;
   min-height: 30px;
   padding: 6px 11px;
   border: 1px solid color-mix(in srgb, var(--model-accent, var(--primary-color)) 28%, var(--border-color));
@@ -966,6 +1126,8 @@ function accentStyle(model: ModelEntry) {
   background: color-mix(in srgb, var(--model-accent, var(--primary-color)) 9%, transparent);
   color: color-mix(in srgb, var(--model-accent, var(--primary-color)) 76%, var(--text-primary));
   font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .model-facts {
@@ -983,11 +1145,13 @@ function accentStyle(model: ModelEntry) {
 }
 
 .model-facts article {
+  min-width: 0;
   min-height: 92px;
   padding: 14px;
   display: grid;
   align-content: start;
   gap: 6px;
+  overflow: hidden;
 }
 
 .model-facts span,
@@ -998,18 +1162,25 @@ function accentStyle(model: ModelEntry) {
 }
 
 .model-facts strong {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
   color: var(--text-primary);
-  font-size: 18px;
+  font-size: clamp(15px, 1.05vw, 18px);
   line-height: 1.25;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .model-facts small,
 .metric-tile small,
 .method-meta small,
 .guardrail-card p {
+  min-width: 0;
   color: var(--text-muted);
   font-size: 11px;
   line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
 .metric-band {
@@ -1096,9 +1267,11 @@ function accentStyle(model: ModelEntry) {
 }
 
 .section-heading strong {
+  min-width: 0;
   color: var(--text-primary);
   font-size: 16px;
   line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .method-list {
@@ -1114,22 +1287,28 @@ function accentStyle(model: ModelEntry) {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 9px;
 }
 
 .method-list code {
+  max-width: 100%;
   color: color-mix(in srgb, var(--model-accent, var(--primary-color)) 72%, var(--text-primary));
   font-size: 13px;
   background: color-mix(in srgb, var(--model-accent, var(--primary-color)) 9%, transparent);
   border-radius: 8px;
   padding: 4px 8px;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .method-list strong {
+  min-width: 0;
   color: var(--text-primary);
   font-size: 15px;
   text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .method-meta {

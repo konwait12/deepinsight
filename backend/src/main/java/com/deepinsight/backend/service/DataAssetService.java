@@ -120,7 +120,8 @@ public class DataAssetService {
     private List<Map<String, Object>> collectAssets(Long userId) {
         List<Map<String, Object>> assets = new ArrayList<>();
         datasetRepository.findByUploadedByOrderByCreatedAtDesc(userId).forEach(dataset -> assets.add(datasetAsset(dataset)));
-        trainingJobRepository.findByCreatedByOrderByCreatedAtDesc(userId).forEach(job -> assets.add(trainingAsset(job)));
+        trainingJobRepository.findByCreatedByOrderByCreatedAtDesc(userId).forEach(job -> assets.add(trainingAsset(job, false)));
+        trainingJobRepository.findByCreatedByIsNullOrderByCreatedAtDesc().forEach(job -> assets.add(trainingAsset(job, true)));
         experimentRunRepository.findByUserIdOrderByCreatedAtDesc(userId).forEach(run -> {
             assets.add(runAsset(run));
             assets.addAll(runLogAssets(run));
@@ -158,13 +159,17 @@ public class DataAssetService {
         return item;
     }
 
-    private Map<String, Object> trainingAsset(TrainingJob job) {
+    private Map<String, Object> trainingAsset(TrainingJob job, boolean shared) {
         List<TrainingStep> steps = trainingStepRepository.findByJobIdOrderByEpochAsc(job.getId());
         Map<String, Object> metrics = new LinkedHashMap<>();
         metrics.put("进度", n(job.getCurrentEpoch()) + "/" + n(job.getEpochs()));
         metrics.put("Loss", job.getCurrentLoss() == null ? "-" : String.format("%.4f", job.getCurrentLoss()));
         metrics.put("Accuracy", job.getCurrentAccuracy() == null ? "-" : String.format("%.2f%%", job.getCurrentAccuracy() * 100));
         metrics.put("步记录", steps.size());
+
+        if (shared) {
+            metrics.put("Scope", "Public demo");
+        }
 
         Map<String, Object> item = base(
             "training:" + job.getId(),

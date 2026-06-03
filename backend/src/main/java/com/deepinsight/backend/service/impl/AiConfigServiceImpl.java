@@ -4,6 +4,7 @@ import com.deepinsight.backend.entity.AiConfig;
 import com.deepinsight.backend.repository.AiConfigRepository;
 import com.deepinsight.backend.service.AiConfigService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +27,15 @@ public class AiConfigServiceImpl implements AiConfigService {
     private final RestTemplate restTemplate = new RestTemplate();
     private static final Pattern MASKED_KEY_PATTERN = Pattern.compile("^.{0,8}\\*{3,}.{0,8}$");
 
+    @Value("${DEEPSEEK_API_KEY:}")
+    private String deepSeekApiKey;
+
+    @Value("${DEEPSEEK_API_URL:https://api.deepseek.com}")
+    private String deepSeekApiUrl;
+
+    @Value("${DEEPSEEK_MODEL:deepseek-v4-pro}")
+    private String deepSeekModel;
+
     @Override
     public List<AiConfig> findAll() {
         return repository.findAll().stream().map(this::sanitize).toList();
@@ -33,7 +43,7 @@ public class AiConfigServiceImpl implements AiConfigService {
 
     @Override
     public AiConfig getActive() {
-        return repository.findByIsActiveTrue().map(this::sanitize).orElse(null);
+        return findActiveConfig().map(this::sanitize).orElse(null);
     }
 
     @Override
@@ -128,7 +138,7 @@ public class AiConfigServiceImpl implements AiConfigService {
      */
     @Override
     public Map<String, Object> chat(String message, List<Map<String, String>> history, ChatOptions options) {
-        AiConfig config = repository.findByIsActiveTrue().orElse(null);
+        AiConfig config = findActiveConfig().orElse(null);
         if (config == null) {
             return Map.of("role", "assistant", "content", "AI助手尚未配置，请在管理员控制台中设置。");
         }
@@ -193,6 +203,7 @@ public class AiConfigServiceImpl implements AiConfigService {
         // DeepThink: switch to deepseek-reasoner model
         boolean deepThink = options.deepThink() && !"off".equalsIgnoreCase(options.reasoningLevel());
         String model = resolveChatModel(config, baseUrl, deepThink);
+        boolean deepSeek = isDeepSeekEndpoint(baseUrl, model);
         List<Map<String, Object>> messages = buildMessages(config, message, history, options, supportsVisionInput(baseUrl, model));
 
         Map<String, Object> body = new HashMap<>();
@@ -202,7 +213,10 @@ public class AiConfigServiceImpl implements AiConfigService {
             body.put("temperature", options.temperature() != null ? options.temperature() : config.getTemperature() != null ? config.getTemperature() : 0.7);
         }
         body.put("max_tokens", tokensForReasoning(config, options));
-        if (deepThink && supportsReasoningEffort(baseUrl, model)) {
+        if (deepThink && deepSeek && supportsDeepSeekThinking(model)) {
+            body.put("thinking", Map.of("type", "enabled"));
+            body.put("reasoning_effort", normalizeDeepSeekReasoningEffort(options.reasoningLevel()));
+        } else if (deepThink && supportsReasoningEffort(baseUrl, model)) {
             body.put("reasoning_effort", normalizeReasoningEffort(options.reasoningLevel()));
         }
 
@@ -300,15 +314,50 @@ public class AiConfigServiceImpl implements AiConfigService {
     }
 
     /** 构建消息列表，包含系统提示词、历史对话和当前消息 */
+    private Optional<AiConfig> findActiveConfig() {
+        return repository.findByIsActiveTrue().or(this::envDeepSeekConfig);
+    }
+
+    private Optional<AiConfig> envDeepSeekConfig() {
+        if (deepSeekApiKey == null || deepSeekApiKey.isBlank()) return Optional.empty();
+        return Optional.of(AiConfig.builder()
+            .name("DeepSeek API (env)")
+            .modelType("openai")
+            .modelName(blankToDefault(deepSeekModel, "deepseek-v4-pro"))
+            .apiUrl(blankToDefault(deepSeekApiUrl, "https://api.deepseek.com"))
+            .apiKey(deepSeekApiKey.trim())
+            .systemPrompt("你是 DeepInsight 深度学习可视化平台的 AI 助手，请围绕训练诊断、模型分析、预测推理和实验计划给出清晰、可执行的回答。")
+            .temperature(0.7)
+            .maxTokens(4096)
+            .contextWindow(10)
+            .isActive(true)
+            .build());
+    }
+
+    private String blankToDefault(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value.trim();
+    }
+
     private String resolveChatModel(AiConfig config, String baseUrl, boolean deepThink) {
         String model = config.getModelName();
         if (!deepThink) return model;
         String lowerBase = baseUrl == null ? "" : baseUrl.toLowerCase(Locale.ROOT);
         String lowerModel = model == null ? "" : model.toLowerCase(Locale.ROOT);
-        if (lowerBase.contains("deepseek") || lowerModel.contains("deepseek")) {
+        if ((lowerBase.contains("deepseek") || lowerModel.contains("deepseek")) && "deepseek-chat".equals(lowerModel)) {
             return "deepseek-reasoner";
         }
         return model;
+    }
+
+    private boolean isDeepSeekEndpoint(String baseUrl, String model) {
+        String lowerBase = baseUrl == null ? "" : baseUrl.toLowerCase(Locale.ROOT);
+        String lowerModel = model == null ? "" : model.toLowerCase(Locale.ROOT);
+        return lowerBase.contains("deepseek") || lowerModel.startsWith("deepseek-");
+    }
+
+    private boolean supportsDeepSeekThinking(String model) {
+        String lowerModel = model == null ? "" : model.toLowerCase(Locale.ROOT);
+        return lowerModel.startsWith("deepseek-v4");
     }
 
     private boolean supportsReasoningEffort(String baseUrl, String model) {
@@ -340,6 +389,15 @@ public class AiConfigServiceImpl implements AiConfigService {
             case "low" -> "low";
             case "deep", "high" -> "high";
             case "max", "xhigh" -> "xhigh";
+            default -> "medium";
+        };
+    }
+
+    private String normalizeDeepSeekReasoningEffort(String level) {
+        if (level == null || level.isBlank()) return "medium";
+        return switch (level.toLowerCase(Locale.ROOT)) {
+            case "off", "none", "quick", "minimal", "low" -> "low";
+            case "deep", "high", "max", "xhigh" -> "high";
             default -> "medium";
         };
     }

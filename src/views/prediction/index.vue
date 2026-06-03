@@ -104,6 +104,32 @@
           </article>
         </div>
 
+        <div v-if="analysisMetricCards.length" class="analysis-metrics-grid">
+          <article v-for="item in analysisMetricCards" :key="item.label">
+            <component :is="item.icon" :size="18" />
+            <div>
+              <span>{{ item.label }}</span>
+              <strong>{{ item.value }}</strong>
+            </div>
+          </article>
+        </div>
+
+        <div class="analysis-action">
+          <div>
+            <strong>{{ pageText.analysisTitle }}</strong>
+            <p>{{ pageText.analysisDesc }}</p>
+          </div>
+          <el-button
+            type="primary"
+            plain
+            :disabled="!currentAnalysisRecord"
+            @click="openVisualizationAnalysis"
+          >
+            <Send :size="15" />
+            {{ pageText.sendToViz }}
+          </el-button>
+        </div>
+
         <div v-if="recommendations.length" class="job-grid">
           <article v-for="item in recommendations" :key="item.itemId + item.rank" class="job-card">
             <div class="job-rank">#{{ item.rank }}</div>
@@ -134,6 +160,20 @@
           <span>{{ pageText.requestPreview }}</span>
           <strong>{{ pageText.requestTitle }}</strong>
         </div>
+        <div class="payload-summary">
+          <div>
+            <span>{{ pageText.historyCount }}</span>
+            <strong>{{ activeHistoryPreview }}</strong>
+          </div>
+          <div>
+            <span>{{ pageText.topK }}</span>
+            <strong>{{ activeTopK }}</strong>
+          </div>
+          <div>
+            <span>{{ pageText.includeJobInfo }}</span>
+            <strong>{{ activeIncludeJobInfo }}</strong>
+          </div>
+        </div>
         <pre>{{ requestJson }}</pre>
       </article>
 
@@ -155,6 +195,20 @@
           <span>{{ pageText.lastResponse }}</span>
           <strong>{{ pageText.lastResponseTitle }}</strong>
         </div>
+        <div v-if="currentAnalysisRecord" class="response-digest">
+          <div>
+            <span>{{ pageText.fillRate }}</span>
+            <strong>{{ formatPercent(currentAnalysisRecord.metrics.fillRate) }}</strong>
+          </div>
+          <div>
+            <span>{{ pageText.detailCoverage }}</span>
+            <strong>{{ formatPercent(currentAnalysisRecord.metrics.detailCoverage) }}</strong>
+          </div>
+          <div>
+            <span>{{ pageText.latency }}</span>
+            <strong>{{ currentAnalysisRecord.elapsedMs ?? '--' }}ms</strong>
+          </div>
+        </div>
         <pre>{{ responseJson }}</pre>
       </article>
     </section>
@@ -167,19 +221,30 @@ import { ElMessage } from 'element-plus';
 import axios from 'axios';
 import {
   AlertTriangle,
+  BarChart3,
   BriefcaseBusiness,
+  Building2,
   CheckCircle2,
   ClipboardList,
   Gauge,
   History,
   Play,
   Server,
+  Send,
   WifiOff,
 } from 'lucide-vue-next';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 import { predictionApi } from '@/api';
+import { ROUTES } from '@/constants';
 import type { ModelOption } from '@/types/models';
 import { modelDescription, modelDisplayName, taskTypeLabel } from '@/utils/modelDisplay';
+import {
+  buildPredictionAnalysisRecord,
+  savePredictionAnalysisRecord,
+  selectPredictionAnalysisRecord,
+} from '@/utils/predictionAnalysis';
+import type { PredictionAnalysisRecord } from '@/utils/predictionAnalysis';
 
 type RecommendationStatus = 'idle' | 'success' | 'offline' | 'error';
 
@@ -199,6 +264,7 @@ type RecommendRequest = {
 }
 
 const { locale } = useI18n();
+const router = useRouter();
 const inferModel = ref('BSARec-Job');
 const modelList = ref<ModelOption[]>([]);
 const historyInput = ref('1, 2, 3, 4, 5');
@@ -213,6 +279,7 @@ const elapsedMs = ref<number | null>(null);
 const recommendations = ref<RecommendationItem[]>([]);
 const lastRequest = ref<RecommendRequest | null>(null);
 const lastResponse = ref<Record<string, unknown> | null>(null);
+const savedAnalysisRecordId = ref('');
 
 const isZh = computed(() => locale.value.startsWith('zh'));
 
@@ -263,6 +330,16 @@ const pageText = computed(() => (isZh.value ? {
   backendEndpoint: '平台接口',
   serviceEndpoint: '模型服务',
   inputContract: '输入约束',
+  fillRate: 'Top-K 返回率',
+  detailCoverage: '详情覆盖率',
+  companyCoverage: '公司覆盖',
+  averageScore: '平均得分',
+  analysisTitle: '推理结果可视化',
+  analysisDesc: '保存本次请求、响应、延迟和推荐分布，并在可视化分析页生成模型推理视图。',
+  sendToViz: '送往可视化分析',
+  sentToViz: '已发送到可视化分析',
+  yes: '是',
+  no: '否',
 } : {
   kicker: 'BSARec Online Recommendation',
   config: 'Request Config',
@@ -310,6 +387,16 @@ const pageText = computed(() => (isZh.value ? {
   backendEndpoint: 'Platform endpoint',
   serviceEndpoint: 'Model service',
   inputContract: 'Input contract',
+  fillRate: 'Top-K fill rate',
+  detailCoverage: 'Detail coverage',
+  companyCoverage: 'Company coverage',
+  averageScore: 'Average score',
+  analysisTitle: 'Visualize this inference',
+  analysisDesc: 'Save the request, response, latency, and recommendation distribution for model inference analysis.',
+  sendToViz: 'Send to Analysis',
+  sentToViz: 'Sent to visual analysis',
+  yes: 'Yes',
+  no: 'No',
 }));
 
 const bsarecModelOption = (): ModelOption => ({
@@ -393,6 +480,32 @@ const summaryCards = computed(() => [
   { label: pageText.value.device, value: 'CPU / Flask', icon: Server },
 ]);
 
+const currentAnalysisRecord = computed<PredictionAnalysisRecord | null>(() => {
+  if (!lastRequest.value || !lastResponse.value) return null;
+  return buildPredictionAnalysisRecord({
+    id: savedAnalysisRecordId.value || undefined,
+    modelName: 'BSARec-Job',
+    request: lastRequest.value,
+    response: lastResponse.value,
+    status: serviceState.value,
+    message: serviceMessage.value || statusDescription.value,
+    serviceUrl: responseServiceUrl.value,
+    elapsedMs: elapsedMs.value,
+    recommendations: recommendations.value,
+  });
+});
+
+const analysisMetricCards = computed(() => {
+  const record = currentAnalysisRecord.value;
+  if (!record) return [];
+  return [
+    { label: pageText.value.fillRate, value: formatPercent(record.metrics.fillRate), icon: ClipboardList },
+    { label: pageText.value.detailCoverage, value: formatPercent(record.metrics.detailCoverage), icon: BarChart3 },
+    { label: pageText.value.companyCoverage, value: record.metrics.recommendationCount ? `${record.metrics.uniqueCompanyCount}/${record.metrics.recommendationCount}` : '0/0', icon: Building2 },
+    { label: pageText.value.averageScore, value: record.metrics.averageScore === null ? '--' : formatScore(record.metrics.averageScore), icon: Gauge },
+  ];
+});
+
 const integrationRoutes = computed(() => [
   { label: pageText.value.modelSource, value: 'PredictionController.listModels / BSARec-Job' },
   { label: pageText.value.backendEndpoint, value: '/api/v1/prediction/recommend' },
@@ -402,6 +515,10 @@ const integrationRoutes = computed(() => [
 
 const requestJson = computed(() => formatJson(lastRequest.value || requestPayload.value));
 const responseJson = computed(() => lastResponse.value ? formatJson(lastResponse.value) : pageText.value.noResponse);
+const activeRequest = computed(() => lastRequest.value || requestPayload.value);
+const activeHistoryPreview = computed(() => compactHistory(activeRequest.value.user_history));
+const activeTopK = computed(() => String(activeRequest.value.top_k));
+const activeIncludeJobInfo = computed(() => activeRequest.value.include_job_info ? pageText.value.yes : pageText.value.no);
 
 const sampleHistories = computed(() => [
   { label: isZh.value ? '短序列' : 'Short', value: '1, 2, 3, 4, 5' },
@@ -442,8 +559,37 @@ function formatScore(value: number) {
   return Math.abs(value) >= 1 ? value.toFixed(3) : value.toFixed(4);
 }
 
+function formatPercent(value: number) {
+  return `${Math.round(value * 100)}%`;
+}
+
+function compactHistory(ids: number[]) {
+  if (!ids.length) return '--';
+  const preview = ids.slice(0, 8).join(', ');
+  return ids.length > 8 ? `${preview} ... (${ids.length})` : preview;
+}
+
 function applySample(value: string) {
   historyInput.value = value;
+}
+
+function saveCurrentAnalysisRecord() {
+  const record = currentAnalysisRecord.value;
+  if (!record) return null;
+  const saved = savePredictionAnalysisRecord(record);
+  savedAnalysisRecordId.value = saved.id;
+  return saved;
+}
+
+function openVisualizationAnalysis() {
+  const saved = saveCurrentAnalysisRecord();
+  if (!saved) {
+    ElMessage.warning(pageText.value.noResponse);
+    return;
+  }
+  selectPredictionAnalysisRecord(saved.id);
+  ElMessage.success(pageText.value.sentToViz);
+  void router.push(ROUTES.VIZ);
 }
 
 function localizeBackendMessage(message: string, status?: unknown) {
@@ -493,6 +639,7 @@ async function runInference() {
   const startedAt = performance.now();
   const payload = { ...requestPayload.value, user_history: history };
   lastRequest.value = payload;
+  savedAnalysisRecordId.value = '';
 
   try {
     const response = await predictionApi.recommend(payload);
@@ -506,17 +653,20 @@ async function runInference() {
 
     if (data.status === 'offline') {
       serviceState.value = 'offline';
+      saveCurrentAnalysisRecord();
       ElMessage.warning(pageText.value.offlineTitle);
       return;
     }
 
     if (data.status === 'error') {
       serviceState.value = 'error';
+      saveCurrentAnalysisRecord();
       ElMessage.error(serviceMessage.value || pageText.value.errorTitle);
       return;
     }
 
     serviceState.value = 'success';
+    saveCurrentAnalysisRecord();
     ElMessage.success(pageText.value.successTitle);
   } catch (error) {
     elapsedMs.value = Math.max(1, Math.round(performance.now() - startedAt));
@@ -810,6 +960,77 @@ onMounted(loadModels);
   margin-top: 5px;
 }
 
+.analysis-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.analysis-metrics-grid article {
+  min-width: 0;
+  min-height: 76px;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--panel-bg);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.analysis-metrics-grid svg {
+  color: var(--primary-color);
+  flex-shrink: 0;
+}
+
+.analysis-metrics-grid span {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.analysis-metrics-grid strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 18px;
+  line-height: 1.2;
+  margin-top: 5px;
+  word-break: break-word;
+}
+
+.analysis-action {
+  margin-top: 12px;
+  padding: 13px 14px;
+  border: 1px solid rgba(var(--primary-rgb), 0.22);
+  border-radius: 12px;
+  background: rgba(var(--primary-rgb), 0.08);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+}
+
+.analysis-action strong {
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.analysis-action p {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.analysis-action :deep(.el-button) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  white-space: nowrap;
+}
+
 .job-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
@@ -926,11 +1147,54 @@ onMounted(loadModels);
   overflow: auto;
   border: 1px solid var(--border-color);
   border-radius: 12px;
-  background: rgba(15, 23, 42, 0.45);
-  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--surface-2) 76%, transparent);
+  color: var(--text-primary);
   font-size: 12px;
   line-height: 1.6;
   white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.payload-summary,
+.response-digest {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.payload-summary {
+  grid-template-columns: minmax(0, 1.6fr) minmax(82px, 0.7fr) minmax(92px, 0.8fr);
+}
+
+.response-digest {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.payload-summary div,
+.response-digest div {
+  min-width: 0;
+  min-height: 58px;
+  padding: 10px 11px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--panel-bg);
+}
+
+.payload-summary span,
+.response-digest span {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.35;
+  margin-bottom: 5px;
+}
+
+.payload-summary strong,
+.response-digest strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.4;
   word-break: break-word;
 }
 
@@ -970,6 +1234,12 @@ onMounted(loadModels);
   .summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .analysis-metrics-grid,
+  .payload-summary,
+  .response-digest {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 760px) {
@@ -994,6 +1264,10 @@ onMounted(loadModels);
   }
 
   .summary-grid,
+  .analysis-metrics-grid,
+  .analysis-action,
+  .payload-summary,
+  .response-digest,
   .job-grid {
     grid-template-columns: 1fr;
   }

@@ -109,6 +109,14 @@
               <pre v-show="msg.thinkingExpanded">{{ msg.thinking }}</pre>
             </button>
             <div class="message-bubble" v-html="formatContent(msg.content)"></div>
+            <div v-if="msg.navigation" class="navigation-card">
+              <div>
+                <span>页面导航</span>
+                <strong>{{ msg.navigation.label }}</strong>
+                <em>{{ msg.navigation.description }}</em>
+              </div>
+              <button type="button" @click="goToNavigation(msg.navigation)">前往页面</button>
+            </div>
             <div class="msg-actions">
               <time>{{ msg.time }}</time>
               <button v-if="msg.role === 'assistant'" type="button" @click="copyMsg(msg.content)">复制</button>
@@ -288,6 +296,7 @@
             <b>Redis 保存对话历史</b>
             <b>用户隔离校验</b>
             <b>可视化结果导入上下文</b>
+            <b>DeepSeek 兼容 API 预留</b>
           </div>
         </section>
         <section>
@@ -304,22 +313,25 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Bot, Brain, Clipboard, Download, FileUp, FolderOpen, MoreHorizontal, Plus, Save, Send, Square, Trash2, User, X } from 'lucide-vue-next'
 import { aiApi } from '@/api'
 import { renderMarkdown } from '@/utils/markdown'
+import { resolveAssistantNavigation, type AssistantNavigationIntent } from '@/utils/assistantNavigation'
 import CloudWorkspacePortal from '@/components/cloud/CloudWorkspacePortal.vue'
 
 type ReasoningLevel = 'off' | 'quick' | 'low' | 'deep' | 'max'
 type Message = {
   role: string; content: string; time: string
   thinking?: string; thinkingExpanded?: boolean; reasoningLabel?: string
+  navigation?: AssistantNavigationIntent
 }
 type Conversation = { id: number; title: string; date: string }
 type WorkspaceMaterial = Record<string, any>
 
 const route = useRoute()
+const router = useRouter()
 const msgContainer = ref<HTMLElement | null>(null)
 const inputRef = ref<HTMLTextAreaElement | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
@@ -360,6 +372,8 @@ const reasoningLevels: Array<{ value: ReasoningLevel; label: string; hint: strin
 const suggestedPrompts = [
   { icon: Bot, label: '模型分析', desc: '结构、瓶颈、适用场景', query: '请分析当前模型结构的优缺点，并给出下一步优化建议。' },
   { icon: Brain, label: '训练诊断', desc: '损失、准确率、学习率', query: '训练损失不稳定时，应该如何系统排查？请按优先级输出。' },
+  { icon: Send, label: '预测推理', desc: '跳转到 BSARec 在线推荐', query: '打开预测推理页面' },
+  { icon: FolderOpen, label: '可视化分析', desc: '查看模型证据和预测回流', query: '去可视化分析页面' },
   { icon: Clipboard, label: '矩阵复盘', desc: '多模型 × 多模块', query: '请帮我设计一次多模型多分析模块的复盘流程，输出可执行步骤。' },
   { icon: FileUp, label: '代码方案', desc: '实验脚本和伪代码', query: '给我一个 PyTorch 训练诊断脚本模板，包含日志记录和异常检测。' },
 ]
@@ -383,6 +397,11 @@ onMounted(async () => {
     if (existing) { await selectConversation(existing) }
     else { await selectConversation({ id: routeConversationId, title: `分析对话 #${routeConversationId}`, date: '' }) }
     return
+  }
+  const routePrompt = typeof route.query.prompt === 'string' ? route.query.prompt : ''
+  if (routePrompt) {
+    userInput.value = routePrompt
+    nextTick(() => inputRef.value?.focus())
   }
   if (!messages.value.length) {
     messages.value.push({
@@ -408,6 +427,16 @@ async function sendMessage() {
   const msg = userInput.value.trim(); userInput.value = ''
   if (inputRef.value) inputRef.value.style.height = 'auto'
   messages.value.push({ role: 'user', content: msg, time: getTime() }); chatHistory.value.push({ role: 'user', content: msg })
+
+  const navigation = resolveAssistantNavigation(msg)
+  if (navigation) {
+    messages.value.push({ role: 'assistant', content: navigation.reply, time: getTime(), navigation })
+    chatHistory.value.push({ role: 'assistant', content: navigation.reply })
+    tokenCount.value += msg.length + navigation.reply.length
+    await scrollToBottom()
+    return
+  }
+
   loading.value = true; tokenCount.value += msg.length; await scrollToBottom()
   try {
     thinking.value = true
@@ -450,6 +479,7 @@ function saveMaterialsToLocal() { if (!selectedMaterials.value.length) return; c
 
 function stopGeneration() { loading.value = false; ElMessage.info('已停止生成') }
 function askAI(query: string) { userInput.value = query; void sendMessage() }
+function goToNavigation(navigation: AssistantNavigationIntent) { router.push(navigation.path); ElMessage.success(`已前往${navigation.label}`) }
 function copyMsg(text: string) { navigator.clipboard.writeText(text); ElMessage.success('已复制') }
 function regenerate() { const lastUser = [...chatHistory.value].reverse().find((item) => item.role === 'user'); if (!lastUser) return; messages.value = messages.value.filter((_, index) => index < messages.value.length - 1); chatHistory.value = chatHistory.value.filter((_, index) => index < chatHistory.value.length - 1); userInput.value = lastUser.content; void sendMessage() }
 function newConversation() { messages.value = []; chatHistory.value = []; conversationId.value = null; activeConvId.value = null; userInput.value = ''; tokenCount.value = 0; messages.value.push({ role: 'assistant', content: '新对话已开始。你可以描述问题，也可以从可视化矩阵导入分析结果。', time: getTime() }); nextTick(() => inputRef.value?.focus()) }
@@ -620,6 +650,35 @@ function exportChat() { if (!messages.value.length) { ElMessage.warning('暂无�
 .message-stack { max-width: min(720px, 78%); }
 .message-bubble { padding: 14px 18px; border: 1px solid var(--border-color); border-radius: 18px; background: var(--workbench-panel-bg); color: var(--text-primary); font-size: 13px; line-height: 1.75; }
 .message-row.user .message-bubble { border-color: transparent; background: var(--primary-color); color: #06100c; }
+.navigation-card {
+  margin-top: 10px;
+  padding: 14px;
+  border: 1px solid rgba(var(--primary-rgb), 0.22);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(var(--primary-rgb), 0.13), transparent 62%),
+    var(--workbench-panel-bg);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+}
+.navigation-card div { min-width: 0; display: grid; gap: 3px; }
+.navigation-card span { color: var(--primary-color); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+.navigation-card strong { color: var(--text-primary); font-size: 14px; font-weight: 650; }
+.navigation-card em { color: var(--text-muted); font-size: 12px; font-style: normal; line-height: 1.5; overflow-wrap: anywhere; }
+.navigation-card button {
+  height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--primary-color);
+  color: #06100c;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+}
 .msg-actions { display: flex; align-items: center; gap: 8px; margin-top: 4px; padding: 0 4px; color: var(--text-muted); font-size: 10px; }
 .msg-actions button { background: transparent; border: 0; color: var(--text-muted); font-size: 10px; cursor: pointer; }
 .msg-actions button:hover { color: var(--text-primary); }
@@ -769,6 +828,8 @@ function exportChat() { if (!messages.value.length) { ElMessage.warning('暂无�
   .ai-rail { max-height: 360px; }
   .chat-stage { min-height: min(640px, calc(100vh - 140px)); }
   .message-stack { max-width: 88%; }
+  .navigation-card { grid-template-columns: 1fr; }
+  .navigation-card button { width: 100%; }
   .composer { grid-template-columns: 1fr; }
   .send-button { width: 100%; }
   .composer-bar { flex-wrap: wrap; }
