@@ -1,5 +1,5 @@
 <template>
-  <div ref="box" class="kg-root" @mousedown="onDn" @wheel="onWh" @click="onClick">
+  <div ref="box" class="kg-root" :class="{ 'is-light-atlas': !theme.isDarkMode }" @mousedown="onDn" @wheel="onWh" @click="onClick">
     <canvas ref="cv"></canvas>
 
     <!-- 右侧知识文章面板 -->
@@ -29,7 +29,7 @@
     </div>
 
     <!-- 底部控制栏 -->
-    <div class="kg-controls">
+    <div v-if="theme.isDarkMode" class="kg-controls">
       <div class="kg-control-row">
         <span class="ctrl-label">{{ tt('kg3d.rotation') }}</span>
         <input type="range" min="0" max="3" step="0.1" :value="rotSpeed" @input="onSpeed" class="ctrl-slider" />
@@ -40,7 +40,7 @@
       </button>
     </div>
 
-    <div class="kg-hint">{{ tt('kg3d.hint') }}</div>
+    <div class="kg-hint">{{ knowledgeHint }}</div>
   </div>
 </template>
 
@@ -50,6 +50,7 @@ import { useThemeStore } from '@/stores/theme.store';
 import { useI18n } from 'vue-i18n';
 const theme = useThemeStore();
 const { t: tt } = useI18n();
+const knowledgeHint = computed(() => theme.isDarkMode ? tt('kg3d.hint') : '点击知识节点查看对应文章，浅色模式为固定知识蓝图');
 const emit = defineEmits<{ openArticle: [article: any] }>();
 const box = ref<HTMLDivElement>(); const cv = ref<HTMLCanvasElement>();
 const sel = ref<any>(null); const panelOpen = ref(false);
@@ -159,11 +160,11 @@ const getCanvasColors = (dark: boolean): ThemeCanvasColors => {
     primary,
     primaryRgb,
     accent: root.getPropertyValue('--accent-glow').trim() || primary,
-    bg: root.getPropertyValue('--bg-color').trim() || (dark ? '#05070a' : '#f3f6f2'),
-    surface: root.getPropertyValue('--surface-solid').trim() || (dark ? '#0d1118' : '#fbfcf7'),
+    bg: root.getPropertyValue('--bg-color').trim() || (dark ? '#05070a' : '#f7faff'),
+    surface: root.getPropertyValue('--surface-solid').trim() || (dark ? '#0d1118' : '#fbfcff'),
     text: root.getPropertyValue('--text-primary').trim() || (dark ? '#f7f3ea' : '#141922'),
     muted: root.getPropertyValue('--text-muted').trim() || (dark ? '#707d8f' : '#88919f'),
-    grid: alphaColor(primaryRgb, dark ? 0.08 : 0.07),
+    grid: alphaColor(primaryRgb, dark ? 0.08 : 0.065),
   };
 };
 const nodePalette = [
@@ -226,78 +227,43 @@ const proj = (x: number, y: number, z: number) => {
 /* ======== 知识树 (同上) ======== */
 interface KNode { id: string; label: string; cat: string; desc: string; color: string; size: number; children?: KNode[]; rel: string[]; }
 const TREE: KNode = {
-  id: 'd', label: 'DeepInsight', cat: '平台核心', desc: '深度学习全流程可视化分析平台', color: '#4dc9f0', size: 2.5, rel: [],
+  id: 'd', label: 'DeepInsight 推荐系统知识图谱', cat: '平台核心', desc: '围绕 9 个推荐系统模型、数据资产、指标和 AI 助手组织知识', color: '#42e6a4', size: 2.5, rel: [],
   children: [
-    { id: 'data', label: '数据管理', cat: '功能模块', desc: '数据集上传、预处理、增强与版本管理', color: '#60a5fa', size: 1.5, rel: [], children: [
-      { id: 'prep', label: '数据预处理', cat: '数据处理', desc: '标准化、归一化、缺失值填充等', color: '#93c5fd', size: 1.0, rel: [], children: [
-        { id: 'norm', label: '标准化', cat: '数据处理', desc: 'Z-Score：(x-μ)/σ', color: '#bae6fd', size: 0.8, rel: [] },
-        { id: 'nrm', label: '归一化', cat: '数据处理', desc: 'Min-Max缩放至[0,1]', color: '#bae6fd', size: 0.8, rel: [] },
-        { id: 'missing', label: '缺失值处理', cat: '数据处理', desc: '删除/填充/预测填充', color: '#bae6fd', size: 0.75, rel: [] },
-        { id: 'onehot', label: 'One-Hot编码', cat: '数据处理', desc: '类别变量转二进制向量', color: '#bae6fd', size: 0.75, rel: [] },
-      ]},
-      { id: 'aug', label: '数据增强', cat: '数据处理', desc: '旋转/翻转/裁剪扩充数据集', color: '#7dd3fc', size: 1.0, rel: [], children: [
-        { id: 'aug-geo', label: '几何变换', cat: '增强', desc: '旋转/翻转/缩放/裁剪', color: '#cffafe', size: 0.7, rel: [] },
-        { id: 'aug-color', label: '色彩变换', cat: '增强', desc: '亮度/对比度/饱和度', color: '#cffafe', size: 0.7, rel: [] },
-        { id: 'mixup', label: 'MixUp', cat: '增强', desc: '图像混合标签混合', color: '#cffafe', size: 0.7, rel: [] },
-        { id: 'cutmix', label: 'CutMix', cat: '增强', desc: '区域剪切粘贴融合', color: '#cffafe', size: 0.7, rel: [] },
-      ]},
-      { id: 'split', label: '数据集划分', cat: '数据处理', desc: '训练/验证/测试7:2:1', color: '#7dd3fc', size: 0.9, rel: [], children: [
-        { id: 'kfold', label: 'K折交叉验证', cat: '验证', desc: '分K份轮换验证', color: '#cffafe', size: 0.7, rel: [] },
-      ]},
+    { id: 'platform', label: '平台入口', cat: '使用路径', desc: '模型总览、接入测试、性能看板、数据中心和 AI 工作区', color: '#4dc9f0', size: 1.5, rel: [], children: [
+      { id: 'model-overview', label: '模型总览', cat: '模型入口', desc: '查看 9 个推荐模型状态、指标、数据和参数', color: '#8b5cf6', size: 1.0, rel: [] },
+      { id: 'access-test', label: '接入测试', cat: '模型入口', desc: '验证推荐输入、Top-K 输出和服务健康度', color: '#f59e0b', size: 1.0, rel: [] },
+      { id: 'visualization', label: '性能看板', cat: '分析入口', desc: '比对 HR、NDCG、MRR、数据规模和接入证据', color: '#ec4899', size: 1.0, rel: [] },
+      { id: 'dataset-viz', label: '数据集可视化', cat: '数据分析', desc: '查看用户、物品、交互和序列结构', color: '#60a5fa', size: 1.0, rel: [] },
+      { id: 'ai-workspace', label: 'AI 工作区', cat: '智能入口', desc: '按站内知识解释推荐模型', color: '#14b8a6', size: 1.0, rel: [] },
     ]},
-    { id: 'train', label: '模型训练', cat: '功能模块', desc: '超参数配置、架构选择、训练监控', color: '#10b981', size: 1.5, rel: [], children: [
-      { id: 'sl', label: '监督学习', cat: '学习范式', desc: '标注数据学习输入→输出映射', color: '#34d399', size: 1.0, rel: [], children: [
-        { id: 'cls', label: '分类任务', cat: '任务', desc: '预测离散类别标签', color: '#a7f3d0', size: 0.8, rel: [] },
-        { id: 'reg', label: '回归任务', cat: '任务', desc: '预测连续数值', color: '#a7f3d0', size: 0.8, rel: [] },
-      ]},
-      { id: 'ul', label: '无监督学习', cat: '学习范式', desc: '未标注数据发现隐藏模式', color: '#34d399', size: 1.0, rel: [], children: [
-        { id: 'cluster', label: '聚类', cat: '算法', desc: 'K-Means/DBSCAN/层次', color: '#a7f3d0', size: 0.75, rel: [] },
-        { id: 'pca', label: 'PCA降维', cat: '算法', desc: '主成分分析线性降维', color: '#a7f3d0', size: 0.75, rel: [] },
-      ]},
-      { id: 'tl', label: '迁移学习', cat: '学习范式', desc: '预训练模型微调适配新任务', color: '#34d399', size: 1.0, rel: [], children: [
-        { id: 'ft', label: 'Fine-tuning', cat: '技术', desc: '冻结部分层训练最后几层', color: '#a7f3d0', size: 0.75, rel: [] },
-      ]},
+    { id: 'bsarec-family', label: 'BSARec 家族', cat: '推荐模型', desc: '岗位推荐与多数据集序列推荐', color: '#22c55e', size: 1.25, rel: [], children: [
+      { id: 'bsarec-job', label: 'BSARec Job', cat: '推荐模型', desc: '岗位推荐，代理已登记但服务当前离线', color: '#86efac', size: 0.9, rel: [] },
+      { id: 'bsarec', label: 'BSARec', cat: '推荐模型', desc: '多数据集推荐，权重和评估日志已存在', color: '#86efac', size: 0.9, rel: [] },
     ]},
-    { id: 'arch', label: '模型架构', cat: '功能模块', desc: 'CNN/RNN/Transformer/GAN等', color: '#8b5cf6', size: 1.5, rel: [], children: [
-      { id: 'cnn-series', label: 'CNN系列', cat: '架构族', desc: '卷积神经网络, 空间特征', color: '#a78bfa', size: 1.1, rel: [], children: [
-        { id: 'cnn', label: 'CNN基础', cat: '架构', desc: '卷积+池化+全连接', color: '#c4b5fd', size: 0.85, rel: [] },
-        { id: 'resnet', label: 'ResNet', cat: '架构', desc: '残差网络跳跃连接', color: '#c4b5fd', size: 0.9, rel: [] },
-        { id: 'effnet', label: 'EfficientNet', cat: '架构', desc: 'NAS复合缩放', color: '#c4b5fd', size: 0.85, rel: [] },
-      ]},
-      { id: 'trans-series', label: 'Transformer系列', cat: '架构族', desc: '自注意力, NLP/CV统治', color: '#c084fc', size: 1.2, rel: [], children: [
-        { id: 'trans', label: 'Transformer', cat: '架构', desc: 'Self-Attention+位置编码', color: '#d8b4fe', size: 0.9, rel: [] },
-        { id: 'vit', label: 'ViT', cat: '架构', desc: 'Vision Transformer图像patch', color: '#d8b4fe', size: 0.85, rel: [] },
-        { id: 'gpt', label: 'GPT', cat: '架构', desc: '自回归语言模型', color: '#d8b4fe', size: 0.9, rel: [] },
-      ]},
-      { id: 'det-seg', label: '检测与分割', cat: '架构族', desc: '目标检测/语义分割', color: '#e879f9', size: 1.0, rel: [], children: [
-        { id: 'yolo', label: 'YOLO', cat: '架构', desc: '实时目标检测标杆', color: '#f0abfc', size: 0.85, rel: [] },
-        { id: 'unet', label: 'U-Net', cat: '架构', desc: '编码-解码+跳跃连接', color: '#f0abfc', size: 0.8, rel: [] },
-      ]},
+    { id: 'transformer-rec', label: 'Transformer 序列推荐', cat: '推荐模型', desc: '双向、自注意力和时间感知推荐路线', color: '#38bdf8', size: 1.3, rel: [], children: [
+      { id: 'bert4rec', label: 'BERT4Rec', cat: '推荐模型', desc: '双向序列推荐，代码和数据已接入', color: '#7dd3fc', size: 0.9, rel: [] },
+      { id: 'sasrec', label: 'SASRec', cat: '推荐模型', desc: '自注意力序列推荐，多份交互数据', color: '#7dd3fc', size: 0.9, rel: [] },
+      { id: 'tisasrec', label: 'TiSASRec', cat: '推荐模型', desc: '时间间隔序列推荐，ML-1M 时间戳数据', color: '#7dd3fc', size: 0.9, rel: [] },
     ]},
-    { id: 'tech', label: '训练技巧', cat: '功能模块', desc: '优化器/学习率/正则化等核心技术', color: '#f59e0b', size: 1.4, rel: [], children: [
-      { id: 'opt', label: '优化器', cat: '核心概念', desc: 'SGD/Adam/AdamW参数更新', color: '#fbbf24', size: 1.1, rel: [], children: [
-        { id: 'sgd', label: 'SGD', cat: '优化器', desc: '随机梯度下降', color: '#fde68a', size: 0.8, rel: [] },
-        { id: 'adam', label: 'Adam', cat: '优化器', desc: '自适应矩估计', color: '#fde68a', size: 0.85, rel: [] },
-      ]},
-      { id: 'reg', label: '正则化', cat: '核心概念', desc: '防止过拟合的技术集合', color: '#fbbf24', size: 1.0, rel: [], children: [
-        { id: 'dropout', label: 'Dropout', cat: '正则化', desc: '随机丢弃神经元', color: '#fde68a', size: 0.85, rel: [] },
-        { id: 'bn', label: 'BatchNorm', cat: '正则化', desc: '批归一化加速训练', color: '#fde68a', size: 0.85, rel: [] },
-        { id: 'ln', label: 'LayerNorm', cat: '正则化', desc: '层归一化Transformer标配', color: '#fde68a', size: 0.75, rel: [] },
-      ]},
-      { id: 'loss', label: '损失函数', cat: '核心概念', desc: '衡量预测与真实差距', color: '#f87171', size: 1.1, rel: [], children: [
-        { id: 'ce', label: '交叉熵', cat: '损失', desc: '分类任务标准损失', color: '#fca5a5', size: 0.85, rel: [] },
-        { id: 'mse', label: 'MSE', cat: '损失', desc: '均方误差', color: '#fca5a5', size: 0.8, rel: [] },
-      ]},
+    { id: 'enhanced-rec', label: '增强推荐模型', cat: '推荐模型', desc: '对比、频域和滤波增强推荐路线', color: '#a78bfa', size: 1.3, rel: [], children: [
+      { id: 'duorec', label: 'DuoRec', cat: '推荐模型', desc: '对比序列推荐，ml-100k 数据已接入', color: '#c4b5fd', size: 0.9, rel: [] },
+      { id: 'fearec', label: 'FEARec', cat: '推荐模型', desc: '频域增强序列推荐，ml-100k 数据已接入', color: '#c4b5fd', size: 0.9, rel: [] },
+      { id: 'fmlprec', label: 'FMLP-Rec', cat: '推荐模型', desc: '滤波增强推荐，Beauty 权重和日志已存在', color: '#c4b5fd', size: 0.9, rel: [] },
+      { id: 'recbole', label: 'RecBole', cat: '推荐框架', desc: '推荐实验框架，ml-100k atomic 数据', color: '#fda4af', size: 0.9, rel: [] },
     ]},
-    { id: 'eval', label: '评估指标', cat: '功能模块', desc: '准确率/召回率/mAP/ROC', color: '#ec4899', size: 1.3, rel: [], children: [
-      { id: 'cm', label: '混淆矩阵', cat: '指标', desc: 'TP/FP/FN/TN四格分布', color: '#fbcfe8', size: 0.85, rel: [] },
-      { id: 'roc', label: 'ROC曲线', cat: '指标', desc: 'TPR-FPR关系AUC面积', color: '#fbcfe8', size: 0.85, rel: [] },
+    { id: 'metrics', label: '推荐指标与状态', cat: '评测方法', desc: 'HR、NDCG、MRR、数据规模、日志和服务健康', color: '#fb7185', size: 1.3, rel: [], children: [
+      { id: 'hr-k', label: 'HR@K', cat: '评测指标', desc: '前 K 个推荐是否命中目标', color: '#fda4af', size: 0.86, rel: [] },
+      { id: 'ndcg-k', label: 'NDCG@K', cat: '评测指标', desc: '命中越靠前得分越高', color: '#fda4af', size: 0.86, rel: [] },
+      { id: 'mrr', label: 'MRR', cat: '评测指标', desc: '首个相关结果排名的倒数均值', color: '#fda4af', size: 0.86, rel: [] },
+      { id: 'readiness', label: '接入证据', cat: '运维状态', desc: '数据、代码、权重、日志和服务是否存在', color: '#fda4af', size: 0.86, rel: [] },
     ]},
-    { id: 'deploy', label: '部署推理', cat: '功能模块', desc: '模型压缩/导出/加速推理', color: '#14b8a6', size: 1.3, rel: [], children: [
-      { id: 'quant', label: '量化', cat: '压缩', desc: 'FP32→INT8/FP16减小模型', color: '#ccfbf1', size: 0.8, rel: [] },
-      { id: 'prune', label: '剪枝', cat: '压缩', desc: '移除不重要权重', color: '#ccfbf1', size: 0.75, rel: [] },
-      { id: 'distill', label: '知识蒸馏', cat: '压缩', desc: '大模型教小模型', color: '#ccfbf1', size: 0.8, rel: [] },
+    { id: 'rec-data', label: '推荐数据资产', cat: '数据体系', desc: 'Job、Beauty、ML-100K、ML-1M、Steam、Video 等数据', color: '#06b6d4', size: 1.22, rel: [], children: [
+      { id: 'job-data', label: 'Job', cat: '数据集', desc: '岗位推荐序列数据', color: '#67e8f9', size: 0.84, rel: [] },
+      { id: 'beauty-data', label: 'Beauty', cat: '数据集', desc: '多模型共用商品序列数据', color: '#67e8f9', size: 0.84, rel: [] },
+      { id: 'ml100k-data', label: 'ML-100K', cat: '数据集', desc: 'DuoRec、FEARec、RecBole 共用数据', color: '#67e8f9', size: 0.84, rel: [] },
+      { id: 'ml1m-data', label: 'ML-1M', cat: '数据集', desc: '多模型使用的电影交互数据', color: '#67e8f9', size: 0.84, rel: [] },
     ]},
+    { id: 'ai-training', label: 'AI 知识更新', cat: 'AI 知识', desc: '使用站内模型、指标和接入状态回答问题', color: '#f43f5e', size: 1.18, rel: [] },
   ]
 };
 
@@ -641,9 +607,9 @@ const renderCloth = (dark: boolean) => {
     }
     const maxH = Math.max(...rows[iz].map(p => Math.abs(p.h)));
     const isMajor = iz % 4 === 0 || iz === CLOTH_H - 1;
-    const alpha = (dark ? (isMajor ? 0.26 : 0.11) : (isMajor ? 0.2 : 0.085)) + Math.min(0.28, maxH * 0.36);
-    c.strokeStyle = colorWithAlpha(isMajor ? '#60a5fa' : colors.primary, alpha);
-    c.lineWidth = isMajor ? 0.9 : 0.46; c.stroke();
+    const alpha = (dark ? (isMajor ? 0.26 : 0.11) : (isMajor ? 0.16 : 0.055)) + Math.min(dark ? 0.28 : 0.14, maxH * 0.28);
+    c.strokeStyle = colorWithAlpha(isMajor ? (dark ? '#60a5fa' : '#89b4f8') : colors.primary, alpha);
+    c.lineWidth = isMajor ? (dark ? 0.9 : 0.72) : (dark ? 0.46 : 0.36); c.stroke();
   }
   for (let ix = 0; ix < CLOTH_W; ix++) {
     c.beginPath(); let started = false;
@@ -655,9 +621,9 @@ const renderCloth = (dark: boolean) => {
     }
     const maxH = Math.max(...rows.map(r => Math.abs(r[ix].h)));
     const isMajor = ix % 4 === 0 || ix === CLOTH_W - 1;
-    const alpha = (dark ? (isMajor ? 0.26 : 0.11) : (isMajor ? 0.2 : 0.085)) + Math.min(0.28, maxH * 0.36);
-    c.strokeStyle = colorWithAlpha(isMajor ? colors.primary : '#60a5fa', alpha);
-    c.lineWidth = isMajor ? 0.9 : 0.46; c.stroke();
+    const alpha = (dark ? (isMajor ? 0.26 : 0.11) : (isMajor ? 0.16 : 0.055)) + Math.min(dark ? 0.28 : 0.14, maxH * 0.28);
+    c.strokeStyle = colorWithAlpha(isMajor ? colors.primary : (dark ? '#60a5fa' : '#89b4f8'), alpha);
+    c.lineWidth = isMajor ? (dark ? 0.9 : 0.72) : (dark ? 0.46 : 0.36); c.stroke();
   }
   for (let iz = 0; iz < CLOTH_H; iz += 4) {
     for (let ix = 0; ix < CLOTH_W; ix += 4) {
@@ -666,9 +632,259 @@ const renderCloth = (dark: boolean) => {
       const lift = Math.min(0.22, Math.abs(pt.h) * 0.28);
       c.beginPath();
       c.arc(pt.x, pt.y, 1.05 + lift * 4, 0, Math.PI * 2);
-      c.fillStyle = colorWithAlpha((ix + iz) % 8 === 0 ? '#60a5fa' : colors.primary, (dark ? 0.34 : 0.24) + lift);
+      c.fillStyle = colorWithAlpha((ix + iz) % 8 === 0 ? (dark ? '#60a5fa' : '#8ab7ff') : colors.primary, (dark ? 0.34 : 0.16) + lift);
       c.fill();
     }
+  }
+};
+
+const nodeCanvasAlpha = (rn: RNode) => {
+  const selectedNode = selectedNodeId ? nodeMap.get(selectedNodeId) : null;
+  if (!selectedNode || rn.id === selectedNodeId || selectedNode.childIds.includes(rn.id)) return 1;
+  return 0.32;
+};
+
+const lightAtlasBounds = (rn: RNode) => {
+  const hover = hoveredNodeId === rn.id && !focusNodeId;
+  const focus = focusNodeId === rn.id || selectedNodeId === rn.id;
+  const width = Math.max(88, Math.min(196, rn.depth === 0 ? 196 : 82 + rn.label.length * 7.6));
+  const height = rn.depth === 0 ? 58 : rn.depth === 1 ? 46 : 36;
+  const scale = focus ? 1.12 : hover ? 1.06 : 1;
+  return {
+    x: rn.sx - (width * scale) / 2,
+    y: rn.sy - (height * scale) / 2,
+    width: width * scale,
+    height: height * scale,
+    radius: rn.depth === 0 ? 18 : rn.depth === 1 ? 14 : 11,
+  };
+};
+
+const lightAtlasPoint = (rn: RNode) => {
+  const siblings = rnodes.filter(n => n.depth === rn.depth);
+  const index = Math.max(0, siblings.findIndex(n => n.id === rn.id));
+  const count = Math.max(1, siblings.length);
+  const root = nodeMap.get(rn.parentId || '');
+  if (rn.depth === 0) return { x: W * 0.5, y: H * 0.2 };
+  if (rn.depth === 1) {
+    const usable = Math.min(Math.max(260, W - 210), 920);
+    const x0 = W / 2 - usable / 2;
+    const step = count > 1 ? usable / (count - 1) : 0;
+    return { x: x0 + step * index, y: H * 0.42 + Math.sin(index * 1.2) * 16 };
+  }
+  const parent = root && root.sx ? root : null;
+  const parentChildren = parent ? parent.childIds.filter(id => rnodes.some(n => n.id === id)) : [];
+  const childIndex = Math.max(0, parentChildren.findIndex(id => id === rn.id));
+  const local = parentChildren.length > 1 ? (childIndex / (parentChildren.length - 1) - 0.5) : 0;
+  if (parent) {
+    const parentRank = rnodes.filter(n => n.depth === 1).findIndex(n => n.id === parent.id);
+    return {
+      x: parent.sx + local * Math.min(238, Math.max(128, W * 0.19)),
+      y: parent.sy + 118 + (rn.depth - 2) * 58 + Math.abs(local) * 16 + (parentRank % 2 === 0 ? 6 : -4),
+    };
+  }
+  const columns = Math.min(5, count);
+  const col = index % columns;
+  const row = Math.floor(index / columns);
+  return {
+    x: W * 0.16 + (W * 0.68) * (columns <= 1 ? 0.5 : col / (columns - 1)),
+    y: H * 0.62 + row * 56,
+  };
+};
+
+const roundedRectPath = (ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) => {
+  const r = Math.min(radius, width / 2, height / 2);
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + width - r, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+  ctx.lineTo(x + width, y + height - r);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+  ctx.lineTo(x + r, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+};
+
+const renderLightAtlas = (colors: ThemeCanvasColors) => {
+  if (!c) return;
+  const cx = W / 2, cy = H / 2;
+  const accent = colors.accent || colors.primary;
+  const bg = c.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0, mixColor(colors.surface, colors.primary, 0.035));
+  bg.addColorStop(0.48, '#f8fbff');
+  bg.addColorStop(1, mixColor('#f3f8fb', accent, 0.045));
+  c.fillStyle = bg;
+  c.fillRect(0, 0, W, H);
+
+  const washA = c.createRadialGradient(W * 0.18, H * 0.16, 0, W * 0.18, H * 0.16, Math.max(W, H) * 0.58);
+  washA.addColorStop(0, alphaColor(colors.primaryRgb, 0.1));
+  washA.addColorStop(1, 'transparent');
+  c.fillStyle = washA;
+  c.fillRect(0, 0, W, H);
+
+  const accentRgb = parseCanvasColor(accent);
+  if (accentRgb) {
+    const washB = c.createRadialGradient(W * 0.82, H * 0.2, 0, W * 0.82, H * 0.2, Math.max(W, H) * 0.52);
+    washB.addColorStop(0, `rgba(${accentRgb.r},${accentRgb.g},${accentRgb.b},0.105)`);
+    washB.addColorStop(1, 'transparent');
+    c.fillStyle = washB;
+    c.fillRect(0, 0, W, H);
+  }
+
+  c.save();
+  c.strokeStyle = alphaColor(colors.primaryRgb, 0.046);
+  c.lineWidth = 1;
+  const step = 68;
+  for (let x = 0; x < W + step; x += step) {
+    c.beginPath(); c.moveTo(x, 0); c.lineTo(x + W * 0.08, H); c.stroke();
+  }
+  for (let y = 40; y < H; y += 68) {
+    c.beginPath(); c.moveTo(0, y); c.lineTo(W, y + H * 0.045); c.stroke();
+  }
+  c.strokeStyle = colorWithAlpha(accent, 0.07);
+  c.lineWidth = 1.2;
+  for (let i = 0; i < 4; i++) {
+    const y = H * (0.28 + i * 0.13);
+    c.beginPath();
+    c.moveTo(W * 0.08, y + Math.sin(t * 0.28 + i) * 4);
+    c.bezierCurveTo(W * 0.26, y - 38, W * 0.58, y + 44, W * 0.92, y - 8);
+    c.stroke();
+  }
+  c.restore();
+
+  for (const rn of rnodes) {
+    const p = lightAtlasPoint(rn);
+    rn.sx = p.x + panX * 0.06;
+    rn.sy = p.y + panY * 0.06;
+    const b = lightAtlasBounds(rn);
+    rn.sr = Math.max(b.width, b.height) / 2;
+  }
+
+  const rootNode = rnodes.find(n => n.depth === 0);
+  if (rootNode) {
+    const rootGlow = c.createRadialGradient(rootNode.sx, rootNode.sy, 0, rootNode.sx, rootNode.sy, Math.min(W, H) * 0.34);
+    rootGlow.addColorStop(0, alphaColor(colors.primaryRgb, 0.09));
+    rootGlow.addColorStop(1, 'transparent');
+    c.fillStyle = rootGlow;
+    c.fillRect(0, 0, W, H);
+  }
+
+  const selected = selectedNodeId ? nodeMap.get(selectedNodeId) : null;
+  const activeBounds = selected ? lightAtlasBounds(selected) : null;
+  if (activeBounds) {
+    const activeGlow = c.createRadialGradient(selected!.sx, selected!.sy, 0, selected!.sx, selected!.sy, Math.min(W, H) * 0.26);
+    activeGlow.addColorStop(0, colorWithAlpha(nodeVisualTone(selected!, colors, false).glow, 0.18));
+    activeGlow.addColorStop(1, 'transparent');
+    c.fillStyle = activeGlow;
+    c.fillRect(0, 0, W, H);
+  }
+
+  conns.forEach(([ai, bi]) => {
+    const a = rnodes[ai], b = rnodes[bi];
+    if (!a || !b) return;
+    const alpha = Math.min(nodeCanvasAlpha(a), nodeCanvasAlpha(b));
+    const toneA = nodeVisualTone(a, colors, false);
+    const toneB = nodeVisualTone(b, colors, false);
+    const dx = b.sx - a.sx;
+    const dy = b.sy - a.sy;
+    const bend = Math.min(34, Math.hypot(dx, dy) * 0.12);
+    const mx = (a.sx + b.sx) / 2 - dy / Math.max(1, Math.hypot(dx, dy)) * bend;
+    const my = (a.sy + b.sy) / 2 + dx / Math.max(1, Math.hypot(dx, dy)) * bend;
+    const grad = c!.createLinearGradient(a.sx, a.sy, b.sx, b.sy);
+    const isActivePath = selectedNodeId && (a.id === selectedNodeId || b.id === selectedNodeId || a.parentId === selectedNodeId || b.parentId === selectedNodeId);
+    grad.addColorStop(0, colorWithAlpha(toneA.glow, (isActivePath ? 0.38 : 0.22) * alpha));
+    grad.addColorStop(1, colorWithAlpha(toneB.glow, (isActivePath ? 0.34 : 0.2) * alpha));
+    c!.beginPath();
+    c!.moveTo(a.sx, a.sy);
+    c!.quadraticCurveTo(mx, my, b.sx, b.sy);
+    c!.strokeStyle = grad;
+    c!.lineWidth = isActivePath ? 1.75 : a.parentId === b.id || b.parentId === a.id ? 1.15 : 0.82;
+    c!.setLineDash(a.parentId === b.id || b.parentId === a.id ? [] : [5, 7]);
+    c!.stroke();
+    c!.setLineDash([]);
+  });
+
+  [...rnodes].sort((a, b) => b.depth - a.depth).forEach((rn, index) => {
+    const tone = nodeVisualTone(rn, colors, false);
+    const bounds = lightAtlasBounds(rn);
+    const alpha = nodeCanvasAlpha(rn);
+    if (bounds.x > W + 120 || bounds.x + bounds.width < -120 || bounds.y > H + 120 || bounds.y + bounds.height < -120) return;
+    const hover = hoveredNodeId === rn.id && !focusNodeId;
+    const focus = focusNodeId === rn.id || selectedNodeId === rn.id;
+    const dotR = rn.depth === 0 ? 11 : rn.depth === 1 ? 7.5 : 5.5;
+    c!.save();
+    c!.globalAlpha = alpha;
+    c!.shadowColor = colorWithAlpha(tone.glow, focus || hover ? 0.28 : 0.12);
+    c!.shadowBlur = focus || hover ? 26 : 14;
+    const card = c!.createLinearGradient(bounds.x, bounds.y, bounds.x, bounds.y + bounds.height);
+    card.addColorStop(0, 'rgba(255,255,255,0.9)');
+    card.addColorStop(1, colorWithAlpha(mixColor('#ffffff', tone.core, rn.depth === 0 ? 0.1 : 0.055), 0.78));
+    c!.fillStyle = card;
+    c!.strokeStyle = colorWithAlpha(tone.core, hover || focus ? 0.36 : 0.18);
+    c!.lineWidth = hover || focus ? 1.45 : 1;
+    c!.beginPath();
+    roundedRectPath(c!, bounds.x, bounds.y, bounds.width, bounds.height, bounds.radius);
+    c!.fill();
+    c!.stroke();
+    c!.shadowBlur = 0;
+
+    const shine = c!.createLinearGradient(bounds.x, bounds.y, bounds.x + bounds.width, bounds.y + bounds.height);
+    shine.addColorStop(0, 'rgba(255,255,255,0.5)');
+    shine.addColorStop(0.48, 'rgba(255,255,255,0.08)');
+    shine.addColorStop(1, 'rgba(255,255,255,0)');
+    c!.fillStyle = shine;
+    c!.beginPath();
+    roundedRectPath(c!, bounds.x + 1.2, bounds.y + 1.2, bounds.width - 2.4, Math.max(10, bounds.height * 0.45), Math.max(4, bounds.radius - 2));
+    c!.fill();
+
+    c!.beginPath();
+    c!.arc(bounds.x + 18, bounds.y + bounds.height / 2, dotR, 0, Math.PI * 2);
+    c!.fillStyle = colorWithAlpha(tone.core, 0.92);
+    c!.fill();
+    c!.lineWidth = 3;
+    c!.strokeStyle = 'rgba(255,255,255,0.76)';
+    c!.stroke();
+
+    c!.font = `800 ${rn.depth === 0 ? 14 : rn.depth === 1 ? 12 : 10.5}px "Microsoft YaHei","PingFang SC","Noto Sans SC",Inter,system-ui,sans-serif`;
+    c!.textAlign = 'left';
+    c!.textBaseline = 'middle';
+    c!.fillStyle = colors.text;
+    const textX = bounds.x + 34;
+    const maxWidth = Math.max(34, bounds.width - 44);
+    c!.fillText(rn.label, textX, bounds.y + bounds.height / 2 - (rn.depth === 0 ? 7 : 0), maxWidth);
+    if (rn.depth === 0) {
+      c!.font = '700 9px "Microsoft YaHei","PingFang SC","Noto Sans SC",Inter,system-ui,sans-serif';
+      c!.fillStyle = colors.muted;
+      c!.fillText(rn.cat, textX, bounds.y + bounds.height / 2 + 12, maxWidth);
+    }
+    if (rn.expanded && rn.childIds.length > 0) {
+      c!.font = '800 8.5px Inter,system-ui,sans-serif';
+      c!.textAlign = 'center';
+      c!.fillStyle = colorWithAlpha(tone.core, 0.9);
+      c!.fillText(String(rn.childIds.length), bounds.x + bounds.width - 14, bounds.y + 14);
+    }
+    if (focus) {
+      c!.strokeStyle = colorWithAlpha(tone.core, 0.42);
+      c!.lineWidth = 1.1;
+      c!.setLineDash([7, 7]);
+      c!.beginPath();
+      roundedRectPath(c!, bounds.x - 5, bounds.y - 5, bounds.width + 10, bounds.height + 10, bounds.radius + 5);
+      c!.stroke();
+      c!.setLineDash([]);
+    }
+    if ((hover || focus) && rn.depth > 0) {
+      c!.font = '700 9px "Microsoft YaHei","PingFang SC","Noto Sans SC",Inter,system-ui,sans-serif';
+      c!.textAlign = 'center';
+      c!.fillStyle = colors.muted;
+      c!.fillText(rn.cat, bounds.x + bounds.width / 2, bounds.y + bounds.height + 15, bounds.width + 36);
+    }
+    c!.restore();
+  });
+
+  if (physicsOn.value) {
+    c.font = '700 11px "Microsoft YaHei","PingFang SC",Inter,system-ui,sans-serif';
+    c.fillStyle = colors.muted;
+    c.textAlign = 'center';
+    c.fillText(tt('kg3d.gravityMode'), cx, H - 60);
   }
 };
 
@@ -677,15 +893,19 @@ const renderAll = () => {
   c.clearRect(0, 0, W, H);
   const dark = theme.isDarkMode, cx = W / 2, cy = H / 2;
   const colors = getCanvasColors(dark);
+  if (!dark) {
+    renderLightAtlas(colors);
+    return;
+  }
   const base = c.createLinearGradient(0, 0, W, H);
   if (dark) {
     base.addColorStop(0, colors.bg);
     base.addColorStop(0.5, mixColor(colors.bg, colors.surface, 0.38));
     base.addColorStop(1, '#05070a');
   } else {
-    base.addColorStop(0, mixColor(colors.bg, colors.surface, 0.42));
-    base.addColorStop(0.58, colors.bg);
-    base.addColorStop(1, mixColor(colors.bg, colors.primary, 0.06));
+    base.addColorStop(0, '#f8f7ff');
+    base.addColorStop(0.46, '#eef8f8');
+    base.addColorStop(1, '#f7faff');
   }
   c.fillStyle = base;
   c.fillRect(0, 0, W, H);
@@ -696,11 +916,12 @@ const renderAll = () => {
   bg.forEach(s => {
     const sx = ((s.x + t * s.sp * 0.01) % 1) * W, sy = ((s.y + Math.sin(t * 0.2 + s.x * 10) * 0.01) % 1) * H;
     c!.beginPath(); c!.arc(sx, sy, s.r, 0, Math.PI * 2);
-    c!.fillStyle = alphaColor(colors.primaryRgb, s.a * (dark ? 0.45 : 0.28)); c!.fill();
+    c!.fillStyle = alphaColor(colors.primaryRgb, s.a * 0.45);
+    c!.fill();
   });
   const g0 = c.createRadialGradient(cx, cy, 0, cx, cy, W * 0.35);
-  g0.addColorStop(0, alphaColor(colors.primaryRgb, dark ? 0.08 : 0.07));
-  g0.addColorStop(0.5, alphaColor(colors.primaryRgb, dark ? 0.03 : 0.025));
+  g0.addColorStop(0, alphaColor(colors.primaryRgb, dark ? 0.08 : 0.045));
+  g0.addColorStop(0.5, alphaColor(colors.primaryRgb, dark ? 0.03 : 0.014));
   g0.addColorStop(1, 'transparent');
   c.fillStyle = g0; c.fillRect(0, 0, W, H);
 
@@ -719,8 +940,8 @@ const renderAll = () => {
       const p = proj(r, 0, 0), radius = Math.abs(p.x - cx);
       if (radius < W) {
         c!.beginPath(); c!.arc(cx, cy, radius, 0, Math.PI * 2);
-        c!.strokeStyle = alphaColor(colors.primaryRgb, dark ? 0.08 : 0.032);
-        c!.lineWidth = 0.5; c!.setLineDash([4, 12]); c!.stroke(); c!.setLineDash([]);
+        c!.strokeStyle = alphaColor(colors.primaryRgb, dark ? 0.08 : 0.022);
+        c!.lineWidth = dark ? 0.5 : 0.38; c!.setLineDash([4, 12]); c!.stroke(); c!.setLineDash([]);
       }
     });
   }
@@ -745,7 +966,7 @@ const renderAll = () => {
       const dy = rn.sy - originY;
       const dist = Math.hypot(dx, dy);
       if (dist < 8) return;
-      const alpha = (dark ? 0.34 : 0.25) / Math.max(1, rn.depth * 0.56);
+      const alpha = (dark ? 0.34 : 0.16) / Math.max(1, rn.depth * 0.56);
       const grad = c!.createLinearGradient(originX, originY, rn.sx, rn.sy);
       grad.addColorStop(0, alphaColor(colors.primaryRgb, alpha * 1.35));
       grad.addColorStop(0.5, colorWithAlpha(tone.glow, alpha * 1.28));
@@ -755,17 +976,17 @@ const renderAll = () => {
       c!.lineTo(rn.sx, rn.sy);
       c!.strokeStyle = grad;
       c!.lineWidth = rn.depth === 1 ? 1.45 : 0.96;
-      c!.shadowColor = colorWithAlpha(cl, dark ? 0.28 : 0.18);
-      c!.shadowBlur = rn.depth === 1 ? 9 : 5;
+      c!.shadowColor = colorWithAlpha(cl, dark ? 0.28 : 0.1);
+      c!.shadowBlur = dark ? (rn.depth === 1 ? 9 : 5) : (rn.depth === 1 ? 5 : 2);
       c!.stroke();
       c!.shadowBlur = 0;
 
       const pulse = 0.5 + 0.5 * Math.sin(t * 2.2 + index * 0.7);
       c!.beginPath();
       c!.arc(rn.sx, rn.sy, Math.max(2.2, rn.sr * 0.42), 0, Math.PI * 2);
-      c!.fillStyle = colorWithAlpha(tone.rim, dark ? 0.44 + pulse * 0.16 : 0.36 + pulse * 0.12);
-      c!.shadowColor = colorWithAlpha(tone.glow, dark ? 0.52 : 0.36);
-      c!.shadowBlur = 12;
+      c!.fillStyle = colorWithAlpha(tone.rim, dark ? 0.44 + pulse * 0.16 : 0.28 + pulse * 0.08);
+      c!.shadowColor = colorWithAlpha(tone.glow, dark ? 0.52 : 0.22);
+      c!.shadowBlur = dark ? 12 : 7;
       c!.fill();
       c!.shadowBlur = 0;
     });
@@ -873,15 +1094,22 @@ const renderAll = () => {
 };
 
 /* ======== 事件 ======== */
-const onDn = (e: MouseEvent) => { drag = true; dragEver = true; dx = e.clientX; dy = e.clientY; sry = try_; srx = trx; };
+const onDn = (e: MouseEvent) => {
+  if (!theme.isDarkMode) return;
+  drag = true; dragEver = true; dx = e.clientX; dy = e.clientY; sry = try_; srx = trx;
+};
 const onMv = (e: MouseEvent) => {
   mouseX = e.clientX; mouseY = e.clientY;
+  if (!theme.isDarkMode) { setHoveredNode(findHovered()); return; }
   if (!drag) { setHoveredNode(findHovered()); return; }
   try_ = sry + (e.clientX - dx) * 0.005; trx = Math.max(-1.0, Math.min(1.2, srx - (e.clientY - dy) * 0.005));
 };
 const onUp = () => { if (drag) { drag = false; dragEndTime = t; } };
 const onLeave = () => { onUp(); setHoveredNode(null); };
-const onWh = (e: WheelEvent) => { e.preventDefault(); tzm = Math.max(0.35, Math.min(3.5, tzm - e.deltaY * 0.0015)); };
+const onWh = (e: WheelEvent) => {
+  if (!theme.isDarkMode) return;
+  e.preventDefault(); tzm = Math.max(0.35, Math.min(3.5, tzm - e.deltaY * 0.0015));
+};
 const closePanel = () => { panelOpen.value = false; sel.value = null; articles.value = []; selectedNodeId = null; };
 const fetchArticles = async (nodeId: string) => {
   articlesLoading.value = true; articles.value = [];
@@ -902,7 +1130,17 @@ const findHovered = (): string|null => {
   const r = cv.value.getBoundingClientRect();
   const mx = mouseX - r.left, my = mouseY - r.top;
   let best: RNode|null = null, bd = Infinity;
-  for (const rn of rnodes) { const d = Math.hypot(mx - rn.sx, my - rn.sy); if (d < rn.sr + 18 && d < bd) { bd = d; best = rn; } }
+  const dark = theme.isDarkMode;
+  for (const rn of rnodes) {
+    const d = Math.hypot(mx - rn.sx, my - rn.sy);
+    if (!dark) {
+      const b = lightAtlasBounds(rn);
+      const inside = mx >= b.x - 8 && mx <= b.x + b.width + 8 && my >= b.y - 8 && my <= b.y + b.height + 8;
+      if (inside && d < bd) { bd = d; best = rn; }
+    } else if (d < rn.sr + 18 && d < bd) {
+      bd = d; best = rn;
+    }
+  }
   return best ? best.id : null;
 };
 
@@ -910,10 +1148,20 @@ const onClick = (e: MouseEvent) => {
   if (!cv.value) return;
   const r = cv.value.getBoundingClientRect(); const mx = e.clientX - r.left, my = e.clientY - r.top;
   let best: RNode | null = null, bd = Infinity;
-  for (const rn of rnodes) { const d = Math.hypot(mx - rn.sx, my - rn.sy); if (d < rn.sr + 18 && d < bd) { bd = d; best = rn; } }
+  const dark = theme.isDarkMode;
+  for (const rn of rnodes) {
+    const d = Math.hypot(mx - rn.sx, my - rn.sy);
+    if (!dark) {
+      const b = lightAtlasBounds(rn);
+      const inside = mx >= b.x - 8 && mx <= b.x + b.width + 8 && my >= b.y - 8 && my <= b.y + b.height + 8;
+      if (inside && d < bd) { bd = d; best = rn; }
+    } else if (d < rn.sr + 18 && d < bd) {
+      bd = d; best = rn;
+    }
+  }
   if (best) {
     selectedNodeId = best.id;
-    focusNodeId = best.id;
+    focusNodeId = theme.isDarkMode ? best.id : null;
     sel.value = getNodeInfo(best.id);
     panelOpen.value = true;
     fetchArticles(best.id);
@@ -935,8 +1183,18 @@ const loop = (ts: number) => {
   lastFrame = ts;
 
   const dt = Math.min(0.05, 0.016); t += dt;
-  ry += (try_ - ry) * 0.06; rx += (trx - rx) * 0.06; zm += (tzm - zm) * 0.08;
-  if (!drag) try_ += 0.0012 * getEffectiveRotSpeed() * (focusNodeId ? 0.05 : 1);
+  const dark = theme.isDarkMode;
+  if (dark) {
+    ry += (try_ - ry) * 0.06; rx += (trx - rx) * 0.06; zm += (tzm - zm) * 0.08;
+    if (!drag) try_ += 0.0012 * getEffectiveRotSpeed() * (focusNodeId ? 0.05 : 1);
+  } else {
+    drag = false;
+    dragEver = false;
+    physicsOn.value = false;
+    ry += (-0.18 - ry) * 0.08;
+    rx += (-0.18 - rx) * 0.08;
+    zm += (0.92 - zm) * 0.08;
+  }
   if (focusNodeId) {
     targetFocusZoom = 2.2;
     // 平移+放大到星球, 不锁旋转
@@ -950,7 +1208,10 @@ const loop = (ts: number) => {
   panX += (targetPanX - panX) * 0.08;
   panY += (targetPanY - panY) * 0.08;
   if (!drag && cv.value) setHoveredNode(findHovered());
-  updateCloth(dt); updatePhysics(dt); renderAll();
+  if (dark) {
+    updateCloth(dt); updatePhysics(dt);
+  }
+  renderAll();
   rid = requestAnimationFrame(loop); // already receives timestamp
 };
 const fit = () => {
@@ -984,7 +1245,9 @@ onUnmounted(() => { cancelAnimationFrame(rid); window.removeEventListener('resiz
 
 <style scoped>
 .kg-root { width: 100%; height: 100%; position: relative; cursor: grab; }
+.kg-root.is-light-atlas { cursor: default; }
 .kg-root:active { cursor: grabbing; }
+.kg-root.is-light-atlas:active { cursor: default; }
 canvas { display: block; width: 100%; height: 100%; }
 .kg-root {
   background:
@@ -995,32 +1258,65 @@ canvas { display: block; width: 100%; height: 100%; }
 }
 :global(.light .kg-root) {
   background:
-    radial-gradient(circle at 30% 24%, rgba(var(--primary-rgb),0.09), transparent 34%),
-    radial-gradient(circle at 72% 62%, color-mix(in srgb, var(--accent-glow) 9%, transparent), transparent 38%),
-    linear-gradient(180deg, rgba(var(--primary-rgb),0.045), transparent 48%),
-    rgba(var(--glass-bg-rgb), 0.04);
+    radial-gradient(720px circle at 12% 10%, rgba(var(--primary-rgb), 0.09), transparent 50%),
+    radial-gradient(820px circle at 88% 18%, color-mix(in srgb, var(--accent-glow) 12%, transparent), transparent 54%),
+    radial-gradient(660px circle at 72% 88%, rgba(var(--primary-rgb), 0.055), transparent 56%),
+    linear-gradient(180deg, rgba(250, 252, 255, 0.28), rgba(238, 247, 248, 0.18));
 }
 .kg-hint { position: absolute; bottom: 20px; left: 24px; font-size: 9px; font-weight: var(--font-weight-body); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; pointer-events: none; z-index: 20; max-width: 280px; line-height: 1.4; opacity: 0.42; }
-:global(.light .kg-hint) { color: var(--text-muted); opacity: 0.52; }
+:global(.light .kg-hint) {
+  color: color-mix(in srgb, var(--text-secondary) 82%, var(--primary-color));
+  opacity: 0.74;
+  padding: 8px 12px;
+  border: 1px solid rgba(var(--primary-rgb), 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.58);
+  box-shadow: 0 10px 28px rgba(68, 84, 118, 0.08);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
 
 .kg-controls { position: absolute; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 5px; z-index: 20; }
 .kg-control-row { display: flex; align-items: center; gap: 8px; background: rgba(var(--glass-bg-rgb),0.62); backdrop-filter: blur(12px); border-radius: 20px; padding: 6px 14px; border: 1px solid rgba(var(--primary-rgb),0.12); }
-:global(.light .kg-control-row) { background: rgba(var(--glass-bg-rgb),0.58); border-color: rgba(var(--primary-rgb),0.18); box-shadow: 0 12px 34px rgba(29,56,46,0.06); }
+:global(.light .kg-control-row) {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.82), rgba(246,249,255,0.64));
+  border-color: rgba(var(--primary-rgb), 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.8),
+    0 12px 34px rgba(68,84,118,0.08);
+}
 .ctrl-label { font-size: 9px; font-weight: var(--font-weight-body); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
 :global(.light .ctrl-label) { color: var(--text-muted); }
 .ctrl-slider { width: 80px; height: 4px; -webkit-appearance: none; appearance: none; background: var(--surface-3); border-radius: 2px; outline: none; cursor: pointer; }
-:global(.light .ctrl-slider) { background: rgba(var(--primary-rgb),0.16); }
+:global(.light .ctrl-slider) { background: rgba(var(--primary-rgb), 0.14); }
 .ctrl-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--primary-color); cursor: pointer; border: 2px solid var(--surface-solid); }
 .ctrl-val { font-size: 10px; font-weight: var(--font-weight-body); color: var(--text-secondary); min-width: 32px; }
 :global(.light .ctrl-val) { color: var(--text-secondary); }
 .ctrl-toggle { padding: 6px 12px; border-radius: 20px; border: 1px solid rgba(var(--primary-rgb),0.12); background: rgba(var(--glass-bg-rgb),0.62); backdrop-filter: blur(12px); color: var(--text-secondary); font-size: 10px; font-weight: var(--font-weight-body); cursor: pointer; transition: all .2s; }
-:global(.light .ctrl-toggle) { background: rgba(var(--glass-bg-rgb),0.58); border-color: rgba(var(--primary-rgb),0.18); color: var(--text-secondary); box-shadow: 0 12px 34px rgba(29,56,46,0.06); }
+:global(.light .ctrl-toggle) {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.82), rgba(246,249,255,0.64));
+  border-color: rgba(var(--primary-rgb), 0.14);
+  color: rgba(42, 50, 66, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.8),
+    0 12px 34px rgba(68,84,118,0.08);
+}
 .ctrl-toggle.active { background: rgba(var(--primary-rgb),0.14); border-color: rgba(var(--primary-rgb),0.36); color: var(--primary-color); }
 
 /* 右侧知识面板 */
 .kg-article-panel { position: absolute; top: 14px; right: 14px; bottom: 14px; width: 390px; max-width: 90vw; background: linear-gradient(180deg, rgba(var(--glass-bg-rgb),0.82), rgba(var(--glass-bg-rgb),0.68)); backdrop-filter: blur(24px); border: 1px solid rgba(var(--primary-rgb),0.18); border-radius: 18px; z-index: 50; transform: translateX(calc(100% + 16px)); transition: transform 0.4s cubic-bezier(0.16,1,0.3,1); display: flex; flex-direction: column; overflow-y: auto; padding: 24px; box-shadow: 0 24px 70px rgba(0,0,0,0.22); }
 .kg-article-panel.open { transform: translateX(0); }
-:global(.light .kg-article-panel) { background: linear-gradient(180deg, rgba(var(--glass-bg-rgb),0.76), rgba(var(--glass-bg-rgb),0.58)); border-color: rgba(var(--primary-rgb),0.18); box-shadow: 0 20px 60px rgba(29,56,46,0.1); }
+:global(.light .kg-article-panel) {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.86), rgba(246,249,255,0.64)),
+    rgba(247,250,255,0.68);
+  border-color: rgba(var(--primary-rgb), 0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.78),
+    0 20px 60px rgba(68,84,118,0.12);
+}
 .panel-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
 .panel-header h3 { font-size: 18px; font-weight: var(--font-weight-label); color: var(--text-primary); margin: 6px 0 0; letter-spacing: 0; }
 :global(.light .panel-header h3) { color: var(--text-primary); }
