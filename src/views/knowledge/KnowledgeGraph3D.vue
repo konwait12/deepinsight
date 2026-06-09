@@ -50,7 +50,7 @@ import { useThemeStore } from '@/stores/theme.store';
 import { useI18n } from 'vue-i18n';
 const theme = useThemeStore();
 const { t: tt } = useI18n();
-const knowledgeHint = computed(() => theme.isDarkMode ? tt('kg3d.hint') : '点击知识节点查看对应文章，浅色模式为固定知识蓝图');
+const knowledgeHint = computed(() => theme.isDarkMode ? tt('kg3d.hint') : '点击节点查看文章，流动连线表示知识关联');
 const emit = defineEmits<{ openArticle: [article: any] }>();
 const box = ref<HTMLDivElement>(); const cv = ref<HTMLCanvasElement>();
 const sel = ref<any>(null); const panelOpen = ref(false);
@@ -91,6 +91,7 @@ const alphaColor = (rgb: string, alpha: number) => `rgba(${rgb},${alpha})`;
 type Rgb = { r: number; g: number; b: number };
 
 const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
+const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 const rgbToCss = ({ r, g, b }: Rgb) => `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
 const parseCanvasColor = (color: string): Rgb | null => {
   const clean = color.trim();
@@ -647,16 +648,31 @@ const nodeCanvasAlpha = (rn: RNode) => {
 const lightAtlasBounds = (rn: RNode) => {
   const hover = hoveredNodeId === rn.id && !focusNodeId;
   const focus = focusNodeId === rn.id || selectedNodeId === rn.id;
-  const width = Math.max(88, Math.min(196, rn.depth === 0 ? 196 : 82 + rn.label.length * 7.6));
-  const height = rn.depth === 0 ? 58 : rn.depth === 1 ? 46 : 36;
-  const scale = focus ? 1.12 : hover ? 1.06 : 1;
+  const baseWidth = rn.depth === 0
+    ? 178
+    : rn.depth === 1
+      ? Math.max(116, Math.min(156, 78 + rn.label.length * 6.4))
+      : Math.max(74, Math.min(126, 54 + rn.label.length * 5.2));
+  const height = rn.depth === 0 ? 54 : rn.depth === 1 ? 42 : 30;
+  const scale = focus ? 1.08 : hover ? 1.045 : 1;
   return {
-    x: rn.sx - (width * scale) / 2,
+    x: rn.sx - (baseWidth * scale) / 2,
     y: rn.sy - (height * scale) / 2,
-    width: width * scale,
+    width: baseWidth * scale,
     height: height * scale,
-    radius: rn.depth === 0 ? 18 : rn.depth === 1 ? 14 : 11,
+    radius: rn.depth === 0 ? 19 : rn.depth === 1 ? 15 : 12,
   };
+};
+
+const getLightAtlasStage = () => {
+  const compact = W < 980;
+  const left = compact ? W * 0.08 : clamp(W * 0.34, 470, 560);
+  const right = compact ? W * 0.92 : W - clamp(W * 0.08, 142, 210);
+  const top = compact ? clamp(H * 0.36, 250, 330) : clamp(H * 0.15, 105, 150);
+  const bottom = H - (compact ? 138 : 118);
+  const width = Math.max(280, right - left);
+  const height = Math.max(250, bottom - top);
+  return { compact, left, right, top, bottom, width, height };
 };
 
 const lightAtlasPoint = (rn: RNode) => {
@@ -664,30 +680,62 @@ const lightAtlasPoint = (rn: RNode) => {
   const index = Math.max(0, siblings.findIndex(n => n.id === rn.id));
   const count = Math.max(1, siblings.length);
   const root = nodeMap.get(rn.parentId || '');
-  if (rn.depth === 0) return { x: W * 0.5, y: H * 0.2 };
+  const stage = getLightAtlasStage();
+  if (rn.depth === 0) {
+    return {
+      x: stage.compact ? W * 0.5 : stage.left + stage.width * 0.12,
+      y: stage.compact ? stage.top - 48 : stage.top + stage.height * 0.42,
+    };
+  }
   if (rn.depth === 1) {
-    const usable = Math.min(Math.max(260, W - 210), 920);
-    const x0 = W / 2 - usable / 2;
-    const step = count > 1 ? usable / (count - 1) : 0;
-    return { x: x0 + step * index, y: H * 0.42 + Math.sin(index * 1.2) * 16 };
+    const p = count > 1 ? index / (count - 1) : 0.5;
+    const ease = 0.5 - Math.cos(p * Math.PI) * 0.5;
+    const wave = Math.sin(p * Math.PI * 2.15 - 0.42) * stage.height * (stage.compact ? 0.035 : 0.07);
+    return {
+      x: stage.left + stage.width * (stage.compact ? 0.08 + 0.84 * p : 0.2 + 0.74 * p),
+      y: stage.top + stage.height * (stage.compact ? 0.26 + 0.48 * ease : 0.18 + 0.6 * ease) + wave,
+    };
   }
   const parent = root && root.sx ? root : null;
   const parentChildren = parent ? parent.childIds.filter(id => rnodes.some(n => n.id === id)) : [];
   const childIndex = Math.max(0, parentChildren.findIndex(id => id === rn.id));
-  const local = parentChildren.length > 1 ? (childIndex / (parentChildren.length - 1) - 0.5) : 0;
+  const local = parentChildren.length > 1 ? childIndex - (parentChildren.length - 1) / 2 : 0;
   if (parent) {
     const parentRank = rnodes.filter(n => n.depth === 1).findIndex(n => n.id === parent.id);
+    const childrenCount = Math.max(1, parentChildren.length);
+    const fan = clamp(stage.width / (childrenCount + 8), stage.compact ? 54 : 78, stage.compact ? 82 : 118);
+    const direction = parent.sy < stage.top + stage.height * 0.56 ? 1 : -1;
+    const rowLift = childIndex % 2 === 0 ? -5 : 7;
+    const sideDrift = Math.sin((parentRank + 1) * 1.7) * (stage.compact ? 8 : 18);
+    const horizontalPad = stage.compact ? 34 : 82;
     return {
-      x: parent.sx + local * Math.min(238, Math.max(128, W * 0.19)),
-      y: parent.sy + 118 + (rn.depth - 2) * 58 + Math.abs(local) * 16 + (parentRank % 2 === 0 ? 6 : -4),
+      x: clamp(parent.sx + local * fan + sideDrift, stage.left + horizontalPad, stage.right - horizontalPad),
+      y: clamp(parent.sy + direction * (stage.compact ? 62 : 84) + Math.abs(local) * 8 + rowLift, stage.top + 28, stage.bottom - 28),
     };
   }
   const columns = Math.min(5, count);
   const col = index % columns;
   const row = Math.floor(index / columns);
   return {
-    x: W * 0.16 + (W * 0.68) * (columns <= 1 ? 0.5 : col / (columns - 1)),
-    y: H * 0.62 + row * 56,
+    x: stage.left + stage.width * (columns <= 1 ? 0.5 : col / (columns - 1)),
+    y: stage.top + stage.height * 0.68 + row * 46,
+  };
+};
+
+const pointOnQuadratic = (
+  ax: number,
+  ay: number,
+  mx: number,
+  my: number,
+  bx: number,
+  by: number,
+  progress: number,
+) => {
+  const p = clamp01(progress);
+  const inv = 1 - p;
+  return {
+    x: inv * inv * ax + 2 * inv * p * mx + p * p * bx,
+    y: inv * inv * ay + 2 * inv * p * my + p * p * by,
   };
 };
 
@@ -706,55 +754,71 @@ const roundedRectPath = (ctx: CanvasRenderingContext2D, x: number, y: number, wi
 
 const renderLightAtlas = (colors: ThemeCanvasColors) => {
   if (!c) return;
-  const cx = W / 2, cy = H / 2;
   const accent = colors.accent || colors.primary;
+  const stage = getLightAtlasStage();
   const bg = c.createLinearGradient(0, 0, W, H);
-  bg.addColorStop(0, mixColor(colors.surface, colors.primary, 0.035));
-  bg.addColorStop(0.48, '#f8fbff');
-  bg.addColorStop(1, mixColor('#f3f8fb', accent, 0.045));
+  bg.addColorStop(0, mixColor(colors.surface, colors.primary, 0.018));
+  bg.addColorStop(0.42, '#fbfdff');
+  bg.addColorStop(1, mixColor('#eef7f7', accent, 0.035));
   c.fillStyle = bg;
   c.fillRect(0, 0, W, H);
 
-  const washA = c.createRadialGradient(W * 0.18, H * 0.16, 0, W * 0.18, H * 0.16, Math.max(W, H) * 0.58);
-  washA.addColorStop(0, alphaColor(colors.primaryRgb, 0.1));
+  const washA = c.createRadialGradient(stage.left, stage.top, 0, stage.left, stage.top, Math.max(W, H) * 0.58);
+  washA.addColorStop(0, alphaColor(colors.primaryRgb, 0.08));
   washA.addColorStop(1, 'transparent');
   c.fillStyle = washA;
   c.fillRect(0, 0, W, H);
 
   const accentRgb = parseCanvasColor(accent);
   if (accentRgb) {
-    const washB = c.createRadialGradient(W * 0.82, H * 0.2, 0, W * 0.82, H * 0.2, Math.max(W, H) * 0.52);
-    washB.addColorStop(0, `rgba(${accentRgb.r},${accentRgb.g},${accentRgb.b},0.105)`);
+    const washB = c.createRadialGradient(stage.right, stage.bottom * 0.74, 0, stage.right, stage.bottom * 0.74, Math.max(W, H) * 0.52);
+    washB.addColorStop(0, `rgba(${accentRgb.r},${accentRgb.g},${accentRgb.b},0.082)`);
     washB.addColorStop(1, 'transparent');
     c.fillStyle = washB;
     c.fillRect(0, 0, W, H);
   }
 
   c.save();
-  c.strokeStyle = alphaColor(colors.primaryRgb, 0.046);
+  c.globalAlpha = 0.75;
+  c.strokeStyle = alphaColor(colors.primaryRgb, 0.026);
   c.lineWidth = 1;
-  const step = 68;
-  for (let x = 0; x < W + step; x += step) {
-    c.beginPath(); c.moveTo(x, 0); c.lineTo(x + W * 0.08, H); c.stroke();
+  const step = stage.compact ? 76 : 92;
+  for (let x = -step; x < W + step; x += step) {
+    c.beginPath(); c.moveTo(x + Math.sin(t * 0.16 + x * 0.01) * 2, 0); c.lineTo(x + W * 0.052, H); c.stroke();
   }
-  for (let y = 40; y < H; y += 68) {
-    c.beginPath(); c.moveTo(0, y); c.lineTo(W, y + H * 0.045); c.stroke();
+  for (let y = 34; y < H; y += step) {
+    c.beginPath(); c.moveTo(0, y); c.lineTo(W, y + H * 0.026); c.stroke();
   }
-  c.strokeStyle = colorWithAlpha(accent, 0.07);
-  c.lineWidth = 1.2;
-  for (let i = 0; i < 4; i++) {
-    const y = H * (0.28 + i * 0.13);
+  c.globalAlpha = 1;
+  for (let i = 0; i < 5; i++) {
+    const y = stage.top + stage.height * (0.12 + i * 0.18);
+    const ribbon = c.createLinearGradient(stage.left, y, stage.right, y);
+    ribbon.addColorStop(0, 'transparent');
+    ribbon.addColorStop(0.18, colorWithAlpha(accent, 0.038 + i * 0.004));
+    ribbon.addColorStop(0.62, alphaColor(colors.primaryRgb, 0.044));
+    ribbon.addColorStop(1, 'transparent');
     c.beginPath();
-    c.moveTo(W * 0.08, y + Math.sin(t * 0.28 + i) * 4);
-    c.bezierCurveTo(W * 0.26, y - 38, W * 0.58, y + 44, W * 0.92, y - 8);
+    c.moveTo(stage.left - stage.width * 0.06, y + Math.sin(t * 0.32 + i) * 5);
+    c.bezierCurveTo(
+      stage.left + stage.width * 0.22,
+      y - stage.height * (0.12 + i * 0.006),
+      stage.left + stage.width * 0.54,
+      y + stage.height * (0.1 - i * 0.004),
+      stage.right + stage.width * 0.05,
+      y - 10,
+    );
+    c.strokeStyle = ribbon;
+    c.lineWidth = i === 2 ? 2.1 : 1.2;
     c.stroke();
   }
   c.restore();
 
   for (const rn of rnodes) {
     const p = lightAtlasPoint(rn);
-    rn.sx = p.x + panX * 0.06;
-    rn.sy = p.y + panY * 0.06;
+    const floatPhase = t * 0.72 + hashText(rn.id) * 0.0009;
+    const floatStrength = rn.depth === 0 ? 2.8 : rn.depth === 1 ? 2.1 : 1.4;
+    rn.sx = p.x + panX * 0.06 + Math.cos(floatPhase) * floatStrength;
+    rn.sy = p.y + panY * 0.06 + Math.sin(floatPhase * 0.86) * floatStrength;
     const b = lightAtlasBounds(rn);
     rn.sr = Math.max(b.width, b.height) / 2;
   }
@@ -778,7 +842,7 @@ const renderLightAtlas = (colors: ThemeCanvasColors) => {
     c.fillRect(0, 0, W, H);
   }
 
-  conns.forEach(([ai, bi]) => {
+  conns.forEach(([ai, bi], connIndex) => {
     const a = rnodes[ai], b = rnodes[bi];
     if (!a || !b) return;
     const alpha = Math.min(nodeCanvasAlpha(a), nodeCanvasAlpha(b));
@@ -801,6 +865,21 @@ const renderLightAtlas = (colors: ThemeCanvasColors) => {
     c!.setLineDash(a.parentId === b.id || b.parentId === a.id ? [] : [5, 7]);
     c!.stroke();
     c!.setLineDash([]);
+    const beadProgress = (t * (isActivePath ? 0.72 : 0.46) + connIndex * 0.137) % 1;
+    const bead = pointOnQuadratic(a.sx, a.sy, mx, my, b.sx, b.sy, beadProgress);
+    const beadR = isActivePath ? 3.4 : 2.2;
+    const beadGlow = c!.createRadialGradient(bead.x, bead.y, 0, bead.x, bead.y, beadR * 4.4);
+    beadGlow.addColorStop(0, colorWithAlpha(toneB.highlight, (isActivePath ? 0.72 : 0.42) * alpha));
+    beadGlow.addColorStop(0.45, colorWithAlpha(toneB.glow, (isActivePath ? 0.24 : 0.14) * alpha));
+    beadGlow.addColorStop(1, 'transparent');
+    c!.fillStyle = beadGlow;
+    c!.beginPath();
+    c!.arc(bead.x, bead.y, beadR * 4.4, 0, Math.PI * 2);
+    c!.fill();
+    c!.beginPath();
+    c!.arc(bead.x, bead.y, beadR, 0, Math.PI * 2);
+    c!.fillStyle = colorWithAlpha(toneB.core, (isActivePath ? 0.9 : 0.58) * alpha);
+    c!.fill();
   });
 
   [...rnodes].sort((a, b) => b.depth - a.depth).forEach((rn, index) => {
