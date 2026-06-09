@@ -3,7 +3,7 @@
     <canvas ref="cv"></canvas>
 
     <!-- 右侧知识文章面板 -->
-    <div class="kg-article-panel" :class="{ open: panelOpen }">
+    <div class="kg-article-panel" :class="{ open: panelOpen }" @mousedown.stop @wheel.stop @click.stop>
       <button class="focus-back" @click.stop="goBack">{{ tt('kg3d.backGlobal') }}</button>
       <div class="panel-header">
         <div>
@@ -50,7 +50,7 @@ import { useThemeStore } from '@/stores/theme.store';
 import { useI18n } from 'vue-i18n';
 const theme = useThemeStore();
 const { t: tt } = useI18n();
-const knowledgeHint = computed(() => theme.isDarkMode ? tt('kg3d.hint') : '点击节点查看文章，流动连线表示知识关联');
+const knowledgeHint = computed(() => theme.isDarkMode ? tt('kg3d.hint') : '滚轮缩放 · 拖动画布 · 拖动节点调整关系');
 const emit = defineEmits<{ openArticle: [article: any] }>();
 const box = ref<HTMLDivElement>(); const cv = ref<HTMLCanvasElement>();
 const sel = ref<any>(null); const panelOpen = ref(false);
@@ -75,6 +75,15 @@ let focusZoom = 1;
 let targetFocusZoom = 1;
 let panX = 0, panY = 0, targetPanX = 0, targetPanY = 0;
 let mouseX = 0, mouseY = 0;
+let lightPanX = 0, lightPanY = 0, lightZoom = 1;
+let lightDragMode: 'none' | 'canvas' | 'node' = 'none';
+let lightDragNodeId: string | null = null;
+let lightDragStartX = 0, lightDragStartY = 0;
+let lightDragStartPanX = 0, lightDragStartPanY = 0;
+let lightDragStartNodeX = 0, lightDragStartNodeY = 0;
+let lightDragged = false;
+let suppressLightClick = false;
+const lightNodeOffsets = new Map<string, { x: number; y: number }>();
 
 type ThemeCanvasColors = {
   primary: string;
@@ -655,11 +664,14 @@ const lightAtlasBounds = (rn: RNode) => {
       : Math.max(74, Math.min(126, 54 + rn.label.length * 5.2));
   const height = rn.depth === 0 ? 54 : rn.depth === 1 ? 42 : 30;
   const scale = focus ? 1.08 : hover ? 1.045 : 1;
+  const zoomScale = theme.isDarkMode ? 1 : clamp(lightZoom, 0.82, 1.18);
+  const width = baseWidth * scale * zoomScale;
+  const cardHeight = height * scale * zoomScale;
   return {
-    x: rn.sx - (baseWidth * scale) / 2,
-    y: rn.sy - (height * scale) / 2,
-    width: baseWidth * scale,
-    height: height * scale,
+    x: rn.sx - width / 2,
+    y: rn.sy - cardHeight / 2,
+    width,
+    height: cardHeight,
     radius: rn.depth === 0 ? 19 : rn.depth === 1 ? 15 : 12,
   };
 };
@@ -739,6 +751,27 @@ const pointOnQuadratic = (
   };
 };
 
+const lightWorldToScreen = (point: { x: number; y: number }) => ({
+  x: (point.x - W / 2) * lightZoom + W / 2 + lightPanX,
+  y: (point.y - H / 2) * lightZoom + H / 2 + lightPanY,
+});
+
+const lightScreenDeltaToWorld = (dx: number, dy: number) => ({
+  x: dx / Math.max(0.001, lightZoom),
+  y: dy / Math.max(0.001, lightZoom),
+});
+
+const lightNodeScreenPoint = (rn: RNode) => {
+  const base = lightAtlasPoint(rn);
+  const offset = lightNodeOffsets.get(rn.id) || { x: 0, y: 0 };
+  const floatPhase = t * 0.72 + hashText(rn.id) * 0.0009;
+  const floatStrength = lightDragMode === 'node' && lightDragNodeId === rn.id ? 0 : rn.depth === 0 ? 2.8 : rn.depth === 1 ? 2.1 : 1.4;
+  return lightWorldToScreen({
+    x: base.x + offset.x + Math.cos(floatPhase) * floatStrength,
+    y: base.y + offset.y + Math.sin(floatPhase * 0.86) * floatStrength,
+  });
+};
+
 const roundedRectPath = (ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) => {
   const r = Math.min(radius, width / 2, height / 2);
   ctx.moveTo(x + r, y);
@@ -814,11 +847,9 @@ const renderLightAtlas = (colors: ThemeCanvasColors) => {
   c.restore();
 
   for (const rn of rnodes) {
-    const p = lightAtlasPoint(rn);
-    const floatPhase = t * 0.72 + hashText(rn.id) * 0.0009;
-    const floatStrength = rn.depth === 0 ? 2.8 : rn.depth === 1 ? 2.1 : 1.4;
-    rn.sx = p.x + panX * 0.06 + Math.cos(floatPhase) * floatStrength;
-    rn.sy = p.y + panY * 0.06 + Math.sin(floatPhase * 0.86) * floatStrength;
+    const p = lightNodeScreenPoint(rn);
+    rn.sx = p.x;
+    rn.sy = p.y;
     const b = lightAtlasBounds(rn);
     rn.sr = Math.max(b.width, b.height) / 2;
   }
@@ -1174,19 +1205,85 @@ const renderAll = () => {
 
 /* ======== 事件 ======== */
 const onDn = (e: MouseEvent) => {
-  if (!theme.isDarkMode) return;
+  if (!theme.isDarkMode) {
+    if (!cv.value) return;
+    const pos = getCanvasMouse(e);
+    const hit = findNodeAt(pos.x, pos.y);
+    lightDragMode = hit ? 'node' : 'canvas';
+    lightDragNodeId = hit?.id || null;
+    lightDragStartX = e.clientX;
+    lightDragStartY = e.clientY;
+    lightDragStartPanX = lightPanX;
+    lightDragStartPanY = lightPanY;
+    lightDragged = false;
+    suppressLightClick = false;
+    if (hit) {
+      const offset = lightNodeOffsets.get(hit.id) || { x: 0, y: 0 };
+      lightDragStartNodeX = offset.x;
+      lightDragStartNodeY = offset.y;
+      selectedNodeId = hit.id;
+    }
+    setHoveredNode(hit?.id || null);
+    return;
+  }
   drag = true; dragEver = true; dx = e.clientX; dy = e.clientY; sry = try_; srx = trx;
 };
 const onMv = (e: MouseEvent) => {
   mouseX = e.clientX; mouseY = e.clientY;
-  if (!theme.isDarkMode) { setHoveredNode(findHovered()); return; }
+  if (!theme.isDarkMode) {
+    const dx = e.clientX - lightDragStartX;
+    const dy = e.clientY - lightDragStartY;
+    if (lightDragMode !== 'none' && Math.hypot(dx, dy) > 2) {
+      lightDragged = true;
+      suppressLightClick = true;
+    }
+    if (lightDragMode === 'canvas') {
+      lightPanX = lightDragStartPanX + dx;
+      lightPanY = lightDragStartPanY + dy;
+      setHoveredNode(null);
+      return;
+    }
+    if (lightDragMode === 'node' && lightDragNodeId) {
+      const worldDelta = lightScreenDeltaToWorld(dx, dy);
+      lightNodeOffsets.set(lightDragNodeId, {
+        x: lightDragStartNodeX + worldDelta.x,
+        y: lightDragStartNodeY + worldDelta.y,
+      });
+      setHoveredNode(lightDragNodeId);
+      return;
+    }
+    setHoveredNode(findHovered());
+    return;
+  }
   if (!drag) { setHoveredNode(findHovered()); return; }
   try_ = sry + (e.clientX - dx) * 0.005; trx = Math.max(-1.0, Math.min(1.2, srx - (e.clientY - dy) * 0.005));
 };
-const onUp = () => { if (drag) { drag = false; dragEndTime = t; } };
+const onUp = () => {
+  if (!theme.isDarkMode) {
+    if (lightDragMode !== 'none') {
+      suppressLightClick = lightDragged;
+      window.setTimeout(() => { suppressLightClick = false; }, 0);
+    }
+    lightDragMode = 'none';
+    lightDragNodeId = null;
+    lightDragged = false;
+    return;
+  }
+  if (drag) { drag = false; dragEndTime = t; }
+};
 const onLeave = () => { onUp(); setHoveredNode(null); };
 const onWh = (e: WheelEvent) => {
-  if (!theme.isDarkMode) return;
+  if (!theme.isDarkMode) {
+    e.preventDefault();
+    const pos = getCanvasMouse(e);
+    const prevZoom = lightZoom;
+    const nextZoom = clamp(lightZoom * Math.exp(-e.deltaY * 0.0014), 0.48, 2.4);
+    if (Math.abs(nextZoom - prevZoom) < 0.001) return;
+    lightPanX = pos.x - ((pos.x - W / 2 - lightPanX) / prevZoom) * nextZoom - W / 2;
+    lightPanY = pos.y - ((pos.y - H / 2 - lightPanY) / prevZoom) * nextZoom - H / 2;
+    lightZoom = nextZoom;
+    return;
+  }
   e.preventDefault(); tzm = Math.max(0.35, Math.min(3.5, tzm - e.deltaY * 0.0015));
 };
 const closePanel = () => { panelOpen.value = false; sel.value = null; articles.value = []; selectedNodeId = null; };
@@ -1204,6 +1301,11 @@ const openArticle = (article: any) => {
 };
 
 const onSpeed = (e: Event) => { rotSpeed.value = parseFloat((e.target as HTMLInputElement).value); };
+const getCanvasMouse = (e: MouseEvent | WheelEvent) => {
+  const r = cv.value?.getBoundingClientRect();
+  return r ? { x: e.clientX - r.left, y: e.clientY - r.top } : { x: 0, y: 0 };
+};
+
 const findHovered = (): string|null => {
   if (!cv.value) return null;
   const r = cv.value.getBoundingClientRect();
@@ -1223,10 +1325,9 @@ const findHovered = (): string|null => {
   return best ? best.id : null;
 };
 
-const onClick = (e: MouseEvent) => {
-  if (!cv.value) return;
-  const r = cv.value.getBoundingClientRect(); const mx = e.clientX - r.left, my = e.clientY - r.top;
-  let best: RNode | null = null, bd = Infinity;
+const findNodeAt = (mx: number, my: number): RNode | null => {
+  let best: RNode | null = null;
+  let bd = Infinity;
   const dark = theme.isDarkMode;
   for (const rn of rnodes) {
     const d = Math.hypot(mx - rn.sx, my - rn.sy);
@@ -1238,6 +1339,14 @@ const onClick = (e: MouseEvent) => {
       bd = d; best = rn;
     }
   }
+  return best;
+};
+
+const onClick = (e: MouseEvent) => {
+  if (!cv.value) return;
+  if (!theme.isDarkMode && suppressLightClick) return;
+  const pos = getCanvasMouse(e);
+  const best = findNodeAt(pos.x, pos.y);
   if (best) {
     selectedNodeId = best.id;
     focusNodeId = theme.isDarkMode ? best.id : null;
@@ -1267,7 +1376,6 @@ const loop = (ts: number) => {
     ry += (try_ - ry) * 0.06; rx += (trx - rx) * 0.06; zm += (tzm - zm) * 0.08;
     if (!drag) try_ += 0.0012 * getEffectiveRotSpeed() * (focusNodeId ? 0.05 : 1);
   } else {
-    drag = false;
     dragEver = false;
     physicsOn.value = false;
     ry += (-0.18 - ry) * 0.08;
@@ -1286,7 +1394,7 @@ const loop = (ts: number) => {
   focusZoom += (targetFocusZoom - focusZoom) * 0.06;
   panX += (targetPanX - panX) * 0.08;
   panY += (targetPanY - panY) * 0.08;
-  if (!drag && cv.value) setHoveredNode(findHovered());
+  if ((!drag && theme.isDarkMode || !theme.isDarkMode && lightDragMode === 'none') && cv.value) setHoveredNode(findHovered());
   if (dark) {
     updateCloth(dt); updatePhysics(dt);
   }
@@ -1324,9 +1432,9 @@ onUnmounted(() => { cancelAnimationFrame(rid); window.removeEventListener('resiz
 
 <style scoped>
 .kg-root { width: 100%; height: 100%; position: relative; cursor: grab; }
-.kg-root.is-light-atlas { cursor: default; }
+.kg-root.is-light-atlas { cursor: grab; }
 .kg-root:active { cursor: grabbing; }
-.kg-root.is-light-atlas:active { cursor: default; }
+.kg-root.is-light-atlas:active { cursor: grabbing; }
 canvas { display: block; width: 100%; height: 100%; }
 .kg-root {
   background:
