@@ -759,11 +759,11 @@ function folderName(folderId: number | null | undefined) {
   z-index: 8;
   margin: 0 0 18px;
   --cloud-glass-bg:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.018)),
-    color-mix(in srgb, rgba(var(--glass-bg-rgb), var(--glass-opacity)) 78%, transparent);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.025)),
+    color-mix(in srgb, rgba(var(--glass-bg-rgb), max(var(--glass-opacity), 0.68)) 88%, var(--panel-bg));
   --cloud-card-bg:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.055), transparent),
-    color-mix(in srgb, var(--panel-bg) 84%, transparent);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.065), transparent),
+    color-mix(in srgb, var(--panel-bg) 92%, rgba(var(--glass-bg-rgb), 0.22));
   border: 1px solid color-mix(in srgb, var(--primary-color) 20%, var(--border-color));
   border-radius: 8px;
   background: var(--cloud-glass-bg);
@@ -817,29 +817,25 @@ function folderName(folderId: number | null | undefined) {
 
 .cloud-title strong {
   min-width: 0;
-  overflow: hidden;
   color: var(--text-primary);
   font-size: clamp(18px, 2vw, 26px);
   font-weight: var(--font-weight-title);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.18;
+  overflow-wrap: anywhere;
 }
 
 .cloud-portal--page .cloud-title strong {
   font-size: clamp(24px, 3vw, 44px);
-  letter-spacing: -0.055em;
+  letter-spacing: 0;
 }
 
 .cloud-title em {
-  display: -webkit-box;
   max-width: 780px;
-  overflow: hidden;
   color: var(--text-secondary);
   font-size: 12px;
   font-style: normal;
   line-height: 1.6;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
 }
 
 .cloud-actions,
@@ -868,9 +864,8 @@ function folderName(folderId: number | null | undefined) {
   color: var(--text-secondary);
   font-size: 11px;
   font-weight: var(--font-weight-title);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.35;
+  white-space: normal;
   transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
 }
 
@@ -910,7 +905,7 @@ function folderName(folderId: number | null | undefined) {
   height: auto;
   min-height: 0;
   padding: 0 22px 22px;
-  overflow: visible;
+  overflow: hidden;
   overscroll-behavior: auto;
 }
 
@@ -947,12 +942,11 @@ function folderName(folderId: number | null | undefined) {
 }
 
 .cloud-quick-stats em {
-  overflow: hidden;
   color: var(--text-secondary);
   font-size: 11px;
   font-style: normal;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .cloud-nav,
@@ -985,9 +979,7 @@ function folderName(folderId: number | null | undefined) {
 
 .cloud-nav button span {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .cloud-nav button.active {
@@ -1022,13 +1014,11 @@ function folderName(folderId: number | null | undefined) {
 
 .cloud-path button {
   flex: 0 0 auto;
-  max-width: 180px;
-  overflow: hidden;
+  max-width: min(260px, 100%);
   color: var(--text-primary);
   font-size: inherit;
   font-weight: inherit;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .cloud-search {
@@ -1071,12 +1061,12 @@ function folderName(folderId: number | null | undefined) {
 }
 
 .cloud-portal--page .cloud-body {
-  height: auto;
-  min-height: 0;
+  height: min(760px, calc(100dvh - 190px));
+  min-height: 540px;
   grid-template-columns: 300px minmax(0, 1fr) 320px;
   align-items: start;
-  overflow: visible;
-  overscroll-behavior: auto;
+  overflow: hidden;
+  overscroll-behavior: contain;
 }
 
 .cloud-folder-pane,
@@ -1149,12 +1139,11 @@ function folderName(folderId: number | null | undefined) {
 }
 
 .folder-row strong {
-  overflow: hidden;
   color: inherit;
   font-size: 12px;
   font-weight: var(--font-weight-title);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .folder-row b {
@@ -1298,8 +1287,8 @@ function folderName(folderId: number | null | undefined) {
 
 .table-row {
   display: grid;
-  grid-template-columns: 48px minmax(160px, 1fr) 82px 80px minmax(160px, 1fr);
-  align-items: center;
+  grid-template-columns: 48px minmax(160px, 1.1fr) minmax(82px, auto) minmax(80px, auto) minmax(160px, 1fr);
+  align-items: start;
   gap: 10px;
   min-height: 58px;
   padding: 10px;
@@ -1340,16 +1329,14 @@ function folderName(folderId: number | null | undefined) {
 
 .table-row strong,
 .table-row small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .table-row em,
 .table-row i {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .table-row strong {
@@ -1392,14 +1379,11 @@ function folderName(folderId: number | null | undefined) {
 }
 
 .detail-card p {
-  display: -webkit-box;
-  overflow: hidden;
   margin: 0;
   color: var(--text-secondary);
   font-size: 12px;
   line-height: 1.65;
-  -webkit-line-clamp: 5;
-  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
 }
 
 .detail-meta {
@@ -1515,7 +1499,7 @@ function folderName(folderId: number | null | undefined) {
 .cloud-portal--page .cloud-folder-pane,
 .cloud-portal--page .cloud-showcase,
 .cloud-portal--page .cloud-detail {
-  overflow: visible;
+  overflow: hidden;
 }
 
 .cloud-portal--page .cloud-folder-pane {
@@ -1529,9 +1513,19 @@ function folderName(folderId: number | null | undefined) {
 .cloud-portal--page .folder-tree,
 .cloud-portal--page .cloud-table,
 .cloud-portal--page .cloud-detail {
-  max-height: none;
-  overflow: visible;
-  overscroll-behavior: auto;
+  min-height: 0;
+  max-height: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+html.light .cloud-portal {
+  --cloud-glass-bg:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(245, 250, 249, 0.82)),
+    rgba(var(--glass-bg-rgb), 0.9);
+  --cloud-card-bg:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(245, 250, 249, 0.72)),
+    rgba(var(--glass-bg-rgb), 0.86);
 }
 
 </style>

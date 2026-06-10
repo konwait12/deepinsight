@@ -628,7 +628,7 @@ onMounted(loadAssets)
   margin: 8px 0;
   font-size: clamp(32px, 4.4vw, 58px);
   line-height: 1;
-  letter-spacing: -0.06em;
+  letter-spacing: 0;
 }
 
 .hero-copy p,
@@ -673,13 +673,11 @@ onMounted(loadAssets)
 }
 
 .pipeline-strip em {
-  overflow: hidden;
   color: var(--text-secondary);
   font-size: 12px;
   font-style: normal;
   line-height: 1.45;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .hero-actions,
@@ -712,9 +710,8 @@ onMounted(loadAssets)
   color: var(--text-primary);
   font-size: 12px;
   font-weight: var(--font-weight-title);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.35;
+  white-space: normal;
   cursor: pointer;
   transition:
     border-color var(--motion-hover) var(--ease-liquid),
@@ -763,14 +760,13 @@ button:disabled {
   flex: 0 0 auto;
   align-self: start;
   max-width: min(320px, 100%);
-  overflow: hidden;
   padding: 8px 12px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
   color: var(--text-secondary);
   font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .summary-grid {
@@ -849,9 +845,8 @@ button:disabled {
 
 .asset-tab span {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .asset-tab b {
@@ -931,12 +926,11 @@ button:disabled {
 .selection-bar span {
   flex: 1 1 160px;
   min-width: 0;
-  overflow: hidden;
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: var(--font-weight-title);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .asset-table {
@@ -950,9 +944,9 @@ button:disabled {
 .asset-row {
   width: 100%;
   display: grid;
-  grid-template-columns: 58px minmax(0, 1fr) 110px 110px 84px 62px;
+  grid-template-columns: 58px minmax(180px, 1.2fr) minmax(92px, auto) minmax(92px, auto) minmax(92px, auto) minmax(74px, auto);
   gap: 10px;
-  align-items: center;
+  align-items: start;
   padding: 11px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
@@ -979,30 +973,27 @@ button:disabled {
 
 .asset-row strong {
   min-width: 0;
-  overflow: hidden;
   color: var(--text-primary);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .asset-row em,
 .asset-row i,
 .asset-row small {
-  overflow: hidden;
   color: var(--text-secondary);
   font-size: 12px;
   font-style: normal;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .asset-row b {
   color: var(--primary-color);
   font-size: 12px;
-  overflow: hidden;
   text-align: right;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .asset-row b.disabled {
@@ -1060,19 +1051,17 @@ button:disabled {
 
 .metric-list span {
   min-width: 0;
-  overflow: hidden;
   color: var(--text-secondary);
   font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .metric-list strong {
   min-width: 0;
-  overflow: hidden;
   text-align: right;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .cloud-section :deep(.cloud-portal) {
@@ -1141,13 +1130,15 @@ button:disabled {
   }
 
   .asset-row {
-    grid-template-columns: 58px minmax(0, 1fr) 90px;
+    grid-template-columns: 52px minmax(0, 1fr) auto;
   }
 
+  .asset-row em,
   .asset-row i,
   .asset-row small,
   .asset-row b {
-    display: none;
+    grid-column: 2 / -1;
+    text-align: left;
   }
 }
 

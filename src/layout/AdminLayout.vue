@@ -8,19 +8,20 @@
       </div>
 
       <nav class="sidebar-nav">
-        <div v-for="item in navItems" :key="item.key"
+        <button v-for="item in navItems" :key="item.key"
+          type="button"
           class="nav-item" :class="{ active: route.path.startsWith(item.path) }"
           @click="router.push(item.path)">
           <el-icon :size="16"><component :is="item.icon" /></el-icon>
           <span>{{ navLabel(item) }}</span>
-        </div>
+        </button>
       </nav>
 
       <div class="sidebar-foot">
-        <div class="nav-item exit" @click="router.push(ROUTES.TRAINING)">
+        <button type="button" class="nav-item exit" @click="router.push(ROUTES.TRAINING)">
           <el-icon :size="16"><Back /></el-icon>
           <span>{{ t('admin.back') }}</span>
-        </div>
+        </button>
       </div>
     </aside>
 
@@ -174,23 +175,26 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
   min-width: 0;
   min-height: 42px;
   padding: 10px 12px;
   border: 1px solid transparent;
   border-radius: var(--radius-lg);
+  background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
   font-size: 13px;
   font-weight: var(--font-weight-label);
+  font-family: inherit;
+  text-align: left;
   transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, transform 180ms ease;
 }
 
 .nav-item span {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .nav-item:hover {
@@ -264,9 +268,8 @@ onMounted(async () => {
   background: var(--surface-2);
   color: var(--text-secondary);
   font-weight: var(--font-weight-body);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .user-tag {
@@ -360,7 +363,7 @@ onMounted(async () => {
   border-radius: var(--radius-lg);
   background: var(--admin-table-bg);
   box-shadow: var(--shadow-soft);
-  overflow: hidden;
+  overflow: auto;
 }
 
 :deep(.admin-page) {

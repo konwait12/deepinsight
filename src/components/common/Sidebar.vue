@@ -146,9 +146,8 @@ function handleNavClick(item: NavItem) {
   margin-top: 6px;
   font-size: 20px;
   color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .sidebar-nav,
@@ -161,7 +160,7 @@ function handleNavClick(item: NavItem) {
 .mini-row {
   width: 100%;
   min-width: 0;
-  height: 42px;
+  min-height: 42px;
   border: 1px solid transparent;
   border-radius: 13px;
   display: grid;
@@ -182,9 +181,8 @@ function handleNavClick(item: NavItem) {
 .sidebar-nav button span,
 .mini-row span {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.28;
+  overflow-wrap: anywhere;
 }
 
 .sidebar-nav button:hover,
@@ -257,9 +255,8 @@ function handleNavClick(item: NavItem) {
   color: var(--text-muted);
   font-size: 11px;
   font-weight: var(--font-weight-body);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 @media (max-height: 760px) {

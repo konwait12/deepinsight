@@ -504,8 +504,8 @@ function featureMetrics(item: ModuleCard, index: number) {
       ? [{ label: '模型', value: '9' }, { label: '日志', value: '2' }, { label: '代理', value: '1' }]
       : [{ label: 'Models', value: '9' }, { label: 'Logs', value: '2' }, { label: 'Proxy', value: '1' }],
     zh
-      ? [{ label: 'Top-K', value: '10' }, { label: '服务', value: '1' }, { label: '占位', value: '0' }]
-      : [{ label: 'Top-K', value: '10' }, { label: 'Service', value: '1' }, { label: 'Fake', value: '0' }],
+      ? [{ label: 'Top-K', value: '10' }, { label: '服务', value: '1' }, { label: '空结果', value: '0' }]
+      : [{ label: 'Top-K', value: '10' }, { label: 'Service', value: '1' }, { label: 'Empty', value: '0' }],
     zh
       ? [{ label: 'HR@10', value: '0.1008' }, { label: 'NDCG', value: '0.3317' }, { label: 'MRR', value: '0.2985' }]
       : [{ label: 'HR@10', value: '0.1008' }, { label: 'NDCG', value: '0.3317' }, { label: 'MRR', value: '0.2985' }],

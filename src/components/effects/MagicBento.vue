@@ -538,7 +538,7 @@ function handleWindowScroll() {
   color: var(--text-primary);
   font-size: clamp(17px, 1.35vw, 23px);
   font-weight: var(--font-weight-title);
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
 }
 
 .magic-bento-card__description {

@@ -1076,7 +1076,7 @@ const showcaseItems = computed<ShowcaseItem[]>(() => localeKey.value === 'en'
             { value: '10', label: 'Top-K' },
             { value: '5000', label: 'Flask 端口' },
             { value: '403', label: '根路径鉴权' },
-            { value: '0', label: '占位结果' },
+            { value: '0', label: '空结果' },
           ],
           bars: [72, 44, 86, 53, 66, 58],
           rows: [
@@ -2127,7 +2127,7 @@ p {
   font-size: clamp(34px, 4.2vw, 58px);
   line-height: 1.05;
   font-weight: var(--font-weight-title);
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
 }
 
 .showcase-heading p {
@@ -2181,7 +2181,7 @@ p {
   font-size: clamp(28px, 3vw, 42px);
   line-height: 1.08;
   font-weight: var(--font-weight-title);
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 .showcase-copy p {

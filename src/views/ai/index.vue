@@ -648,7 +648,7 @@ const aiText = computed(() => isZh.value
       heroDesc: '你可以直接问模型、数据中心、接入测试、性能图表或页面入口。AI 会给出可继续操作的回答，并在需要时带你跳转到对应页面。',
       collapseReasoning: '收起推理过程',
       viewReasoning: '查看推理过程',
-      diagnosticsTitle: '思考深度实际生效',
+      diagnosticsTitle: '思考设置',
       collapse: '收起',
       expand: '展开',
       suggestedEntry: '建议入口',
@@ -689,7 +689,7 @@ const aiText = computed(() => isZh.value
       thinkingSeconds: '用时 {seconds} 秒',
       runSettings: '本轮设置',
       effectiveRun: '实际执行',
-      temperatureShort: '温度',
+      temperatureShort: '创意度',
       temperatureStable: '稳定',
       temperatureBalanced: '平衡',
       temperatureCreative: '发散',
@@ -730,7 +730,7 @@ const aiText = computed(() => isZh.value
       heroDesc: 'The assistant answers around 9 recommender-system models, data center, access tests, and performance dashboards. Missing logs or evaluation records are clearly marked.',
       collapseReasoning: 'Hide reasoning',
       viewReasoning: 'View reasoning',
-      diagnosticsTitle: 'Effective reasoning diagnostics',
+      diagnosticsTitle: 'Reasoning settings',
       collapse: 'Collapse',
       expand: 'Expand',
       suggestedEntry: 'Suggested entry',
@@ -771,7 +771,7 @@ const aiText = computed(() => isZh.value
       thinkingSeconds: '{seconds}s',
       runSettings: 'This turn',
       effectiveRun: 'Applied',
-      temperatureShort: 'Temp',
+      temperatureShort: 'Creativity',
       temperatureStable: 'stable',
       temperatureBalanced: 'balanced',
       temperatureCreative: 'creative',
@@ -6980,4 +6980,272 @@ function exportChat() {
   }
 }
 /* ai-chat-polish-restore:end */
+
+/* ai-studio-product-pass:start */
+.qa-page {
+  --ai-control-size: 36px;
+  --ai-control-radius: 12px;
+  --ai-control-bg: color-mix(in srgb, var(--surface-2) 38%, transparent);
+  --ai-control-bg-hover: color-mix(in srgb, var(--primary-color) 10%, var(--surface-2));
+  --ai-control-border: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  --ai-control-border-active: color-mix(in srgb, var(--primary-color) 42%, var(--border-color));
+}
+
+.qa-scroll {
+  scroll-behavior: smooth;
+}
+
+.message-row {
+  animation: aiMessageEnter 220ms var(--ease-smooth) both;
+}
+
+.thinking-card {
+  min-height: 42px !important;
+  width: fit-content !important;
+  max-width: min(100%, 560px) !important;
+  padding: 0 14px !important;
+  border-radius: 16px !important;
+  color: var(--text-primary) !important;
+}
+
+.thinking-card.thinking-placeholder,
+.thinking-stream.live {
+  position: relative;
+  overflow: hidden;
+}
+
+.thinking-card.thinking-placeholder::after,
+.thinking-stream.live::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(100deg, transparent 0%, color-mix(in srgb, var(--primary-color) 13%, transparent) 42%, transparent 72%);
+  transform: translateX(-105%);
+  animation: aiThinkingSweep 1.35s var(--ease-smooth) infinite;
+}
+
+.thinking-head {
+  gap: 9px !important;
+}
+
+.thinking-head svg:first-child {
+  color: color-mix(in srgb, var(--primary-color) 76%, var(--text-primary)) !important;
+  animation: aiThinkingOrbit 1.5s var(--ease-smooth) infinite;
+}
+
+.thinking-stream {
+  border-radius: 16px !important;
+  background: color-mix(in srgb, var(--panel-bg) 48%, transparent) !important;
+}
+
+.composer {
+  pointer-events: none;
+}
+
+.composer-shell {
+  pointer-events: auto;
+  padding: 12px !important;
+}
+
+.composer textarea {
+  min-height: 58px !important;
+  padding: 7px 8px 0 !important;
+  line-height: 1.6 !important;
+}
+
+.composer-dock {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 8px 0 0 !important;
+}
+
+.composer-left-tools,
+.composer-right-tools {
+  min-width: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex-wrap: nowrap !important;
+}
+
+.composer-left-tools {
+  justify-content: flex-start !important;
+  overflow: hidden !important;
+}
+
+.composer-right-tools {
+  justify-content: flex-end !important;
+}
+
+.composer-quick-action {
+  display: inline-flex !important;
+  width: auto !important;
+  min-width: 78px !important;
+  max-width: 118px !important;
+  height: var(--ai-control-size) !important;
+  padding: 0 12px !important;
+  border-radius: var(--ai-control-radius) !important;
+}
+
+.composer-quick-action span {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.composer-icon-action,
+.composer-web-toggle,
+.reasoning-pill,
+.composer-submit-round {
+  height: var(--ai-control-size) !important;
+  min-height: var(--ai-control-size) !important;
+  border-radius: var(--ai-control-radius) !important;
+  border-color: var(--ai-control-border) !important;
+  background: var(--ai-control-bg) !important;
+  box-shadow: none !important;
+  transition:
+    transform 180ms var(--ease-smooth),
+    border-color 180ms ease,
+    background 180ms ease,
+    color 180ms ease !important;
+}
+
+.composer-icon-action,
+.composer-submit-round {
+  width: var(--ai-control-size) !important;
+  min-width: var(--ai-control-size) !important;
+  padding: 0 !important;
+}
+
+.composer-web-toggle {
+  width: auto !important;
+  min-width: 74px !important;
+  padding: 0 10px !important;
+  gap: 6px !important;
+}
+
+.reasoning-pill {
+  width: auto !important;
+  max-width: 112px !important;
+  padding: 0 10px !important;
+}
+
+.reasoning-pill span {
+  display: none !important;
+}
+
+.composer-icon-action:hover,
+.composer-icon-action.active,
+.composer-quick-action:not(:disabled):hover,
+.composer-quick-action.ready,
+.composer-web-toggle:hover,
+.composer-web-toggle.active,
+.reasoning-menu.open .reasoning-pill,
+.reasoning-pill:hover {
+  transform: translateY(-1px) !important;
+  border-color: var(--ai-control-border-active) !important;
+  background: var(--ai-control-bg-hover) !important;
+  color: var(--text-primary) !important;
+}
+
+.composer-icon-action:active,
+.composer-quick-action:active,
+.composer-web-toggle:active,
+.reasoning-pill:active,
+.composer-submit-round:active {
+  transform: scale(0.97) !important;
+}
+
+.composer-submit-round {
+  color: var(--text-primary) !important;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--primary-color) 18%, transparent), color-mix(in srgb, var(--surface-2) 52%, transparent)),
+    color-mix(in srgb, var(--panel-bg) 82%, transparent) !important;
+}
+
+.composer-submit-round:not(:disabled):hover {
+  transform: translateY(-1px) scale(1.02) !important;
+}
+
+.reasoning-popover {
+  right: 0 !important;
+  bottom: calc(100% + 10px) !important;
+  width: min(250px, calc(100vw - 40px)) !important;
+  padding: 8px !important;
+  z-index: 30 !important;
+}
+
+.reasoning-popover button {
+  grid-template-columns: auto 1fr !important;
+  min-height: 38px !important;
+}
+
+.reasoning-popover button span {
+  font-weight: 720 !important;
+}
+
+.reasoning-popover button em {
+  display: block !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.reasoning-temperature {
+  grid-template-columns: auto minmax(96px, 1fr) !important;
+  min-height: 38px !important;
+}
+
+@keyframes aiMessageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.992);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes aiThinkingSweep {
+  to {
+    transform: translateX(105%);
+  }
+}
+
+@keyframes aiThinkingOrbit {
+  0%, 100% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(18deg) scale(1.06);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .message-row,
+  .thinking-head svg:first-child,
+  .thinking-card.thinking-placeholder::after,
+  .thinking-stream.live::after {
+    animation: none !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .composer-dock {
+    grid-template-columns: 1fr !important;
+  }
+
+  .composer-right-tools {
+    justify-content: space-between !important;
+  }
+
+  .composer-quick-action {
+    max-width: 100px !important;
+  }
+}
+/* ai-studio-product-pass:end */
 </style>

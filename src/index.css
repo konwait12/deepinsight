@@ -1352,3 +1352,256 @@ a {
     transition-duration: 1ms !important;
   }
 }
+
+/* ========== product-wide clarity pass ========== */
+:root {
+  --control-height: 40px;
+  --control-radius: 10px;
+  --surface-glass:
+    linear-gradient(180deg, color-mix(in srgb, #fff 8%, transparent), color-mix(in srgb, #fff 2%, transparent) 46%, color-mix(in srgb, #000 6%, transparent)),
+    rgba(var(--glass-bg-rgb), max(var(--glass-opacity), 0.64));
+  --surface-glass-strong:
+    linear-gradient(180deg, color-mix(in srgb, #fff 12%, transparent), color-mix(in srgb, #fff 3%, transparent) 42%, color-mix(in srgb, #000 8%, transparent)),
+    rgba(var(--glass-bg-rgb), min(calc(var(--glass-opacity) + 0.16), 0.9));
+  --surface-line: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  --surface-line-strong: color-mix(in srgb, var(--primary-color) 28%, var(--border-color));
+}
+
+html.light {
+  --surface-glass:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(244, 249, 248, 0.76) 48%, rgba(45, 70, 88, 0.035)),
+    rgba(var(--glass-bg-rgb), 0.82);
+  --surface-glass-strong:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 250, 249, 0.86) 48%, rgba(45, 70, 88, 0.05)),
+    rgba(var(--glass-bg-rgb), 0.9);
+}
+
+:where(
+  .page-header,
+  .admin-hero,
+  .admin-panel,
+  .training-panel,
+  .center-section,
+  .asset-section,
+  .cloud-section,
+  .data-center-hero,
+  .summary-grid article,
+  .pipeline-strip article,
+  .asset-workbench,
+  .asset-sidebar,
+  .asset-main,
+  .asset-detail,
+  .knowledge-shell,
+  .knowledge-panel,
+  .forum-card,
+  .profile-card,
+  .metric-card,
+  .model-card,
+  .result-card,
+  .job-card,
+  .section-card,
+  .glass-panel,
+  .glass-panel-light,
+  .glass-panel-heavy
+) {
+  border-color: var(--surface-line) !important;
+  background: var(--surface-glass) !important;
+  box-shadow:
+    0 16px 48px color-mix(in srgb, #000 14%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 9%, transparent) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+}
+
+html.light :where(
+  .page-header,
+  .admin-hero,
+  .admin-panel,
+  .training-panel,
+  .center-section,
+  .asset-section,
+  .cloud-section,
+  .data-center-hero,
+  .summary-grid article,
+  .pipeline-strip article,
+  .asset-workbench,
+  .asset-sidebar,
+  .asset-main,
+  .asset-detail,
+  .knowledge-shell,
+  .knowledge-panel,
+  .forum-card,
+  .profile-card,
+  .metric-card,
+  .model-card,
+  .result-card,
+  .job-card,
+  .section-card,
+  .glass-panel,
+  .glass-panel-light,
+  .glass-panel-heavy
+) {
+  box-shadow:
+    0 14px 36px rgba(30, 41, 59, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+}
+
+:where(
+  .page-header,
+  .admin-hero,
+  .admin-panel,
+  .training-panel,
+  .center-section,
+  .asset-section,
+  .cloud-section,
+  .data-center-hero,
+  .asset-workbench,
+  .knowledge-shell,
+  .knowledge-panel
+) {
+  border-radius: clamp(16px, 1.6vw, 24px) !important;
+}
+
+:where(.toolbar, .control-bar, .admin-toolbar, .asset-toolbar, .section-head, .panel-head, .topbar-info, .topbar-right) {
+  min-width: 0;
+  align-items: center;
+}
+
+:where(.toolbar, .control-bar, .admin-toolbar, .asset-toolbar, .section-head, .panel-head) > * {
+  min-width: 0;
+}
+
+:where(.admin-toolbar, .asset-toolbar, .selection-bar, .hero-actions, .detail-actions, .top-actions, .toolbar-left, .toolbar-right) {
+  gap: 10px !important;
+}
+
+:where(
+  .primary-btn,
+  .ghost-btn,
+  .secondary-btn,
+  .text-btn,
+  .asset-tab,
+  .asset-row,
+  .detail-actions button,
+  .selection-bar button,
+  .cloud-brief button,
+  .hero-actions button,
+  .admin-toolbar button,
+  .top-actions button,
+  .icon-btn,
+  .lang-btn,
+  .avatar-btn
+) {
+  min-height: var(--control-height);
+  border-radius: var(--control-radius);
+}
+
+:where(
+  .primary-btn,
+  .ghost-btn,
+  .secondary-btn,
+  .text-btn,
+  .detail-actions button,
+  .selection-bar button,
+  .hero-actions button
+) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  padding-inline: 14px;
+  line-height: 1.35;
+  text-align: center;
+  white-space: normal;
+}
+
+:where(
+  .primary-btn,
+  .ghost-btn,
+  .secondary-btn,
+  .text-btn,
+  .detail-actions button,
+  .selection-bar button,
+  .hero-actions button
+) :where(span, strong, b, em) {
+  min-width: 0;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+:where(input, textarea, select, .el-input, .el-select, .el-date-editor) {
+  max-width: 100%;
+}
+
+:where(.admin-toolbar .el-input, .admin-toolbar .el-select, .asset-toolbar input, .asset-toolbar select) {
+  min-width: min(220px, 100%);
+}
+
+:where(.asset-toolbar input, .asset-toolbar select, .search-shell input, .cloud-search input) {
+  min-height: var(--control-height);
+  border: 1px solid var(--surface-line);
+  border-radius: var(--control-radius);
+  background: color-mix(in srgb, var(--panel-bg) 58%, transparent);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+:where(.asset-toolbar input, .asset-toolbar select, .search-shell input, .cloud-search input):focus {
+  border-color: var(--surface-line-strong);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-color) 10%, transparent);
+}
+
+:where(.asset-row, .resource-item, .related-item, .conversation-item, .model-row, .folder-row, .table-row) {
+  border-color: color-mix(in srgb, var(--text-primary) 9%, transparent) !important;
+  background: color-mix(in srgb, var(--panel-bg) 42%, transparent) !important;
+}
+
+:where(.asset-row, .resource-item, .related-item, .conversation-item, .model-row, .folder-row, .table-row):hover {
+  border-color: var(--surface-line-strong) !important;
+  background: color-mix(in srgb, var(--primary-color) 8%, var(--panel-bg)) !important;
+}
+
+:where(.asset-row, .resource-item, .related-item, .conversation-item, .model-row, .folder-row, .table-row) :where(strong, span, em, small, b) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+:where(.asset-row, .resource-item, .related-item, .conversation-item, .folder-row) :where(strong, span, em, small) {
+  overflow: visible;
+  text-overflow: clip;
+}
+
+:where(.el-tag, .service-chip, .stat-chip, .user-tag, .material-badge, .asset-updated, .row-type) {
+  border-radius: 999px !important;
+  letter-spacing: 0 !important;
+}
+
+:where(button, [role="button"], a[href], .el-button) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:where(button, [role="button"], a[href], .el-button):focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--bg-color) 68%, transparent),
+    0 0 0 5px color-mix(in srgb, var(--primary-color) 38%, transparent) !important;
+}
+
+@media (max-width: 900px) {
+  :where(.admin-hero, .section-head, .data-center-hero) {
+    align-items: stretch !important;
+  }
+
+  :where(.admin-toolbar, .asset-toolbar, .selection-bar, .hero-actions, .detail-actions) {
+    width: 100%;
+  }
+
+  :where(.admin-toolbar .el-input, .admin-toolbar .el-select, .asset-toolbar input, .asset-toolbar select) {
+    width: 100% !important;
+    min-width: 0;
+  }
+}
+/* ========== product-wide clarity pass end ========== */

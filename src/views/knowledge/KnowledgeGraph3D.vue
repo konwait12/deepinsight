@@ -1690,7 +1690,7 @@ canvas { display: block; width: 100%; height: 100%; }
 @keyframes fadeIn { from{opacity:0} to{opacity:1} }
 .detail-card { background: linear-gradient(135deg, #1a1f35, #1e2640); border-radius: 24px; max-width: 820px; width: 100%; max-height: 85vh; overflow-y: auto; padding: 36px 40px; position: relative; border: 1px solid rgba(255,255,255,0.06); box-shadow: 0 30px 80px rgba(0,0,0,0.5); }
 :global(.light .detail-card) { background: linear-gradient(135deg, rgba(var(--glass-bg-rgb),0.88), rgba(var(--glass-bg-rgb),0.74)); border-color: rgba(var(--primary-rgb),0.16); box-shadow: 0 30px 80px rgba(29,56,46,0.12); }
-.detail-card h2 { font-size: 24px; font-weight: var(--font-weight-title); color: #e8edf5; margin: 0 30px 20px 0; letter-spacing: -0.01em; }
+.detail-card h2 { font-size: 24px; font-weight: var(--font-weight-title); color: #e8edf5; margin: 0 30px 20px 0; letter-spacing: 0; }
 :global(.light .detail-card h2) { color: var(--text-primary); }
 .detail-md { font-size: 15px; color: #cbd5e1; line-height: 1.9; }
 :global(.light .detail-md) { color: var(--text-secondary); }
