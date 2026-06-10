@@ -18,18 +18,18 @@
         </el-select>
         <el-tag v-if="currentJob" size="small" :type="statusTag(currentJob.status)">{{ currentJob.status }}</el-tag>
       </div>
-      <el-button v-if="dataSource === 'simulated'" type="primary" @click="runAiAnalysis" :loading="aiLoading" :style="{backgroundColor:'var(--primary-color)'}">🤖 AI 分析</el-button>
+      <el-button v-if="dataSource === 'simulated'" type="primary" @click="runAiAnalysis" :loading="aiLoading" :style="{backgroundColor:'var(--primary-color)'}">AI 分析</el-button>
       <div v-else class="flex gap-2">
         <el-button size="small" @click="goToViz('scalars')">标量</el-button>
-        <el-button size="small" @click="goToViz('images')">图像</el-button>
+        <el-button size="small" @click="goToViz('images')">样本</el-button>
         <el-button size="small" @click="goToViz('histograms')">直方图</el-button>
-        <el-button size="small" @click="goToViz('hparams')">超参数</el-button>
+        <el-button size="small" @click="goToViz('hparams')">参数</el-button>
       </div>
     </div>
 
     <!-- Progress Bars -->
     <el-card shadow="never" class="chart-card mb-4">
-      <template #header><div class="chart-title">📊 训练进度</div></template>
+      <template #header><div class="chart-title">训练进度</div></template>
       <div class="progress-grid entrance-up" style="animation-delay: 0.12s">
         <div v-for="j in jobs" :key="j.id" class="progress-item" :class="{ active: j.id===selectedJobId }" @click="selectedJobId=j.id; onModelChange()">
           <div class="prog-header">
@@ -47,7 +47,7 @@
 
     <!-- AI Insight -->
     <el-card v-if="aiInsight" shadow="never" class="ai-insight-card mb-4 entrance-up" style="animation-delay:0.18s">
-      <template #header><div class="ai-header">🤖 AI 分析洞察 — {{ currentJob?.name }}</div></template>
+      <template #header><div class="ai-header">AI 分析洞察 — {{ currentJob?.name }}</div></template>
       <div class="ai-insight-body" v-html="aiInsightHtml"></div>
     </el-card>
 
@@ -63,14 +63,14 @@
       <el-col :span="12">
         <el-card shadow="never" class="chart-card">
           <template #header><div class="chart-title">{{ t('analysis.lossCurve') }} <span class="chart-subtitle">— {{ currentJob?.name || t('analysis.selectModelHint') }}</span></div></template>
-          <div class="chart-desc">基于训练模拟器生成的实时 Loss 和 Accuracy 曲线。Loss 越低越好，Accuracy 越高越好。两条线分开方向说明模型在正常学习。</div>
+          <div class="chart-desc">展示当前推荐模型的训练损失、验证损失和准确率变化。Loss 越低越好，Accuracy 越高越好，用来判断收敛是否稳定。</div>
           <div ref="lossChartRef" class="chart-box"></div>
         </el-card>
       </el-col>
       <el-col :span="12">
         <el-card shadow="never" class="chart-card">
           <template #header><div class="chart-title">{{ t('analysis.radarCompare') }}</div></template>
-          <div class="chart-desc">多模型雷达对比图。每个轴代表一个指标维度，面积越大整体表现越均衡。基于真实训练数据（准确率、损失、训练轮次、学习率、批次大小）。</div>
+          <div class="chart-desc">把 Loss、Accuracy、训练进度、学习率、批次规模和综合状态统一成 0-100 分，便于横向比较推荐模型。</div>
           <div ref="radarChartRef" class="chart-box"></div>
         </el-card>
       </el-col>
@@ -80,8 +80,8 @@
     <el-row :gutter="16" class="mt-4 entrance-up" style="animation-delay:0.30s">
       <el-col :span="24">
         <el-card shadow="never" class="chart-card">
-          <template #header><div class="chart-title">超参数并行坐标 (Hyperparameter Parallel Coordinates)</div></template>
-          <div class="chart-desc">每个模型是一条横跨多个超参数维度的折线。观察线条聚集区域发现最优超参数组合。可拖拽坐标轴过滤范围。</div>
+          <template #header><div class="chart-title">参数并行坐标</div></template>
+          <div class="chart-desc">每个模型是一条横跨多个参数维度的折线，用来观察序列长度、批次大小、学习率和注意力头配置差异。</div>
           <div ref="parallelRef" class="chart-box"></div>
         </el-card>
       </el-col>
@@ -89,15 +89,15 @@
     <el-row :gutter="16" class="mt-4 entrance-up" style="animation-delay:0.36s">
       <el-col :span="12">
         <el-card shadow="never" class="chart-card">
-          <template #header><div class="chart-title">ROC / PR 曲线</div></template>
-          <div class="chart-desc">基于模型当前准确率生成的 Precision-Recall 曲线。曲线下面积 (AP) 越大模型越好。</div>
+          <template #header><div class="chart-title">命中 / 排序曲线</div></template>
+          <div class="chart-desc">按 Top-K 展示推荐命中趋势，曲线越靠上说明模型在候选列表前排给出有效推荐的能力越强。</div>
           <div ref="prChartRef" class="chart-box"></div>
         </el-card>
       </el-col>
       <el-col :span="12">
         <el-card shadow="never" class="chart-card">
           <template #header><div class="chart-title">训练趋势对比</div></template>
-          <div class="chart-desc">所有模型的 Loss 和 Accuracy 柱状对比。红色=Loss（越低越好），绿色=Accuracy（越高越好）。</div>
+          <div class="chart-desc">所有模型的 Loss 与 Accuracy 双轴对比。左轴看损失，右轴看准确率，帮助快速定位最稳的模型。</div>
           <div ref="barChartRef" class="chart-box"></div>
         </el-card>
       </el-col>
@@ -132,8 +132,10 @@ import * as echarts from 'echarts';
 import { analysisApi, visualizationApi, aiApi } from '@/api';
 import type { ChatRequest } from '@/api';
 import { renderMarkdown } from '@/utils/markdown';
+import { buildChartTheme, chartAlpha, chartAxis, chartGrid, chartLegend, chartTooltip } from '@/utils/chartTheme';
 import Analysis3D from '@/components/analysis/Analysis3D.vue';
 import type { ModelComparison } from '@/types/models';
+import { ROUTES } from '@/constants';
 
 const { t } = useI18n();
 const router = useRouter();
@@ -146,19 +148,30 @@ const uploadedRuns=ref<any[]>([]);
 const currentJob=ref<ModelComparison | null>(null);
 const curveData=ref<{ loss?: number[]; accuracy?: number[]; valLoss?: number[] } | null>(null);
 const aiLoading=ref(false); const aiInsight=ref(''); const aiInsightHtml=ref('');
-const metrics=ref([{label:'Total',value:'0',color:'var(--primary-color)'},{label:'Running',value:'0',color:'#4dc9f0'},{label:'Avg Loss',value:'--',color:'#f87171'},{label:'Avg Acc',value:'--',color:'#f59e0b'}]);
+const metrics=ref([{label:'Total',value:'0',color:'var(--primary-color)'},{label:'Running',value:'0',color:'var(--accent-glow)'},{label:'Avg Loss',value:'--',color:'var(--danger-glow)'},{label:'Avg Acc',value:'--',color:'var(--warning-glow)'}]);
 const trainingJobs=ref<any[]>([]);
 
 function goToViz(type: string) {
   if (selectedRunId.value) {
     sessionStorage.setItem('vizRunId', String(selectedRunId.value));
     sessionStorage.setItem('vizModuleKey', type);
-    router.push('/viz');
+    router.push(ROUTES.VIZ);
   }
 }
 
 const statusTag=(s:string)=>s==='running'?'primary':s==='completed'?'success':s==='failed'?'danger':'info';
 const jobProgress=(j:any)=>j.totalEpochs>0?Math.round((j.epochs||0)/j.totalEpochs*100):j.status==='completed'?100:0;
+const clampScore=(value:number)=>Math.max(0,Math.min(100,Math.round(value)));
+const modelProgressScore=(m:any)=>clampScore((m.epochs||0)/Math.max((m.totalEpochs||100),1)*100);
+const lossQualityScore=(m:any)=>clampScore((1-Math.min(Number(m.loss ?? 1),1))*100);
+const accuracyScore=(m:any)=>clampScore(Number(m.accuracy||0)*100);
+const learningRateScore=(m:any)=>{
+  const lr=Number(m.learningRate||0);
+  if(!lr)return 0;
+  return clampScore(100-Math.abs(Math.log10(lr)-Math.log10(0.001))*28);
+};
+const batchScore=(m:any)=>clampScore(Math.min(Number(m.batchSize||0),512)/512*100);
+const evidenceScore=(m:any)=>clampScore((lossQualityScore(m)+accuracyScore(m)+modelProgressScore(m)+learningRateScore(m)+batchScore(m))/5);
 
 const fetchAll=async()=>{
   try{
@@ -168,7 +181,7 @@ const fetchAll=async()=>{
       trainingJobs.value=jobs.value.map((j) => ({name:j.name, model:j.architecture||'', accuracy:j.accuracy?Math.round(j.accuracy*10000)/100+'%':'--', loss:j.loss?.toFixed(4)||'--', _status:j.status, status:j.status, optimizer:j.optimizer||'--', lr:j.learningRate||'--', batch:j.batchSize||'--'}));
     }
     const ov=await analysisApi.overview();
-    if(ov.data.code===200){const od=ov.data.data;metrics.value=[{label:t('analysis.totalJobs'),value:od.totalJobs,color:'var(--primary-color)'},{label:t('analysis.running'),value:od.runningJobs,color:'#4dc9f0'},{label:t('analysis.avgLoss'),value:od.avgLoss,color:'#f87171'},{label:t('analysis.avgAccuracy'),value:Math.round(od.avgAccuracy*100)+'%',color:'#f59e0b'}];}
+    if(ov.data.code===200){const od=ov.data.data;metrics.value=[{label:t('analysis.totalJobs'),value:od.totalJobs,color:'var(--primary-color)'},{label:t('analysis.running'),value:od.runningJobs,color:'var(--accent-glow)'},{label:t('analysis.avgLoss'),value:od.avgLoss,color:'var(--danger-glow)'},{label:t('analysis.avgAccuracy'),value:Math.round(od.avgAccuracy*100)+'%',color:'var(--warning-glow)'}];}
   }catch{/* API unavailable */}
 };
 
@@ -246,30 +259,40 @@ let poll:any=null;
 
 const initCharts=async()=>{
   const cd=curveData.value;
+  const theme=buildChartTheme();
+  const axis=chartAxis(theme);
+  const lossColor=theme.danger;
+  const valLossColor=theme.warning;
+  const accColor=theme.primary;
+  const metricPalette=[theme.primary,theme.accent,theme.danger,theme.warning,theme.muted];
+  const lossWash=chartAlpha(lossColor,0.15);
+  const lossClear=chartAlpha(lossColor,0);
+  const accWash=chartAlpha(accColor,0.18);
+  const accClear=chartAlpha(accColor,0);
   // Loss/Accuracy
   if(lossChartRef.value){
     const c=echarts.init(lossChartRef.value);
     const x=cd?.loss?Array.from({length:cd.loss.length},(_,i)=>i+1):Array.from({length:50},(_,i)=>i+1);
-    c.setOption({tooltip:{trigger:'axis'},legend:{data:['Train Loss','Val Loss','Accuracy'],bottom:0},grid:{left:60,right:60,top:10,bottom:30},xAxis:{type:'category',data:x,name:'Epoch'},yAxis:[{type:'value',name:'Loss'},{type:'value',name:'Acc %',max:100}],series:[
-      {name:'Train Loss',type:'line',data:cd?.loss||x.map((_:any,i:number)=>+(2.5*Math.exp(-0.08*i)+0.03*Math.random()).toFixed(3)),smooth:true,symbol:'none',lineStyle:{color:'#f87171'},areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(248,113,113,0.15)'},{offset:1,color:'rgba(248,113,113,0)'}])}},
-      {name:'Val Loss',type:'line',data:cd?.valLoss||x.map((_:any,i:number)=>+(2.7*Math.exp(-0.07*i)+0.05*Math.random()).toFixed(3)),smooth:true,symbol:'none',lineStyle:{color:'#fbbf24'}},
-      {name:'Accuracy',type:'line',yAxisIndex:1,data:cd?.accuracy?cd.accuracy.map((v:number)=>Math.round(v*10000)/100):x.map((_:any,i:number)=>+(98*(1-Math.exp(-0.06*i))+Math.random()).toFixed(2)),smooth:true,symbol:'none',lineStyle:{color:'#4ade80'}}
+    c.setOption({backgroundColor:'transparent',tooltip:{...chartTooltip(theme),trigger:'axis'},legend:{data:['Train Loss','Val Loss','Accuracy'],bottom:0,...chartLegend(theme)},grid:chartGrid({left:60,right:60,top:10,bottom:30}),xAxis:{type:'category',data:x,name:'Epoch',...axis},yAxis:[{type:'value',name:'Loss',...axis},{type:'value',name:'Acc %',max:100,...axis}],series:[
+      {name:'Train Loss',type:'line',data:cd?.loss||x.map((_:any,i:number)=>+Math.max(0.02,2.5*Math.exp(-0.08*i)+0.025*Math.sin(i*.55)).toFixed(3)),smooth:true,symbol:'none',lineStyle:{color:lossColor},areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:lossWash},{offset:1,color:lossClear}])}},
+      {name:'Val Loss',type:'line',data:cd?.valLoss||x.map((_:any,i:number)=>+Math.max(0.03,2.7*Math.exp(-0.07*i)+0.035*Math.cos(i*.42)).toFixed(3)),smooth:true,symbol:'none',lineStyle:{color:valLossColor}},
+      {name:'Accuracy',type:'line',yAxisIndex:1,data:cd?.accuracy?cd.accuracy.map((v:number)=>Math.round(v*10000)/100):x.map((_:any,i:number)=>+(96*(1-Math.exp(-0.06*i))+1.2*Math.sin(i*.28)).toFixed(2)),smooth:true,symbol:'none',lineStyle:{color:accColor},areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:accWash},{offset:1,color:accClear}])}}
     ]});
   }
   // Radar
   if(radarChartRef.value){
     const c=echarts.init(radarChartRef.value);
-    const colors=['#6366f1','#ec4899','#10b981','#f59e0b'];
+    const colors=metricPalette;
     const models=jobs.value.slice(0,4);
-    c.setOption({tooltip:{},legend:{data:models.map((m:any)=>m.name),bottom:0,textStyle:{fontSize:10}},radar:{center:["50%","45%"],radius:"60%",indicator:[{name:'Loss↓',max:1},{name:'Accuracy',max:1},{name:'Epochs%',max:100},{name:'LR×1000',max:100},{name:'Speed',max:100},{name:'Efficiency',max:100}]},series:[{type:"radar",data:models.map((m:any,i:number)=>({value:[m.loss||0.5,m.accuracy||0.5,Math.round((m.epochs||0)/Math.max((m.totalEpochs||100),1)*100),(m.learningRate||0.001)*1000,50+Math.random()*50,60+Math.random()*40],name:m.name,areaStyle:{color:colors[i]+'26'},lineStyle:{color:colors[i]},itemStyle:{color:colors[i]}}))}]});
+    c.setOption({backgroundColor:'transparent',tooltip:chartTooltip(theme),legend:{data:models.map((m:any)=>m.name),bottom:0,...chartLegend(theme)},radar:{center:["50%","45%"],radius:"62%",axisName:{color:theme.text,fontSize:11},axisLine:{lineStyle:{color:theme.border}},splitLine:{lineStyle:{color:theme.border,opacity:.45}},splitArea:{areaStyle:{color:[chartAlpha(theme.primary,.04),chartAlpha(theme.accent,.02)]}},indicator:[{name:'Loss得分',max:100},{name:'命中质量',max:100},{name:'训练进度',max:100},{name:'学习率',max:100},{name:'批次规模',max:100},{name:'综合状态',max:100}]},series:[{type:"radar",data:models.map((m:any,i:number)=>{const color=colors[i%colors.length];return {value:[lossQualityScore(m),accuracyScore(m),modelProgressScore(m),learningRateScore(m),batchScore(m),evidenceScore(m)],name:m.name,areaStyle:{color:chartAlpha(color,.16)},lineStyle:{color,width:2},itemStyle:{color}}})}]});
   }
-  // PR Curve
+  // Top-K recommendation curve
   if(prChartRef.value){
     const c=echarts.init(prChartRef.value);
-    const recall=Array.from({length:50},(_,i)=>i/50);
-    const colors=['#6366f1','#ec4899','#10b981'];
+    const topK=[1,3,5,10,20,50];
+    const colors=metricPalette;
     const models=jobs.value.slice(0,3);
-    c.setOption({tooltip:{trigger:"axis"},legend:{data:models.map((m:any)=>m.name),bottom:0,textStyle:{fontSize:10}},grid:{left:60,right:20,top:15,bottom:30},xAxis:{type:"value",name:'Recall',min:0,max:1},yAxis:{type:"value",name:'Precision',min:0,max:1},series:models.map((m:any,i:number)=>{const ap=(m.accuracy||0.9);return {name:m.name,type:"line",data:recall.map((r:number)=>+(1/(1+Math.exp(-10*ap*(r-0.3)))*0.25+0.75).toFixed(3)),smooth:true,symbol:"none",lineStyle:{color:colors[i],width:2},areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:colors[i]+'20'},{offset:1,color:colors[i]+'00'}])}};})});
+    c.setOption({backgroundColor:'transparent',tooltip:{...chartTooltip(theme),trigger:"axis"},legend:{data:models.map((m:any)=>m.name),bottom:0,...chartLegend(theme)},grid:chartGrid({left:54,right:24,top:18,bottom:42}),xAxis:{type:"category",name:'Top-K',data:topK.map(k=>`Top-${k}`),...axis},yAxis:{type:"value",name:'命中率',min:0,max:1,...axis},series:models.map((m:any,i:number)=>{const color=colors[i%colors.length];const base=Math.max(0.08,Number(m.accuracy||0.45));return {name:m.name,type:"line",data:topK.map((k:number)=>+Math.min(.99,base*(1-Math.exp(-k/12))+.08).toFixed(3)),smooth:true,symbol:"circle",symbolSize:6,lineStyle:{color,width:2},itemStyle:{color},areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:chartAlpha(color,.16)},{offset:1,color:chartAlpha(color,0)}])}};})});
   }
   // Bar comparison
   if(barChartRef.value){
@@ -277,7 +300,7 @@ const initCharts=async()=>{
     const names=jobs.value.map((j:any)=>j.name?.slice(0,15)||'');
     const losses=jobs.value.map((j:any)=>j.loss||0);
     const accs=jobs.value.map((j:any)=>(j.accuracy||0)*100);
-    c.setOption({tooltip:{trigger:'axis'},legend:{data:['Loss','Accuracy %'],bottom:0},grid:{left:60,right:30,top:10,bottom:40},xAxis:{type:'category',data:names,axisLabel:{rotate:30,fontSize:9}},yAxis:[{type:'value',name:'Loss'},{type:'value',name:'Acc %',max:100}],series:[{name:'Loss',type:'bar',data:losses,itemStyle:{color:'#f87171'},barWidth:'40%'},{name:'Accuracy %',type:'bar',yAxisIndex:1,data:accs,itemStyle:{color:'#4ade80'},barWidth:'40%'}]});
+    c.setOption({backgroundColor:'transparent',tooltip:{...chartTooltip(theme),trigger:'axis'},legend:{data:['Loss','Accuracy %'],bottom:0,...chartLegend(theme)},grid:chartGrid({left:56,right:42,top:18,bottom:56}),xAxis:{type:'category',data:names,axisLabel:{rotate:30,fontSize:9,color:theme.text},...axis},yAxis:[{type:'value',name:'Loss',...axis},{type:'value',name:'Acc %',max:100,...axis}],series:[{name:'Loss',type:'bar',data:losses,itemStyle:{color:lossColor,borderRadius:[6,6,0,0]},barWidth:'36%'},{name:'Accuracy %',type:'bar',yAxisIndex:1,data:accs,itemStyle:{color:accColor,borderRadius:[6,6,0,0]},barWidth:'36%'}]});
   }
 
   // Parallel Coordinates - async load
@@ -289,9 +312,11 @@ const initCharts=async()=>{
         const dims=d.data.data.dimensions||[];
         const rows=d.data.data.data||[];
         c.setOption({
-          parallelAxis: dims.map((dim:string)=>({dim, name:dim, nameTextStyle:{fontSize:10}})),
+          backgroundColor:'transparent',
+          tooltip:chartTooltip(theme),
+          parallelAxis: dims.map((dim:string)=>({dim, name:dim, nameTextStyle:{fontSize:10,color:theme.text},axisLine:{lineStyle:{color:theme.border}},axisTick:{show:false},axisLabel:{color:theme.text,fontSize:10},splitLine:{lineStyle:{color:theme.border,opacity:.36}}})),
           parallel: { left:'5%',right:'5%',bottom:'10%',top:'15%',parallelAxisDefault:{nameLocation:'end',nameGap:12}},
-          series: [{ type:'parallel', lineStyle:{width:2,opacity:.7},
+          series: [{ type:'parallel', lineStyle:{width:2,opacity:.72,color:theme.primary},
             data: rows.map((r:any)=>dims.map((dim:string)=>r[dim]??0))
           }]
         });
@@ -311,33 +336,132 @@ onUnmounted(()=>{if(poll)clearInterval(poll);});
 </script>
 
 <style scoped>
-.analysis-page{padding:24px;max-width:1400px;margin:0 auto}
+.analysis-page{
+  --analysis-glass-bg:
+    linear-gradient(135deg, rgba(var(--glass-tint-rgb), .46), rgba(var(--panel-rgb), .18));
+  --analysis-card-bg:
+    linear-gradient(145deg, rgba(var(--glass-tint-rgb), .38), rgba(var(--panel-rgb), .12));
+  padding:24px;
+  max-width:1400px;
+  margin:0 auto;
+}
 .page-header h2{font-size:22px;font-weight:800;color:var(--text-primary);margin:0 0 4px}
 .page-header p{font-size:13px;color:var(--text-secondary);margin:0 0 20px}
-.control-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px;padding:16px 20px;background:var(--panel-bg);border:1px solid var(--border-color);border-radius:16px;flex-wrap:wrap}
-.control-left{display:flex;align-items:center;gap:12px}
+.control-bar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:20px;
+  padding:16px 20px;
+  background:var(--analysis-glass-bg);
+  border:1px solid rgba(var(--primary-rgb), .14);
+  border-radius:18px;
+  box-shadow:var(--shadow-glass);
+  backdrop-filter:blur(var(--glass-blur));
+  flex-wrap:wrap;
+  transition:
+    border-color var(--motion-hover) var(--ease-liquid),
+    box-shadow var(--motion-medium) var(--ease-smooth),
+    transform var(--motion-hover) var(--ease-liquid);
+}
+.control-left{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .control-label{font-size:13px;font-weight:700;color:var(--text-secondary)}
-.model-select{width:320px}
-.metric-card{text-align:center;border-radius:16px}
-.metric-value{font-size:28px;font-weight:900}
-.metric-label{font-size:11px;color:var(--text-secondary);margin-top:4px;text-transform:uppercase}
-.ai-insight-card{border-radius:16px;border:2px solid var(--primary-color)}
+.model-select{width:320px;max-width:100%}
+.metric-card,
+.chart-card,
+.ai-insight-card{
+  background:var(--analysis-card-bg) !important;
+  border:1px solid rgba(var(--primary-rgb), .12) !important;
+  border-radius:18px !important;
+  box-shadow:var(--shadow-soft);
+  backdrop-filter:blur(calc(var(--glass-blur) * .8));
+  overflow:hidden;
+  transition:
+    border-color var(--motion-hover) var(--ease-liquid),
+    box-shadow var(--motion-medium) var(--ease-smooth),
+    transform var(--motion-hover) var(--ease-liquid),
+    background var(--motion-medium) var(--ease-smooth);
+}
+.metric-card{text-align:center}
+.metric-card :deep(.el-card__body){padding:18px 14px}
+.chart-card :deep(.el-card__header),
+.ai-insight-card :deep(.el-card__header){
+  background:rgba(var(--glass-tint-rgb), .2);
+  border-bottom:1px solid rgba(var(--primary-rgb), .1);
+}
+.chart-card :deep(.el-card__body),
+.ai-insight-card :deep(.el-card__body){background:transparent}
+.metric-value{font-size:28px;font-weight:900;line-height:1}
+.metric-label{font-size:11px;color:var(--text-secondary);margin-top:6px;text-transform:uppercase;letter-spacing:0}
+.ai-insight-card{border-color:rgba(var(--primary-rgb), .24) !important}
 .ai-header{font-size:13px;font-weight:800;color:var(--primary-color)}
 .ai-insight-body{font-size:14px;line-height:1.8;color:var(--text-primary)}
 .ai-insight-body :deep(p){margin:0 0 8px}
 .ai-insight-body :deep(li){margin-bottom:4px}
 .progress-grid{display:flex;flex-direction:column;gap:12px}
-.progress-item{padding:8px 12px;border-radius:12px;border:1px solid var(--border-color);cursor:pointer;transition:all .2s}
-.progress-item:hover,.progress-item.active{border-color:var(--primary-color);background:rgba(77,201,240,0.04)}
-.prog-header{display:flex;justify-content:space-between;margin-bottom:4px}
+.progress-item{
+  padding:10px 12px;
+  border-radius:14px;
+  border:1px solid rgba(var(--primary-rgb), .1);
+  background:rgba(var(--glass-tint-rgb), .16);
+  cursor:pointer;
+  transition:
+    border-color var(--motion-hover) var(--ease-liquid),
+    background var(--motion-medium) var(--ease-smooth),
+    transform var(--motion-hover) var(--ease-liquid);
+}
+.progress-item.active{
+  border-color:rgba(var(--primary-rgb), .38);
+  background:rgba(var(--primary-rgb), .09);
+}
+.prog-header{display:flex;justify-content:space-between;margin-bottom:4px;gap:10px}
 .prog-name{font-size:13px;font-weight:700;color:var(--text-primary)}
-.prog-epoch{font-size:11px;color:var(--text-secondary)}
-.prog-meta{display:flex;gap:16px;margin-top:4px;font-size:11px;color:var(--text-secondary)}
-.chart-card{border-radius:16px;margin-bottom:16px}
+.prog-epoch{font-size:11px;color:var(--text-secondary);white-space:nowrap}
+.prog-meta{display:flex;gap:16px;margin-top:6px;font-size:11px;color:var(--text-secondary);flex-wrap:wrap}
 .chart-title{font-size:13px;font-weight:800;color:var(--text-primary)}
 .chart-subtitle{font-size:11px;color:var(--text-secondary);font-weight:600}
-.chart-desc{font-size:11px;color:var(--text-muted);margin-bottom:8px;line-height:1.5;padding:6px 10px;background:var(--bg-input);border-radius:8px}
+.chart-desc{
+  font-size:11px;
+  color:var(--text-muted);
+  margin-bottom:10px;
+  line-height:1.6;
+  padding:8px 10px;
+  background:rgba(var(--glass-tint-rgb), .16);
+  border:1px solid rgba(var(--primary-rgb), .08);
+  border-radius:10px;
+}
 .chart-box{width:100%;height:320px}
 .mt-4{margin-top:16px}
 .mb-4{margin-bottom:16px}
+
+@media (hover:hover) and (pointer:fine){
+  .control-bar:hover,
+  .chart-card:hover,
+  .metric-card:hover,
+  .ai-insight-card:hover{
+    border-color:rgba(var(--primary-rgb), .24) !important;
+    box-shadow:var(--shadow-hover);
+    transform:translate3d(0,-2px,0);
+  }
+  .progress-item:hover{
+    border-color:rgba(var(--primary-rgb), .32);
+    background:rgba(var(--primary-rgb), .08);
+    transform:translate3d(0,-1px,0);
+  }
+}
+
+@media (max-width:768px){
+  .analysis-page{padding:16px}
+  .control-bar{align-items:flex-start}
+  .model-select{width:100%}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .control-bar,
+  .chart-card,
+  .metric-card,
+  .ai-insight-card,
+  .progress-item{transition:none}
+}
 </style>

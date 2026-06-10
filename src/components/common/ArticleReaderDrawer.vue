@@ -1,20 +1,27 @@
 <template>
   <Teleport to="body">
     <Transition name="reader-drawer">
-      <div v-if="modelValue" class="reader-backdrop" @click.self="close">
-        <aside class="reader-drawer" role="dialog" aria-modal="true">
-          <button class="reader-close" type="button" @click="close">×</button>
+      <div v-if="modelValue" class="reader-backdrop" tabindex="-1" @click.self="close" @keydown.esc="close">
+        <aside
+          class="reader-drawer"
+          role="dialog"
+          aria-modal="true"
+          :aria-labelledby="article ? 'reader-title' : undefined"
+          :aria-label="article ? undefined : loadingText"
+        >
+          <button class="reader-close" type="button" :aria-label="closeText" @click="close">×</button>
           <div v-if="loading" class="reader-state">{{ loadingText }}</div>
           <template v-else-if="article">
             <header class="reader-header">
               <span class="reader-kicker">{{ sourceLabel || article.nodeLabel || tagFallback }}</span>
-              <h2>{{ article.title }}</h2>
+              <h2 id="reader-title">{{ article.title }}</h2>
               <div class="reader-meta">
                 <span v-if="article.viewCount !== undefined">{{ viewsText }} {{ article.viewCount }}</span>
                 <span v-if="article.createdAt">{{ formatTime(article.createdAt) }}</span>
                 <a v-if="article.paperUrl" :href="article.paperUrl" target="_blank" rel="noreferrer">{{ paperText }}</a>
               </div>
             </header>
+            <ArticleToc v-if="headings.length > 1" :headings="headings" :title="tocText" :floating="false" />
             <div class="reader-body" v-html="renderedHtml"></div>
           </template>
           <div v-else class="reader-state">{{ emptyText }}</div>
@@ -27,7 +34,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { renderMarkdown } from '@/utils/markdown'
+import ArticleToc from '@/components/common/ArticleToc.vue'
+import { enrichArticleContent, extractHeadings, renderMarkdown } from '@/utils/markdown'
 
 const props = defineProps<{
   modelValue: boolean
@@ -40,12 +48,16 @@ const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
 const { locale } = useI18n()
 const isZh = computed(() => locale.value.startsWith('zh'))
 
-const renderedHtml = computed(() => props.article?.content ? renderMarkdown(props.article.content) : '')
+const displayContent = computed(() => enrichArticleContent(props.article?.content || '', props.article?.title || ''))
+const headings = computed(() => extractHeadings(displayContent.value).filter((heading) => heading.level <= 3))
+const renderedHtml = computed(() => displayContent.value ? renderMarkdown(displayContent.value) : '')
 const loadingText = computed(() => isZh.value ? '文章加载中...' : 'Loading article...')
 const emptyText = computed(() => isZh.value ? '暂无文章内容' : 'No article content')
 const viewsText = computed(() => isZh.value ? '浏览' : 'Views')
 const paperText = computed(() => isZh.value ? '查看论文' : 'Paper')
 const tagFallback = computed(() => isZh.value ? '知识文章' : 'Article')
+const closeText = computed(() => isZh.value ? '关闭文章弹窗' : 'Close article drawer')
+const tocText = computed(() => isZh.value ? '可跳转目录' : 'Contents')
 
 const close = () => emit('update:modelValue', false)
 const formatTime = (value: string) => {
@@ -65,8 +77,9 @@ const formatTime = (value: string) => {
   z-index: 3200;
   display: flex;
   justify-content: flex-end;
-  background: linear-gradient(90deg, transparent 0%, rgba(var(--primary-rgb), 0.028) 100%);
-  backdrop-filter: none;
+  background: linear-gradient(90deg, transparent 0%, rgba(var(--primary-rgb), 0.045) 100%);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
 }
 
 :global(.light .reader-backdrop) {
@@ -81,9 +94,11 @@ const formatTime = (value: string) => {
   border-left: 1px solid rgba(var(--primary-rgb), 0.22);
   background:
     radial-gradient(circle at 18% 12%, rgba(var(--primary-rgb), 0.14), transparent 32%),
-    linear-gradient(180deg, rgba(var(--glass-bg-rgb), 0.92), rgba(var(--glass-bg-rgb), 0.82)),
-    var(--surface-1);
+    linear-gradient(180deg, rgba(var(--glass-bg-rgb), 0.86), rgba(var(--glass-bg-rgb), 0.74)),
+    color-mix(in srgb, var(--surface-1) 84%, transparent);
   box-shadow: -30px 0 90px rgba(2, 6, 23, 0.28);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   overflow-y: auto;
 }
 
@@ -91,6 +106,7 @@ const formatTime = (value: string) => {
   position: sticky;
   top: 0;
   float: right;
+  z-index: 2;
   width: 34px;
   height: 34px;
   border: 1px solid var(--border-color);
@@ -101,11 +117,18 @@ const formatTime = (value: string) => {
   line-height: 1;
   cursor: pointer;
   backdrop-filter: blur(14px);
+  transition:
+    border-color var(--motion-hover) var(--ease-liquid),
+    background var(--motion-medium) var(--ease-smooth),
+    color var(--motion-hover) ease,
+    transform var(--motion-hover) var(--ease-liquid);
 }
 
 .reader-close:hover {
   color: var(--primary-color);
   border-color: rgba(var(--primary-rgb), 0.34);
+  background: rgba(var(--primary-rgb), 0.1);
+  transform: translate3d(0, -1px, 0);
 }
 
 .reader-header {
@@ -155,14 +178,17 @@ const formatTime = (value: string) => {
 
 .reader-body :deep(h1),
 .reader-body :deep(h2),
-.reader-body :deep(h3) {
+.reader-body :deep(h3),
+.reader-body :deep(h4) {
+  scroll-margin-top: 86px;
   color: var(--text-primary);
   line-height: 1.25;
 }
 
 .reader-body :deep(h1) { font-size: 24px; margin: 28px 0 12px; }
-.reader-body :deep(h2) { font-size: 20px; margin: 26px 0 10px; }
+.reader-body :deep(h2) { font-size: 20px; margin: 26px 0 10px; border-left: 3px solid var(--primary-color); padding-left: 10px; }
 .reader-body :deep(h3) { font-size: 17px; margin: 22px 0 8px; }
+.reader-body :deep(h4) { font-size: 15px; margin: 18px 0 8px; }
 .reader-body :deep(p) { margin: 0 0 12px; color: var(--text-secondary); }
 .reader-body :deep(strong) { color: var(--text-primary); }
 .reader-body :deep(ul),
@@ -241,5 +267,33 @@ const formatTime = (value: string) => {
 .reader-drawer-leave-to .reader-drawer {
   transform: translateX(100%);
   filter: blur(6px);
+}
+
+@media (max-width: 720px) {
+  .reader-drawer {
+    width: 100vw;
+    padding: 26px 18px 42px;
+  }
+
+  .reader-header h2 {
+    font-size: 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reader-drawer-enter-active,
+  .reader-drawer-leave-active,
+  .reader-drawer-enter-active .reader-drawer,
+  .reader-drawer-leave-active .reader-drawer,
+  .reader-close {
+    transition: none;
+  }
+
+  .reader-drawer-enter-from .reader-drawer,
+  .reader-drawer-leave-to .reader-drawer,
+  .reader-close:hover {
+    transform: none;
+    filter: none;
+  }
 }
 </style>

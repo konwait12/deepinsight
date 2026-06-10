@@ -15,7 +15,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.security.Principal;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -30,14 +29,14 @@ public class DataAssetService {
 
     private static final Map<String, String> LOG_TABLE_LABELS = Map.of(
         "scalar_logs", "标量日志",
-        "image_logs", "图像记录",
-        "audio_logs", "音频记录",
+        "image_logs", "样本可视化记录",
+        "audio_logs", "序列记录",
         "text_logs", "文本记录",
         "histogram_data", "分布记录",
         "embedding_data", "向量记录",
-        "pr_curve_data", "PR 曲线",
-        "roc_curve_data", "ROC 曲线",
-        "hparam_data", "超参数记录",
+        "pr_curve_data", "命中曲线",
+        "roc_curve_data", "排序曲线",
+        "hparam_data", "参数记录",
         "profiler_data", "性能记录"
     );
 
@@ -55,7 +54,7 @@ public class DataAssetService {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("assets", assets);
         result.put("summary", buildSummary(assets));
-        result.put("updatedAt", LocalDateTime.now().toString());
+        result.put("updatedAt", java.time.LocalDateTime.now().toString());
         return result;
     }
 
@@ -74,7 +73,7 @@ public class DataAssetService {
                 .filter(asset -> !Boolean.TRUE.equals(asset.get("canSync")))
                 .findFirst();
             if (blocked.isPresent()) {
-                throw new IllegalArgumentException("官方或只读资产不能在普通数据管理界面同步到云端，请在管理后台处理。");
+                throw new IllegalArgumentException("官方或只读资源不能在普通数据管理界面同步到云端，请在管理后台处理。");
             }
         }
 
@@ -155,7 +154,7 @@ public class DataAssetService {
         item.put("summary", blank(dataset.getDescription(), "用于训练、评估或可视化分析的数据集。"));
         item.put("metrics", metrics);
         item.put("readiness", readiness(dataset.getStatus(), dataset.getSampleCount()));
-        item.put("route", "/data");
+        item.put("route", "/data-center");
         return item;
     }
 
@@ -165,7 +164,7 @@ public class DataAssetService {
         metrics.put("进度", n(job.getCurrentEpoch()) + "/" + n(job.getEpochs()));
         metrics.put("Loss", job.getCurrentLoss() == null ? "-" : String.format("%.4f", job.getCurrentLoss()));
         metrics.put("Accuracy", job.getCurrentAccuracy() == null ? "-" : String.format("%.2f%%", job.getCurrentAccuracy() * 100));
-        metrics.put("步记录", steps.size());
+        metrics.put("步骤记录", steps.size());
 
         if (shared) {
             metrics.put("Scope", "Public demo");
@@ -185,8 +184,8 @@ public class DataAssetService {
         );
         item.put("summary", "模型 " + blank(job.getModelArchitecture(), "-") + "，数据集 #" + n(job.getDatasetId()) + "，优化器 " + blank(job.getOptimizer(), "-") + "。");
         item.put("metrics", metrics);
-        item.put("readiness", steps.isEmpty() ? "缺少训练步记录" : "可进入可视化分析");
-        item.put("route", "/training");
+        item.put("readiness", steps.isEmpty() ? "缺少训练步骤记录" : "可进入可视化分析");
+        item.put("route", "/model-overview");
         return item;
     }
 
@@ -212,7 +211,7 @@ public class DataAssetService {
         item.put("summary", total > 0 ? "已解析 " + total + " 条训练可视化记录。" : "运行已创建，等待上传或解析日志。");
         item.put("metrics", metrics);
         item.put("readiness", total > 0 ? "可进入可视化分析" : "等待日志数据");
-        item.put("route", "/viz");
+        item.put("route", "/performance-dashboard");
         return item;
     }
 
@@ -231,7 +230,7 @@ public class DataAssetService {
                 run.getId(),
                 "run_log",
                 "日志数据",
-                LOG_TABLE_LABELS.getOrDefault(table, table) + " · " + run.getName(),
+                LOG_TABLE_LABELS.getOrDefault(table, table) + " / " + run.getName(),
                 LOG_TABLE_LABELS.getOrDefault(table, table),
                 "ready",
                 table,
@@ -241,7 +240,7 @@ public class DataAssetService {
             item.put("summary", "来自运行「" + run.getName() + "」的 " + count + " 条" + LOG_TABLE_LABELS.getOrDefault(table, "日志") + "。");
             item.put("metrics", metrics);
             item.put("readiness", "可用于矩阵分析");
-            item.put("route", "/viz");
+            item.put("route", "/performance-dashboard");
             items.add(item);
         });
         return items;
@@ -275,7 +274,7 @@ public class DataAssetService {
                 item.put("summary", blank(text(row.get("summary")), "已保存的矩阵分析结果。"));
                 item.put("metrics", metrics);
                 item.put("readiness", "可导入 AI 继续分析");
-                item.put("route", "/viz");
+                item.put("route", "/performance-dashboard");
                 return item;
             }).toList();
     }
@@ -337,7 +336,7 @@ public class DataAssetService {
                     blank(text(row.get("source_type")), "cloud"),
                     row.get("updated_at")
                 );
-                item.put("summary", "已经保存到云端素材库，可在 AI、可视化和云端中心继续读取。");
+                item.put("summary", "已保存到云端素材库，可在 AI、可视化和数据中心继续读取。");
                 item.put("metrics", metrics);
                 item.put("readiness", "已入云端");
                 item.put("route", "/cloud");
@@ -410,16 +409,16 @@ public class DataAssetService {
     private String buildAssetContent(Map<String, Object> asset) {
         StringBuilder builder = new StringBuilder();
         builder.append("# ").append(text(asset.get("title"))).append("\n\n");
-        builder.append("- 类型：").append(text(asset.get("typeLabel"))).append("\n");
-        builder.append("- 状态：").append(text(asset.get("status"))).append("\n");
-        builder.append("- 格式：").append(text(asset.get("format"))).append("\n");
-        builder.append("- 来源：").append(text(asset.get("sourceType"))).append("\n");
-        builder.append("- 可用性：").append(text(asset.get("readiness"))).append("\n\n");
+        builder.append("- 类型: ").append(text(asset.get("typeLabel"))).append("\n");
+        builder.append("- 状态: ").append(text(asset.get("status"))).append("\n");
+        builder.append("- 格式: ").append(text(asset.get("format"))).append("\n");
+        builder.append("- 来源: ").append(text(asset.get("sourceType"))).append("\n");
+        builder.append("- 可用性: ").append(text(asset.get("readiness"))).append("\n\n");
         builder.append(text(asset.get("summary"))).append("\n\n");
         Object metrics = asset.get("metrics");
         if (metrics instanceof Map<?, ?> map && !map.isEmpty()) {
             builder.append("## 指标\n");
-            map.forEach((key, value) -> builder.append("- ").append(key).append("：").append(value).append("\n"));
+            map.forEach((key, value) -> builder.append("- ").append(key).append(": ").append(value).append("\n"));
         }
         return builder.toString();
     }
@@ -466,15 +465,15 @@ public class DataAssetService {
         return switch (key) {
             case "architecture" -> "模型结构";
             case "scalars" -> "标量曲线";
-            case "images" -> "图像样本";
-            case "audio" -> "音频记录";
+            case "images" -> "样本预览";
+            case "audio" -> "序列记录";
             case "text" -> "文本日志";
             case "histograms" -> "直方图";
             case "embeddings" -> "向量嵌入";
-            case "hparams" -> "超参数";
+            case "hparams" -> "参数配置";
             case "profiler" -> "性能剖析";
-            case "pr_curves" -> "PR 曲线";
-            case "roc_curves" -> "ROC 曲线";
+            case "pr_curves" -> "命中曲线";
+            case "roc_curves" -> "排序曲线";
             default -> blank(key, "分析模块");
         };
     }

@@ -9,7 +9,7 @@ const requiredAiConfigSnippets = [
   'DEEPSEEK_API_KEY',
   'DEEPSEEK_API_URL',
   'DEEPSEEK_MODEL',
-  'deepseek-v4-pro',
+  'deepseek-chat',
   'https://api.deepseek.com',
   'findActiveConfig()',
   'envDeepSeekConfig()',

@@ -1,215 +1,1211 @@
 package com.deepinsight.backend.service;
 
-import com.deepinsight.backend.entity.ModelArticle;
-import com.deepinsight.backend.entity.ModelRegistry;
-import com.deepinsight.backend.repository.ModelArticleRepository;
-import com.deepinsight.backend.repository.ModelRegistryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.text.NumberFormat;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 public class ModelCatalogService {
 
-    private static final OfficialModel[] OFFICIAL_MODELS = {
-        new OfficialModel("ResNet-50", "残差网络 50 层", "classification", "图像分类", 25.6, "224x224x3", "pytorch"),
-        new OfficialModel("ResNet-101", "残差网络 101 层", "classification", "图像分类", 44.5, "224x224x3", "pytorch"),
-        new OfficialModel("VGG-19", "VGG 19 层卷积网络", "classification", "图像分类", 143.7, "224x224x3", "pytorch"),
-        new OfficialModel("EfficientNet-B4", "高效卷积网络 B4", "classification", "图像分类", 19.3, "380x380x3", "pytorch"),
-        new OfficialModel("ViT-B/16", "视觉 Transformer 基础版", "classification", "图像分类", 86.6, "384x384x3", "pytorch"),
-        new OfficialModel("Swin-T", "Swin Transformer 轻量版", "classification", "图像分类", 28.3, "224x224x3", "pytorch"),
-        new OfficialModel("ConvNeXt-T", "现代化卷积网络轻量版", "classification", "图像分类", 28.6, "224x224x3", "pytorch"),
-        new OfficialModel("MobileNetV3-L", "移动端高效网络大版", "classification", "图像分类", 5.4, "224x224x3", "pytorch"),
-        new OfficialModel("DenseNet-201", "密集连接卷积网络 201 层", "classification", "图像分类", 20.0, "224x224x3", "pytorch"),
-        new OfficialModel("YOLOv8n", "YOLOv8 Nano 实时检测", "detection", "目标检测", 3.2, "640x640x3", "pytorch"),
-        new OfficialModel("YOLOv8s", "YOLOv8 Small 目标检测", "detection", "目标检测", 11.2, "640x640x3", "pytorch"),
-        new OfficialModel("DeepLabV3-RN50", "DeepLabV3 语义分割", "segmentation", "语义分割", 58.6, "513x513x3", "pytorch"),
-        new OfficialModel("DeepFM", "深度因子分解推荐模型", "recommendation", "推荐系统", 5.0, "sparse", "tensorflow"),
-        new OfficialModel("Wide&Deep", "宽深联合推荐模型", "recommendation", "推荐系统", 3.5, "sparse", "tensorflow"),
-        new OfficialModel("NCF", "神经协同过滤模型", "recommendation", "推荐系统", 2.1, "dense", "pytorch"),
-        new OfficialModel("DIN", "深度兴趣网络", "recommendation", "推荐系统", 4.8, "sparse", "tensorflow"),
-        new OfficialModel("BERT-Base", "BERT 文本理解基础版", "nlp", "自然语言处理", 110.0, "512 tokens", "pytorch"),
-        new OfficialModel("GPT-2", "GPT-2 文本生成模型", "nlp", "自然语言处理", 124.0, "1024 tokens", "pytorch"),
-        new OfficialModel("T5-Small", "T5 文本到文本小型版", "nlp", "自然语言处理", 60.0, "512 tokens", "pytorch"),
-        new OfficialModel("LLaMA-7B", "LLaMA 7B 大语言模型", "nlp", "自然语言处理", 7000.0, "2048 tokens", "pytorch")
-    };
+    private static final Pattern METRIC_PAIR = Pattern.compile("'([^']+)'\\s*:\\s*'?([^',}]+)'?");
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneId.systemDefault());
 
-    private final ModelRegistryRepository modelRepository;
-    private final ModelArticleRepository articleRepository;
+    private final BSARecClientService bsarecClientService;
+    private volatile List<Map<String, Object>> cachedStaticCatalog;
 
-    public String seedOfficialModels() {
-        int created = 0;
-        int synced = 0;
-        for (OfficialModel model : OFFICIAL_MODELS) {
-            Optional<ModelRegistry> existing = modelRepository.findByName(model.name());
-            ModelRegistry registry = existing.orElseGet(ModelRegistry::new);
-            if (existing.isEmpty()) {
-                created++;
-                registry.setName(model.name());
-            } else {
-                synced++;
-            }
-
-            registry.setTaskType(model.taskType());
-            registry.setDisplayNameZh(model.displayNameZh());
-            registry.setTaskTypeZh(model.taskTypeZh());
-            registry.setParamCountM(model.paramCountM());
-            registry.setInputSize(model.inputSize());
-            registry.setFramework(model.framework());
-            registry.setIsOfficial(true);
-            registry.setPaperUrl(getPaperUrl(registry));
-            registry.setDescription(buildEnglishDescription(model));
-            registry.setDescriptionZh(getDescription(registry));
-            modelRepository.save(registry);
-        }
-        return "已同步 " + OFFICIAL_MODELS.length + " 个官方模型（新增 " + created + "，更新 " + synced + "）";
+    public List<Map<String, Object>> listModels() {
+        Map<String, Object> bsarecHealth = bsarecClientService.health();
+        return staticCatalog().stream()
+            .map(this::copyModel)
+            .map(model -> enrichRuntimeStatus(model, bsarecHealth))
+            .toList();
     }
 
-    private String buildEnglishDescription(OfficialModel model) {
-        return model.name() + " - " + model.taskType() + " model, " + model.paramCountM() + "M params";
+    public List<Map<String, Object>> listPredictionModels() {
+        return listModels().stream()
+            .filter(model -> "recommendation".equals(String.valueOf(model.get("taskType"))))
+            .filter(model -> Boolean.TRUE.equals(model.get("canExecute")))
+            .toList();
     }
 
-    public int seedModelArticles(boolean force) {
-        var models = modelRepository.findByIsOfficialTrueOrderByNameAsc();
-        if (models.isEmpty()) {
-            return -1;
+    public boolean containsName(String name) {
+        if (name == null || name.isBlank()) {
+            return false;
         }
-
-        int count = 0;
-        for (ModelRegistry model : models) {
-            Optional<ModelArticle> existing = articleRepository.findByModelId(model.getId());
-            if (force) {
-                existing.ifPresent(articleRepository::delete);
-            }
-            if (force || existing.isEmpty()) {
-                articleRepository.save(ModelArticle.builder()
-                    .modelId(model.getId())
-                    .title(model.getName())
-                    .content(buildArticleContent(model))
-                    .paperUrl(getPaperUrl(model))
-                    .build());
-                count++;
-            }
-        }
-        return count;
+        return listModels().stream().anyMatch(model -> name.equalsIgnoreCase(String.valueOf(model.get("name"))));
     }
 
-    private String buildArticleContent(ModelRegistry model) {
-        String paperUrl = getPaperUrl(model);
-        return """
-## %s
+    public List<String> modelNames() {
+        return listModels().stream().map(model -> String.valueOf(model.get("name"))).toList();
+    }
 
-### 基本信息
+    private List<Map<String, Object>> staticCatalog() {
+        List<Map<String, Object>> current = cachedStaticCatalog;
+        if (current != null) {
+            return current;
+        }
+        synchronized (this) {
+            if (cachedStaticCatalog == null) {
+                cachedStaticCatalog = buildStaticCatalog();
+            }
+            return cachedStaticCatalog;
+        }
+    }
 
-| 属性 | 值 |
-|------|-----|
-| 任务类型 | %s |
-| 参数量 | %.1fM |
-| 输入尺寸 | %s |
-| 框架 | %s |
+    private List<Map<String, Object>> buildStaticCatalog() {
+        Path root = projectRoot();
+        List<Map<String, Object>> models = new ArrayList<>();
 
-### 模型简介
+        models.add(recommender(
+            root,
+            "bsarec-job",
+            "BSARec Job",
+            "BSARec 岗位推荐",
+            "BSARec",
+            "本地岗位推荐模型，包含 Job.txt 真实序列数据、BSARec_Job.pt 权重和 Flask 推理桥接服务。",
+            "Job",
+            "model/BSARec-main-api/src/data/Job.txt",
+            DataFormat.USER_SEQUENCE,
+            "model/BSARec-main-api/src/output/BSARec_Job.pt",
+            "model/BSARec-main-api/src/output/BSARec_Job.log",
+            "model/BSARec-main-api/bsarec_api/app.py",
+            "model/BSARec-main-api/bsarec_env.yaml",
+            "本地 Job.txt 岗位序列数据",
+            true,
+            linked("Embedding Dim", "64", "Hidden Dim", "64", "Transformer Blocks", "2", "Attention Heads", "2", "Alpha", "0.7", "c", "5")
+        ));
 
-%s
+        models.add(familyRecommender(root, "bsarec", "BSARec", "BSARec 序列推荐", "BSARec",
+            "本地 BSARec 对比模型家族，包含多份真实序列数据，其中 Beauty 和 LastFM 已有权重与评估日志。",
+            "model/similar-models/BSARec/src/data",
+            List.of(
+                dataAsset("Beauty", "model/similar-models/BSARec/src/data/Beauty.txt", DataFormat.USER_SEQUENCE),
+                dataAsset("LastFM", "model/similar-models/BSARec/src/data/LastFM.txt", DataFormat.USER_SEQUENCE),
+                dataAsset("ML-1M", "model/similar-models/BSARec/src/data/ML-1M.txt", DataFormat.USER_SEQUENCE),
+                dataAsset("Sports_and_Outdoors", "model/similar-models/BSARec/src/data/Sports_and_Outdoors.txt", DataFormat.USER_SEQUENCE),
+                dataAsset("Toys_and_Games", "model/similar-models/BSARec/src/data/Toys_and_Games.txt", DataFormat.USER_SEQUENCE),
+                dataAsset("Yelp", "model/similar-models/BSARec/src/data/Yelp.txt", DataFormat.USER_SEQUENCE)
+            ),
+            List.of(
+                "model/similar-models/BSARec/src/output/BSARec_Beauty_best.pt",
+                "model/similar-models/BSARec/src/output/BSARec_LastFM_best.pt"
+            ),
+            List.of(
+                "model/similar-models/BSARec/src/output/BSARec_Beauty_best.log",
+                "model/similar-models/BSARec/src/output/BSARec_LastFM_best.log"
+            ),
+            "model/similar-models/BSARec/src/main.py",
+            null,
+            "BSARec 本地多数据集",
+            linked("Embedding Dim", "64", "Hidden Dim", "64", "Transformer Blocks", "2", "Attention Heads", "2", "Max sequence length", "50")));
 
-### 适用场景
+        models.add(familyRecommender(root, "bert4rec", "BERT4Rec", "BERT4Rec 双向序列推荐", "BERT4Rec",
+            "本地 BERT4Rec 模型家族，包含 Beauty、ML-1M、Steam 真实交互数据和 ML-20M 数据归档。",
+            "model/similar-models/BERT4Rec/data",
+            List.of(
+                dataAsset("beauty", "model/similar-models/BERT4Rec/data/beauty.txt", DataFormat.USER_ITEM),
+                dataAsset("ml-1m", "model/similar-models/BERT4Rec/data/ml-1m.txt", DataFormat.USER_ITEM),
+                dataAsset("steam", "model/similar-models/BERT4Rec/data/steam.txt", DataFormat.USER_ITEM),
+                dataAsset("ml-20m", "model/similar-models/BERT4Rec/data/ml-20m.zip", DataFormat.ARCHIVE)
+            ),
+            List.of(),
+            List.of(),
+            "model/similar-models/BERT4Rec/run.py",
+            "model/similar-models/BERT4Rec/bert_train/bert_config_ml-1m_64.json",
+            "BERT4Rec 本地数据与配置",
+            linked(
+                "Hidden Size", "64",
+                "Transformer Blocks", "2",
+                "Attention Heads", "2",
+                "Max position embeddings", "200",
+                "Dropout", "0.2",
+                "Batch Size", "256",
+                "Learning Rate", "1e-4",
+                "Max sequence length", "200",
+                "Train steps", "400000"
+            )));
 
-%s
+        models.add(familyRecommender(root, "duorec", "DuoRec", "DuoRec 对比序列推荐", "DuoRec",
+            "本地 DuoRec 模型目录。原目录没有 dataset/ml-100k，我已放入本项目真实 RecBole ml-100k 数据，便于按模型 README 直接识别。",
+            "model/similar-models/DuoRec/dataset/ml-100k",
+            List.of(dataAsset("ml-100k", "model/similar-models/DuoRec/dataset/ml-100k/ml-100k.inter", DataFormat.RECBOLE_ATOMIC)),
+            List.of(),
+            List.of(),
+            "model/similar-models/DuoRec/run_seq.py",
+            "model/similar-models/DuoRec/seq.yaml",
+            "真实 ml-100k 数据，已复制到 DuoRec 期望目录",
+            linked("Contrast", "us_x", "Similarity", "dot", "Batch Size", "256", "Learning Rate", "0.001", "Max sequence length", "50")));
 
-### 训练建议
+        models.add(familyRecommender(root, "fearec", "FEARec", "FEARec 频域增强序列推荐", "FEARec",
+            "本地 FEARec 模型目录。原目录只有空数据目录，我已放入本项目真实 RecBole ml-100k 数据，便于按模型 README 直接识别。",
+            "model/similar-models/FEARec/dataset/ml-100k",
+            List.of(dataAsset("ml-100k", "model/similar-models/FEARec/dataset/ml-100k/ml-100k.inter", DataFormat.RECBOLE_ATOMIC)),
+            List.of(),
+            List.of(),
+            "model/similar-models/FEARec/run_seq.py",
+            "model/similar-models/FEARec/seq.yaml",
+            "真实 ml-100k 数据，已复制到 FEARec 期望目录",
+            linked("Contrast", "us_x", "Similarity", "dot", "Batch Size", "256", "Learning Rate", "0.001", "Max sequence length", "50", "Epochs", "1000")));
 
-- **学习率**: 建议从 0.001 开始，使用余弦退火调度
-- **批次大小**: 根据显存调整，通常 32-256
-- **优化器**: Adam/AdamW 适合大多数场景，SGD 配合 Momentum 在部分任务上可能更优
-- **正则化**: 建议使用 Weight Decay 1e-4，配合 Dropout/Label Smoothing
+        models.add(familyRecommender(root, "fmlprec", "FMLP-Rec", "FMLP-Rec 滤波增强推荐", "FMLP-Rec",
+            "本地 FMLP-Rec 模型，包含 Beauty 真实数据、评估权重和测试指标日志。",
+            "model/similar-models/FMLP-Rec/data",
+            List.of(dataAsset("Beauty", "model/similar-models/FMLP-Rec/data/Beauty.txt", DataFormat.USER_SEQUENCE)),
+            List.of("model/similar-models/FMLP-Rec/output/FMLPRec-Beauty-4eval.pt"),
+            List.of("model/similar-models/FMLP-Rec/output/FMLPRec-Beauty-4eval.txt"),
+            "model/similar-models/FMLP-Rec/main.py",
+            null,
+            "FMLP-Rec 本地 Beauty 数据与负采样文件",
+            linked("Hidden Size", "64", "Filter-enhanced Blocks", "2", "Attention Heads", "2", "Batch Size", "256", "Learning Rate", "0.001", "Max sequence length", "50")));
 
-### 论文原文
+        models.add(familyRecommender(root, "recbole", "RecBole", "RecBole 推荐框架", "RecBole",
+            "本地 RecBole 框架目录，包含真实 ml-100k atomic 数据和大量模型配置。",
+            "model/similar-models/RecBole/dataset/ml-100k",
+            List.of(dataAsset("ml-100k", "model/similar-models/RecBole/dataset/ml-100k/ml-100k.inter", DataFormat.RECBOLE_ATOMIC)),
+            List.of(),
+            List.of(),
+            "model/similar-models/RecBole/run_recbole.py",
+            "model/similar-models/RecBole/recbole/properties/dataset/ml-100k.yaml",
+            "RecBole 本地 ml-100k atomic 数据",
+            linked(
+                "Framework", "RecBole",
+                "Dataset format", ".inter/.item/.user",
+                "Default evaluator", "RecBole 配置驱动",
+                "Batch Size", "2048",
+                "Learning Rate", "0.001",
+                "Epochs", "300",
+                "Top-K", "10"
+            )));
 
-%s
+        models.add(familyRecommender(root, "sasrec", "SASRec", "SASRec 自注意力序列推荐", "SASRec",
+            "本地 SASRec 模型家族，包含 Beauty、ML-1M、Steam、Video 真实交互数据。",
+            "model/similar-models/SASRec/data",
+            List.of(
+                dataAsset("Beauty", "model/similar-models/SASRec/data/Beauty.txt", DataFormat.USER_ITEM),
+                dataAsset("ml-1m", "model/similar-models/SASRec/data/ml-1m.txt", DataFormat.USER_ITEM),
+                dataAsset("Steam", "model/similar-models/SASRec/data/Steam.txt", DataFormat.USER_ITEM),
+                dataAsset("Video", "model/similar-models/SASRec/data/Video.txt", DataFormat.USER_ITEM)
+            ),
+            List.of(),
+            List.of(),
+            "model/similar-models/SASRec/main.py",
+            null,
+            "SASRec 本地多数据集",
+            linked("Hidden Units", "50", "Transformer Blocks", "2", "Attention Heads", "1", "Batch Size", "128", "Learning Rate", "0.001", "Max sequence length", "50")));
 
----
-*本文由 DeepInsight 平台自动生成，数据来源于原论文及公开基准测试。*
-""".formatted(
-            model.getName(),
-            model.getTaskType(),
-            model.getParamCountM(),
-            model.getInputSize() != null ? model.getInputSize() : "N/A",
-            model.getFramework(),
-            getDescription(model),
-            getUseCases(model.getTaskType()),
-            paperUrl != null ? "📄 [查看论文](" + paperUrl + ")" : "暂无公开论文链接"
+        models.add(familyRecommender(root, "tisasrec", "TiSASRec", "TiSASRec 时间间隔序列推荐", "TiSASRec",
+            "本地 TiSASRec 模型，包含 ML-1M 用户、物品、评分和时间戳数据。",
+            "model/similar-models/TiSASRec/data",
+            List.of(dataAsset("ml-1m", "model/similar-models/TiSASRec/data/ml-1m.txt", DataFormat.USER_ITEM_RATING_TIME)),
+            List.of(),
+            List.of(),
+            "model/similar-models/TiSASRec/main.py",
+            null,
+            "TiSASRec 本地 ML-1M 时间戳数据",
+            linked("Hidden Units", "50", "Transformer Blocks", "2", "Attention Heads", "1", "Time span", "256", "Batch Size", "128", "Learning Rate", "0.001")));
+
+        return List.copyOf(models);
+    }
+
+    private Map<String, Object> familyRecommender(
+        Path root,
+        String id,
+        String name,
+        String displayNameZh,
+        String architecture,
+        String description,
+        String dataRootPath,
+        List<DataAsset> datasets,
+        List<String> artifactPaths,
+        List<String> logPaths,
+        String entrypointPath,
+        String configPath,
+        String dataSource,
+        Map<String, Object> parameterSummary
+    ) {
+        Path dataRoot = resolve(root, dataRootPath);
+        Path entrypoint = resolve(root, entrypointPath);
+        Path config = resolve(root, configPath);
+        List<Path> artifacts = artifactPaths.stream().map(path -> resolve(root, path)).toList();
+        List<Path> logs = logPaths.stream().map(path -> resolve(root, path)).toList();
+        List<Map<String, Object>> dataAssets = new ArrayList<>();
+
+        long totalRecords = 0;
+        long totalUsers = 0;
+        long totalItems = 0;
+        long totalInteractions = 0;
+        long totalBytes = 0;
+        long totalRatingCount = 0;
+        double totalRatingSum = 0.0;
+        Double minRating = null;
+        Double maxRating = null;
+        Long minTimestamp = null;
+        Long maxTimestamp = null;
+        int maxSequenceLength = 0;
+        int existingDatasets = 0;
+        List<String> datasetNames = new ArrayList<>();
+
+        for (DataAsset asset : datasets) {
+            Path dataset = resolve(root, asset.path());
+            DatasetStats stats = datasetStats(dataset, asset.format());
+            boolean exists = dataset != null && Files.isRegularFile(dataset);
+            if (exists) {
+                existingDatasets++;
+            }
+            datasetNames.add(asset.name());
+            totalRecords += stats.records;
+            totalUsers += stats.users;
+            totalItems += stats.items;
+            totalInteractions += stats.interactions;
+            totalBytes += fileSize(dataset);
+            maxSequenceLength = Math.max(maxSequenceLength, stats.maxSequenceLength);
+            if (stats.ratingCount > 0) {
+                totalRatingCount += stats.ratingCount;
+                totalRatingSum += stats.ratingSum;
+                minRating = minRating == null ? stats.minRating : Math.min(minRating, stats.minRating);
+                maxRating = maxRating == null ? stats.maxRating : Math.max(maxRating, stats.maxRating);
+            }
+            if (stats.minTimestamp != null) {
+                minTimestamp = minTimestamp == null ? stats.minTimestamp : Math.min(minTimestamp, stats.minTimestamp);
+                maxTimestamp = maxTimestamp == null ? stats.maxTimestamp : Math.max(maxTimestamp, stats.maxTimestamp);
+            }
+            dataAssets.add(datasetAssetSummary(root, dataset, asset, stats, exists));
+        }
+
+        boolean datasetExists = existingDatasets > 0;
+        boolean artifactExists = artifacts.stream().anyMatch(path -> path != null && Files.isRegularFile(path));
+        boolean logExists = logs.stream().anyMatch(path -> path != null && Files.isRegularFile(path));
+        boolean codeExists = entrypoint != null && Files.isRegularFile(entrypoint);
+        Map<String, Object> metrics = firstMetricsFromLogs(logs);
+        String integrationStatus = integrationStatus(datasetExists, artifactExists, logExists, codeExists, false);
+
+        LinkedHashMap<String, Object> model = new LinkedHashMap<>();
+        model.put("id", id);
+        model.put("name", name);
+        model.put("displayNameZh", displayNameZh);
+        model.put("taskType", "recommendation");
+        model.put("taskTypeZh", "推荐系统");
+        model.put("architecture", architecture);
+        model.put("framework", frameworkFor(architecture));
+        model.put("modelGroup", architecture);
+        model.put("description", description);
+        model.put("descriptionZh", description);
+        model.put("catalogSource", "本地模型目录");
+        model.put("metrics", metrics.isEmpty()
+            ? unavailableMetrics("当前模型目录没有可读取的评估日志。")
+            : metrics);
+        model.put("datasetSummary", familyDatasetSummary(
+            datasetNames,
+            dataSource,
+            existingDatasets,
+            datasets.size(),
+            totalUsers,
+            totalItems,
+            totalInteractions,
+            totalRecords,
+            maxSequenceLength,
+            totalBytes,
+            totalRatingCount,
+            totalRatingSum,
+            minRating,
+            maxRating,
+            minTimestamp,
+            maxTimestamp
+        ));
+        model.put("trainingSummary", familyTrainingSummary(root, artifacts, logs, entrypoint, config));
+        model.put("parameterSummary", parameterSummary);
+        model.put("visualProfile", visualProfile(datasetExists, artifactExists, logExists, codeExists, false));
+        model.put("dataAssets", dataAssets);
+        model.put("isOfficial", true);
+        model.put("official", true);
+        model.put("readOnly", true);
+        model.put("canManage", false);
+        model.put("canSync", false);
+        model.put("databaseBacked", false);
+        model.put("online", false);
+        model.put("canExecute", false);
+        model.put("integrationStatus", integrationStatus);
+        model.put("statusLabel", statusLabelFor(integrationStatus));
+        model.put("latencyMs", null);
+        model.put("endpoint", null);
+        model.put("serviceUrl", null);
+        model.put("artifactExists", artifactExists);
+        model.put("datasetExists", datasetExists);
+        model.put("artifactPath", artifacts.stream().filter(path -> path != null && Files.isRegularFile(path)).findFirst().map(path -> pathText(root, path)).orElse(""));
+        model.put("dataPath", pathText(root, dataRoot));
+        model.put("entrypointPath", pathText(root, entrypoint));
+        model.put("configPath", pathText(root, config));
+        model.put("metricSource", metricSourceText(root, logs));
+        model.put("statusReason", statusReason(datasetExists, artifactExists, logExists, codeExists, false));
+        model.put("dataSource", dataSource);
+        return model;
+    }
+
+    private DataAsset dataAsset(String name, String path, DataFormat format) {
+        return new DataAsset(name, path, format);
+    }
+
+    private Map<String, Object> datasetAssetSummary(Path root, Path dataset, DataAsset asset, DatasetStats stats, boolean exists) {
+        LinkedHashMap<String, Object> summary = new LinkedHashMap<>();
+        summary.put("Name", asset.name());
+        summary.put("Path", pathText(root, dataset));
+        summary.put("Format", asset.format().label);
+        summary.put("User scale", number(stats.users));
+        summary.put("Item scale", number(stats.items));
+        summary.put("Interactions", number(stats.interactions));
+        summary.put("Records", number(stats.records));
+        summary.put("Avg interactions/user", stats.users > 0 ? decimal(stats.avgInteractionsPerUser) : "Not calculated");
+        summary.put("Density", stats.users > 0 && stats.items > 0 ? percent(stats.density) : "Not calculated");
+        summary.put("Rating range", ratingRange(stats));
+        summary.put("Rating mean", stats.meanRating == null ? "Not recorded" : decimal(stats.meanRating));
+        summary.put("Timestamp range", timestampRange(stats));
+        summary.put("Status", exists ? "exists" : "missing");
+        return summary;
+    }
+
+    private Map<String, Object> familyDatasetSummary(
+        List<String> datasetNames,
+        String dataSource,
+        int existingDatasets,
+        int datasetCount,
+        long totalUsers,
+        long totalItems,
+        long totalInteractions,
+        long totalRecords,
+        int maxSequenceLength,
+        long totalBytes,
+        long totalRatingCount,
+        double totalRatingSum,
+        Double minRating,
+        Double maxRating,
+        Long minTimestamp,
+        Long maxTimestamp
+    ) {
+        LinkedHashMap<String, Object> summary = new LinkedHashMap<>();
+        summary.put("Dataset", String.join(", ", datasetNames));
+        summary.put("Data source", dataSource);
+        summary.put("Dataset files", existingDatasets + " / " + datasetCount);
+        summary.put("User scale", number(totalUsers));
+        summary.put("Item scale", number(totalItems));
+        summary.put("Interactions", number(totalInteractions));
+        summary.put("Records", number(totalRecords));
+        summary.put("Max sequence length", maxSequenceLength > 0 ? number(maxSequenceLength) : "Not calculated");
+        summary.put("Avg interactions/user", totalUsers > 0 ? decimal((double) totalInteractions / totalUsers) : "Not calculated");
+        summary.put("Density", totalUsers > 0 && totalItems > 0 ? percent((double) totalInteractions / ((double) totalUsers * totalItems)) : "Not calculated");
+        summary.put("Rating range", minRating == null || maxRating == null ? "Not recorded" : String.format(Locale.US, "%.1f - %.1f", minRating, maxRating));
+        summary.put("Rating mean", totalRatingCount == 0 ? "Not recorded" : decimal(totalRatingSum / totalRatingCount));
+        summary.put("Timestamp range", minTimestamp == null || maxTimestamp == null
+            ? "Not recorded"
+            : DATE_FORMAT.format(Instant.ofEpochSecond(minTimestamp)) + " - " + DATE_FORMAT.format(Instant.ofEpochSecond(maxTimestamp)));
+        summary.put("File size", formatBytes(totalBytes));
+        summary.put("Stats source", "Calculated by scanning local dataset files; cross-dataset IDs are not merged.");
+        return summary;
+    }
+
+    private Map<String, Object> firstMetricsFromLogs(List<Path> logs) {
+        for (Path log : logs) {
+            Map<String, Object> metrics = latestMetricsFromLog(log);
+            if (!metrics.isEmpty()) {
+                return metrics;
+            }
+        }
+        return Map.of();
+    }
+
+    private Map<String, Object> familyTrainingSummary(
+        Path root,
+        List<Path> artifacts,
+        List<Path> logs,
+        Path entrypoint,
+        Path config
+    ) {
+        long artifactCount = artifacts.stream().filter(path -> path != null && Files.isRegularFile(path)).count();
+        long logCount = logs.stream().filter(path -> path != null && Files.isRegularFile(path)).count();
+        return linked(
+            "权重文件", artifactCount > 0 ? artifactCount + " 个" : "缺失",
+            "评估日志", logCount > 0 ? logCount + " 个" : "缺失",
+            "入口脚本", entrypoint != null && Files.isRegularFile(entrypoint) ? pathText(root, entrypoint) : "缺失",
+            "配置文件", config != null && Files.isRegularFile(config) ? pathText(root, config) : "不需要或未提供",
+            "推理服务", "未注册后端推理服务"
         );
     }
 
-    private String getDescription(ModelRegistry model) {
-        String name = model.getName();
-        if (name.contains("ResNet-101")) return "ResNet-101 是 ResNet 系列的深层版本，包含 101 个卷积层。与 ResNet-50 相比，它使用了更多的 Bottleneck 残差块（3层卷积的残差单元），在 ImageNet 上 Top-1 准确率达到 77.4%，比 ResNet-50 高出约 1.3 个百分点。更深的网络带来了更强的特征表达能力，适合需要高精度的图像分类和特征提取任务，但相应的计算开销也更大（44.5M 参数）。";
-        if (name.contains("ResNet-50")) return "ResNet-50 是残差网络（Residual Network）家族的经典代表，由微软亚洲研究院的何恺明等人在 2015 年提出。它通过引入**跳跃连接（Skip Connection）**解决了深层网络的退化问题——当网络变深时，训练误差不降反升。每个残差块学习的是输入与输出的残差映射 F(x) + x，使得梯度可以通过跳跃连接无损地流过深层网络。ResNet-50 包含 50 个卷积层，使用 Bottleneck 设计（1×1→3×3→1×1 卷积）来减少计算量，是图像分类、目标检测和语义分割中最常用的骨干网络之一。";
-        if (name.contains("VGG")) return "VGG-19 由牛津大学 Visual Geometry Group 在 2014 年提出，是 VGG 系列中最深的版本。其核心设计哲学是**简洁与规整**——全部使用 3×3 小卷积核堆叠，通过增加深度来提升性能。VGG-19 包含 16 个卷积层和 3 个全连接层，参数量高达 143.7M。虽然参数量大、推理速度较慢，但其提取的特征在迁移学习、风格迁移和图像生成任务中表现极其优异，至今仍被广泛用作感知损失的特征提取器。";
-        if (name.contains("EfficientNet")) return "EfficientNet 由 Google Brain 在 2019 年提出，通过**神经架构搜索（NAS）**系统地研究了网络深度、宽度和输入分辨率之间的关系。作者发现这三个维度可以通过复合系数统一缩放，提出了 EfficientNet-B0 到 B7 系列。EfficientNet-B4 在 ImageNet 上达到 82.9% Top-1 准确率，仅使用 19.3M 参数——比 ResNet-50 更小更快却更准。它是移动端部署和边缘计算的首选方案之一。";
-        if (name.contains("ViT")) return "Vision Transformer (ViT) 由 Google Research 在 2020 年提出，是将 Transformer 架构直接应用于图像分类的开创性工作。它将图像切分为 16×16 的固定大小 Patch，将这些 Patch 的线性嵌入序列作为 Transformer 编码器的输入。ViT-B/16 在 JFT-300M 大规模数据集上预训练后，在 ImageNet 上达到了 84.2% 的准确率。它完全抛弃了卷积归纳偏置，证明了**纯注意力机制在视觉任务上的有效性**，开启了 Vision Transformer 的研究浪潮。";
-        if (name.contains("Swin")) return "Swin Transformer 由微软亚洲研究院在 2021 年提出，获得了 ICCV 2021 最佳论文奖（马尔奖）。它引入了**移动窗口注意力机制（Shifted Window Attention）**，在保持 Transformer 全局建模能力的同时，通过分层结构实现了类似 CNN 的多尺度特征提取。Swin-T 是轻量版本，在 ImageNet 上达到 81.3% 准确率，仅 28.3M 参数。Swin Transformer 在 COCO 检测和 ADE20K 分割任务上全面超越此前最优的 CNN 模型，证明了 Transformer 可以作为通用视觉骨干网络。";
-        if (name.contains("ConvNeXt")) return "ConvNeXt 由 Facebook AI Research (FAIR) 在 2022 年提出，旨在探索：如果完全使用现代训练技术和架构设计，纯卷积网络是否还能与 Transformer 竞争？作者将 ResNet-50 逐步「现代化」——引入 Transformer 的训练策略（更长训练周期、AdamW 优化器、数据增强）和结构设计（LayerNorm 替代 BatchNorm、GELU 激活、大卷积核 7×7），最终得到的 ConvNeXt-T 在 ImageNet 上达到 82.1% 准确率，证明了**纯卷积网络在正确设计下仍然具有强大竞争力**。";
-        if (name.contains("MobileNet")) return "MobileNetV3 由 Google 在 2019 年提出，是专为移动端和边缘设备设计的高效网络架构。它结合了**深度可分离卷积（Depthwise Separable Convolution）**、线性瓶颈逆残差结构和基于 Platform-Aware NAS 的网络搜索。MobileNetV3-Large 在 ImageNet 上达到 75.2% 准确率，仅 5.4M 参数，推理速度极快。它使用 h-swish 激活函数替代计算昂贵的 swish，进一步优化移动端推理效率，是资源受限场景（手机、IoT、嵌入式设备）的首选。";
-        if (name.contains("DenseNet")) return "DenseNet（密集连接卷积网络）由康奈尔大学和清华大学在 2017 年提出，获得了 CVPR 2017 最佳论文奖。它通过**密集连接**将每一层与前面所有层直接相连，最大化特征复用。第 l 层接收前面所有层的特征图作为输入：x_l = H([x_0, x_1, ..., x_{l-1}])。这种设计减轻了梯度消失问题、增强了特征传播、大幅减少了参数数量。DenseNet-201 在 ImageNet 上准确率与 ResNet-101 相当，但参数量不到其一半（20M），计算效率更高。";
-        if (name.contains("YOLOv8s")) return "YOLOv8 由 Ultralytics 在 2023 年发布，是 YOLO 系列的最新版本之一。YOLO（You Only Look Once）将目标检测转化为回归问题——单次前向传播即可同时预测边界框坐标和类别概率。YOLOv8s 是中等规模的版本（11.2M 参数），在 COCO 数据集上达到 44.9% mAP。相比前代版本，YOLOv8 引入了 Anchor-Free 检测头、新的损失函数（CIoU + DFL）和解耦头结构，在速度与精度之间达到了新的平衡点。";
-        if (name.contains("YOLOv8n")) return "YOLOv8n 是 YOLOv8 系列的 Nano 版本，仅 3.2M 参数，专为极致效率设计。尽管体积极小，它在 COCO 上仍能达到 37.3% mAP，推理速度超过 1000 FPS（在 GPU 上）。YOLOv8 使用 Anchor-Free 检测头，无需预设锚框，简化了训练和推理流程。它支持检测、分类、分割和姿态估计等多种任务，是目前工业界应用最广泛的目标检测框架之一。";
-        if (name.contains("DeepLabV3")) return "DeepLabV3 由 Google 在 2017 年提出，是语义分割领域的里程碑工作。它使用**空洞卷积（Atrous/Dilated Convolution）**在不增加参数量的情况下扩大感受野，并通过**空洞空间金字塔池化（ASPP）**模块并行捕获多尺度上下文信息。配合 ResNet-50 骨干网络，DeepLabV3-RN50 在 PASCAL VOC 2012 上达到 74.6% mIoU，在 Cityscapes 上也表现优异。它是自动驾驶场景理解和医学图像分割的基础架构之一。";
-        if (name.contains("DeepFM")) return "DeepFM 由华为诺亚方舟实验室在 2017 年提出，是推荐系统和 CTR（点击率）预估领域的经典模型。它巧妙地将**因子分解机（FM）**和**深度神经网络（DNN）**结合在一个端到端的框架中：FM 组件负责捕捉低阶特征交互（一阶和二阶），DNN 组件负责学习高阶非线性特征组合。两者共享相同的输入（Embedding 层），无需额外的特征工程或预训练。DeepFM 在 Criteo 和 Company* 数据集上超越了当时的主流方案（Wide&Deep、FNN 等）。";
-        if (name.contains("Wide&Deep")) return "Wide & Deep Learning 由 Google 在 2016 年提出，是 Google Play 商店推荐系统的核心技术。模型由两部分组成：**Wide 部分**是广义线性模型，通过交叉积变换（Cross-Product Transformation）记忆历史模式，确保模型不会「忘记」高频共现特征；**Deep 部分**是前馈神经网络，通过 Embedding 层将稀疏特征转化为稠密向量，泛化到未见过的特征组合。两者联合训练，同时具备了「记忆」（Memorization）和「泛化」（Generalization）能力，使 Google Play 的 App 安装率提升了 3.9%。";
-        if (name.contains("NCF")) return "Neural Collaborative Filtering (NCF) 由新加坡国立大学和哥伦比亚大学在 2017 年提出。传统矩阵分解使用内积来建模用户-物品交互，但内积的线性性质限制了其表达能力。NCF 用**神经网络替代内积操作**：通过多层感知机（MLP）学习任意复杂的用户-物品交互函数。它还可以与广义矩阵分解（GMF）结合，形成 NeuMF 模型，灵活地捕捉线性和非线性特征交互。在 MovieLens 和 Pinterest 数据集上，NCF 显著优于传统协同过滤方法。";
-        if (name.contains("DIN")) return "Deep Interest Network (DIN) 由阿里巴巴在 2018 年提出，针对电商推荐场景中用户兴趣的**多样性**和**局部激活**特性进行了创新设计。核心组件是自适应激活单元——根据候选广告，通过注意力机制动态计算用户历史行为中每个物品的权重。与传统模型将用户兴趣压缩为固定向量不同，DIN 允许用户兴趣随候选商品自适应变化。在阿里巴巴的在线 A/B 测试中，DIN 使 CTR 提升了 10.7%，eCPM 提升了 9.1%，是工业级推荐系统的重要基线。";
-        if (name.contains("BERT")) return "BERT（Bidirectional Encoder Representations from Transformers）由 Google AI Language 在 2018 年提出，是 NLP 领域最具影响力的模型之一。它使用 Transformer 编码器的双向结构，通过两个创新性的预训练任务——**掩码语言模型（MLM，Masked Language Model）**和**下一句预测（NSP，Next Sentence Prediction）**——在无标注文本上进行预训练。BERT-Base 拥有 110M 参数，在发布时横扫了 11 项 NLP 基准测试（GLUE、SQuAD 1.1/2.0、SWAG 等）的记录。它开创了「预训练 + 微调」的 NLP 范式，至今仍是文本理解任务的首选基线模型。";
-        if (name.contains("GPT")) return "GPT-2（Generative Pre-trained Transformer 2）由 OpenAI 在 2019 年发布，拥有 15 亿参数，是当时最大的公开语言模型。它是**自回归语言模型**，通过预测下一个 Token 的方式进行训练，擅长文本生成、补全和少样本学习（Few-Shot Learning）。GPT-2 的核心发现是：规模足够大的语言模型可以在无监督预训练后，仅通过提供少量示例（Zero-Shot/Few-Shot）就完成多种下游任务，无需任何微调。它证明了「规模即能力」的 Scaling Law，为大语言模型的发展奠定了基础。";
-        if (name.contains("T5")) return "T5（Text-to-Text Transfer Transformer）由 Google Research 在 2019 年提出。它的核心思想是**将所有的 NLP 任务统一为 Text-to-Text 格式**——无论是翻译、问答、分类还是摘要，输入和输出都表示为文本序列。T5 在 C4（Colossal Clean Crawled Corpus）数据集上预训练，使用 Span Corruption 作为预训练目标。T5-Small 是轻量版本（60M 参数），适合研究和快速实验。T5 的贡献不仅在于模型本身，更在于它提出的统一框架和系统的实验方法论。";
-        if (name.contains("LLaMA")) return "LLaMA（Large Language Model Meta AI）由 Meta AI 在 2023 年发布，是一系列开源大语言模型，包含 7B、13B、33B 和 65B 参数版本。LLaMA-7B 仅使用公开可用的数据（CommonCrawl、C4、GitHub、Wikipedia 等）进行训练，在多项基准上超越了参数规模更大的 GPT-3（175B）。其训练采用了高效的优化技术（AdamW、余弦学习率调度、梯度裁剪）。LLaMA 的开源极大地推动了学术界和开源社区的大模型研究，催生了 Alpaca、Vicuna、Koala 等众多衍生模型。";
-        return model.getName() + " 是一个 " + model.getTaskType() + " 领域的深度学习模型，拥有 " + model.getParamCountM() + "M 参数。";
+    private String metricSourceText(Path root, List<Path> logs) {
+        List<String> existingLogs = logs.stream()
+            .filter(path -> path != null && Files.isRegularFile(path))
+            .map(path -> pathText(root, path))
+            .toList();
+        return existingLogs.isEmpty() ? "当前目录没有评估日志" : String.join("；", existingLogs);
     }
 
-    private String getPaperUrl(ModelRegistry model) {
-        String name = model.getName();
-        if (name.contains("ResNet-50") || name.contains("ResNet-101")) return "https://arxiv.org/abs/1512.03385";
-        if (name.contains("VGG")) return "https://arxiv.org/abs/1409.1556";
-        if (name.contains("EfficientNet")) return "https://arxiv.org/abs/1905.11946";
-        if (name.contains("ViT")) return "https://arxiv.org/abs/2010.11929";
-        if (name.contains("Swin")) return "https://arxiv.org/abs/2103.14030";
-        if (name.contains("ConvNeXt")) return "https://arxiv.org/abs/2201.03545";
-        if (name.contains("MobileNet")) return "https://arxiv.org/abs/1905.02244";
-        if (name.contains("DenseNet")) return "https://arxiv.org/abs/1608.06993";
-        if (name.contains("YOLOv8")) return "https://github.com/ultralytics/ultralytics";
-        if (name.contains("DeepLabV3")) return "https://arxiv.org/abs/1706.05587";
-        if (name.contains("DeepFM")) return "https://arxiv.org/abs/1703.04247";
-        if (name.contains("Wide&Deep")) return "https://arxiv.org/abs/1606.07792";
-        if (name.contains("NCF")) return "https://arxiv.org/abs/1708.05031";
-        if (name.contains("DIN")) return "https://arxiv.org/abs/1706.06978";
-        if (name.contains("BERT")) return "https://arxiv.org/abs/1810.04805";
-        if (name.contains("GPT")) return "https://d4mucfpksywv.cloudfront.net/better-language-models/language_models_are_unsupervised_multitask_learners.pdf";
-        if (name.contains("T5")) return "https://arxiv.org/abs/1910.10683";
-        if (name.contains("LLaMA")) return "https://arxiv.org/abs/2302.13971";
+    private void addBsaRecFamily(List<Map<String, Object>> models, Path root) {
+        Map<String, Object> params = linked(
+            "Embedding Dim", "64",
+            "Hidden Dim", "64",
+            "Transformer Blocks", "2",
+            "Attention Heads", "2",
+            "Max sequence length", "50"
+        );
+        models.add(recommender(root, "bsarec-beauty", "BSARec Beauty", "BSARec Beauty", "BSARec",
+            "BSARec checkpoint and evaluation log for Beauty.",
+            "Beauty", "model/similar-models/BSARec/src/data/Beauty.txt", DataFormat.USER_SEQUENCE,
+            "model/similar-models/BSARec/src/output/BSARec_Beauty_best.pt",
+            "model/similar-models/BSARec/src/output/BSARec_Beauty_best.log",
+            "model/similar-models/BSARec/src/main.py", null, "local BSARec Beauty data", false, params));
+        models.add(recommender(root, "bsarec-lastfm", "BSARec LastFM", "BSARec LastFM", "BSARec",
+            "BSARec checkpoint and evaluation log for LastFM.",
+            "LastFM", "model/similar-models/BSARec/src/data/LastFM.txt", DataFormat.USER_SEQUENCE,
+            "model/similar-models/BSARec/src/output/BSARec_LastFM_best.pt",
+            "model/similar-models/BSARec/src/output/BSARec_LastFM_best.log",
+            "model/similar-models/BSARec/src/main.py", null, "local BSARec LastFM data", false, params));
+        models.add(recommender(root, "bsarec-ml-1m", "BSARec ML-1M", "BSARec ML-1M", "BSARec",
+            "BSARec source tree with ML-1M sequence data.",
+            "ML-1M", "model/similar-models/BSARec/src/data/ML-1M.txt", DataFormat.USER_SEQUENCE,
+            null, null, "model/similar-models/BSARec/src/main.py", null, "local BSARec ML-1M data", false, params));
+        models.add(recommender(root, "bsarec-sports", "BSARec Sports and Outdoors", "BSARec Sports and Outdoors", "BSARec",
+            "BSARec source tree with Sports and Outdoors sequence data.",
+            "Sports_and_Outdoors", "model/similar-models/BSARec/src/data/Sports_and_Outdoors.txt", DataFormat.USER_SEQUENCE,
+            null, null, "model/similar-models/BSARec/src/main.py", null, "local BSARec Sports and Outdoors data", false, params));
+        models.add(recommender(root, "bsarec-toys", "BSARec Toys and Games", "BSARec Toys and Games", "BSARec",
+            "BSARec source tree with Toys and Games sequence data.",
+            "Toys_and_Games", "model/similar-models/BSARec/src/data/Toys_and_Games.txt", DataFormat.USER_SEQUENCE,
+            null, null, "model/similar-models/BSARec/src/main.py", null, "local BSARec Toys and Games data", false, params));
+        models.add(recommender(root, "bsarec-yelp", "BSARec Yelp", "BSARec Yelp", "BSARec",
+            "BSARec source tree with Yelp sequence data.",
+            "Yelp", "model/similar-models/BSARec/src/data/Yelp.txt", DataFormat.USER_SEQUENCE,
+            null, null, "model/similar-models/BSARec/src/main.py", null, "local BSARec Yelp data", false, params));
+    }
+
+    private void addBert4RecFamily(List<Map<String, Object>> models, Path root) {
+        Map<String, Object> params = linked(
+            "Hidden Size", "64",
+            "Transformer Blocks", "2",
+            "Attention Heads", "2",
+            "Max position embeddings", "200",
+            "Dropout", "0.2"
+        );
+        models.add(recommender(root, "bert4rec-beauty", "BERT4Rec Beauty", "BERT4Rec Beauty", "BERT4Rec",
+            "BERT4Rec bidirectional sequence recommendation code with Beauty interaction data and JSON model config.",
+            "beauty", "model/similar-models/BERT4Rec/data/beauty.txt", DataFormat.USER_ITEM,
+            null, null, "model/similar-models/BERT4Rec/run.py",
+            "model/similar-models/BERT4Rec/bert_train/bert_config_beauty_64.json",
+            "local BERT4Rec Beauty data", false, params));
+        models.add(recommender(root, "bert4rec-ml-1m", "BERT4Rec ML-1M", "BERT4Rec ML-1M", "BERT4Rec",
+            "BERT4Rec bidirectional sequence recommendation code with ML-1M interaction data and JSON model config.",
+            "ml-1m", "model/similar-models/BERT4Rec/data/ml-1m.txt", DataFormat.USER_ITEM,
+            null, null, "model/similar-models/BERT4Rec/run.py",
+            "model/similar-models/BERT4Rec/bert_train/bert_config_ml-1m_64.json",
+            "local BERT4Rec ML-1M data", false, params));
+        models.add(recommender(root, "bert4rec-steam", "BERT4Rec Steam", "BERT4Rec Steam", "BERT4Rec",
+            "BERT4Rec bidirectional sequence recommendation code with Steam interaction data and JSON model config.",
+            "steam", "model/similar-models/BERT4Rec/data/steam.txt", DataFormat.USER_ITEM,
+            null, null, "model/similar-models/BERT4Rec/run.py",
+            "model/similar-models/BERT4Rec/bert_train/bert_config_steam_64.json",
+            "local BERT4Rec Steam data", false, params));
+        models.add(recommender(root, "bert4rec-ml-20m-archive", "BERT4Rec ML-20M Archive", "BERT4Rec ML-20M 数据归档", "BERT4Rec",
+            "BERT4Rec local ML-20M archive. It is registered as a data asset, not as a trained checkpoint.",
+            "ml-20m", "model/similar-models/BERT4Rec/data/ml-20m.zip", DataFormat.ARCHIVE,
+            null, null, "model/similar-models/BERT4Rec/run.py",
+            "model/similar-models/BERT4Rec/bert_train/bert_config_ml-20m_64.json",
+            "local BERT4Rec ML-20M zip archive", false, params));
+    }
+
+    private void addSasRecFamily(List<Map<String, Object>> models, Path root) {
+        Map<String, Object> params = linked(
+            "Hidden Units", "50",
+            "Transformer Blocks", "2",
+            "Attention Heads", "1",
+            "Batch Size", "128",
+            "Learning Rate", "0.001",
+            "Max sequence length", "50"
+        );
+        models.add(recommender(root, "sasrec-beauty", "SASRec Beauty", "SASRec Beauty", "SASRec",
+            "SASRec TensorFlow source with Beauty sequence data.",
+            "Beauty", "model/similar-models/SASRec/data/Beauty.txt", DataFormat.USER_ITEM,
+            null, null, "model/similar-models/SASRec/main.py", null, "local SASRec Beauty data", false, params));
+        models.add(recommender(root, "sasrec-ml-1m", "SASRec ML-1M", "SASRec ML-1M", "SASRec",
+            "SASRec TensorFlow source with ML-1M sequence data.",
+            "ml-1m", "model/similar-models/SASRec/data/ml-1m.txt", DataFormat.USER_ITEM,
+            null, null, "model/similar-models/SASRec/main.py", null, "local SASRec ML-1M data", false, params));
+        models.add(recommender(root, "sasrec-steam", "SASRec Steam", "SASRec Steam", "SASRec",
+            "SASRec TensorFlow source with Steam sequence data.",
+            "Steam", "model/similar-models/SASRec/data/Steam.txt", DataFormat.USER_ITEM,
+            null, null, "model/similar-models/SASRec/main.py", null, "local SASRec Steam data", false, params));
+        models.add(recommender(root, "sasrec-video", "SASRec Video", "SASRec Video", "SASRec",
+            "SASRec TensorFlow source with Amazon Video sequence data.",
+            "Video", "model/similar-models/SASRec/data/Video.txt", DataFormat.USER_ITEM,
+            null, null, "model/similar-models/SASRec/main.py", null, "local SASRec Video data", false, params));
+    }
+
+    private void addTiSasRecFamily(List<Map<String, Object>> models, Path root) {
+        models.add(recommender(root, "tisasrec-ml-1m", "TiSASRec ML-1M", "TiSASRec ML-1M", "TiSASRec",
+            "Time interval aware SASRec source with ML-1M user-item-rating-timestamp data.",
+            "ml-1m", "model/similar-models/TiSASRec/data/ml-1m.txt", DataFormat.USER_ITEM_RATING_TIME,
+            null, null, "model/similar-models/TiSASRec/main.py", null,
+            "local TiSASRec ML-1M timestamp data", false,
+            linked("Hidden Units", "50", "Transformer Blocks", "2", "Attention Heads", "1", "Time span", "256", "Batch Size", "128", "Learning Rate", "0.001")));
+    }
+
+    private void addFmlpRecFamily(List<Map<String, Object>> models, Path root) {
+        models.add(recommender(root, "fmlprec-beauty", "FMLP-Rec Beauty", "FMLP-Rec Beauty", "FMLP-Rec",
+            "FMLP-Rec filter-enhanced MLP recommender with Beauty data, evaluation checkpoint, and recorded test metrics.",
+            "Beauty", "model/similar-models/FMLP-Rec/data/Beauty.txt", DataFormat.USER_SEQUENCE,
+            "model/similar-models/FMLP-Rec/output/FMLPRec-Beauty-4eval.pt",
+            "model/similar-models/FMLP-Rec/output/FMLPRec-Beauty-4eval.txt",
+            "model/similar-models/FMLP-Rec/main.py", null,
+            "local FMLP-Rec Beauty data and negative sample file", false,
+            linked("Hidden Size", "64", "Filter-enhanced Blocks", "2", "Attention Heads", "2", "Batch Size", "256", "Learning Rate", "0.001", "Max sequence length", "50")));
+    }
+
+    private void addRecBoleFamily(List<Map<String, Object>> models, Path root) {
+        models.add(recommender(root, "recbole-ml-100k", "RecBole ML-100K", "RecBole ML-100K", "RecBole",
+            "RecBole framework sample with real ml-100k atomic data.",
+            "ml-100k", "model/similar-models/RecBole/dataset/ml-100k/ml-100k.inter", DataFormat.RECBOLE_ATOMIC,
+            null, null, "model/similar-models/RecBole/run_recbole.py",
+            "model/similar-models/RecBole/recbole/properties/dataset/ml-100k.yaml",
+            "local RecBole ml-100k atomic data", false,
+            linked("Framework", "RecBole", "Dataset format", ".inter/.item/.user", "Default evaluator", "RecBole config driven")));
+    }
+
+    private void addDuoRecFamily(List<Map<String, Object>> models, Path root) {
+        models.add(recommender(root, "duorec-ml-100k", "DuoRec ML-100K", "DuoRec ML-100K", "DuoRec",
+            "DuoRec contrastive sequential recommender with ml-100k data placed under its expected dataset directory.",
+            "ml-100k", "model/similar-models/DuoRec/dataset/ml-100k/ml-100k.inter", DataFormat.RECBOLE_ATOMIC,
+            null, null, "model/similar-models/DuoRec/run_seq.py",
+            "model/similar-models/DuoRec/seq.yaml",
+            "local ml-100k data copied into DuoRec dataset path", false,
+            linked("Contrast", "us_x", "Similarity", "dot", "Batch Size", "256", "Learning Rate", "0.001", "Max sequence length", "50")));
+    }
+
+    private void addFeaRecFamily(List<Map<String, Object>> models, Path root) {
+        models.add(recommender(root, "fearec-ml-100k", "FEARec ML-100K", "FEARec ML-100K", "FEARec",
+            "FEARec frequency-enhanced sequential recommender with ml-100k data placed under its expected dataset directory.",
+            "ml-100k", "model/similar-models/FEARec/dataset/ml-100k/ml-100k.inter", DataFormat.RECBOLE_ATOMIC,
+            null, null, "model/similar-models/FEARec/run_seq.py",
+            "model/similar-models/FEARec/seq.yaml",
+            "local ml-100k data copied into FEARec dataset path", false,
+            linked("Contrast", "us_x", "Similarity", "dot", "Batch Size", "256", "Learning Rate", "0.001", "Max sequence length", "50", "Epochs", "1000")));
+    }
+
+    private Map<String, Object> recommender(
+        Path root,
+        String id,
+        String name,
+        String displayNameZh,
+        String architecture,
+        String description,
+        String datasetName,
+        String dataPath,
+        DataFormat dataFormat,
+        String artifactPath,
+        String logPath,
+        String entrypointPath,
+        String configPath,
+        String dataSource,
+        boolean callableThroughBackend,
+        Map<String, Object> parameterSummary
+    ) {
+        Path dataset = resolve(root, dataPath);
+        Path artifact = resolve(root, artifactPath);
+        Path log = resolve(root, logPath);
+        Path entrypoint = resolve(root, entrypointPath);
+        Path config = resolve(root, configPath);
+        DatasetStats stats = datasetStats(dataset, dataFormat);
+        boolean datasetExists = Files.isRegularFile(dataset);
+        boolean artifactExists = artifact != null && Files.isRegularFile(artifact);
+        boolean logExists = log != null && Files.isRegularFile(log);
+        boolean codeExists = entrypoint != null && Files.isRegularFile(entrypoint);
+        Map<String, Object> metrics = latestMetricsFromLog(log);
+
+        LinkedHashMap<String, Object> model = new LinkedHashMap<>();
+        model.put("id", id);
+        model.put("name", name);
+        model.put("displayNameZh", displayNameZh);
+        model.put("taskType", "recommendation");
+        model.put("taskTypeZh", "推荐系统");
+        model.put("architecture", architecture);
+        model.put("framework", frameworkFor(architecture));
+        model.put("modelGroup", architecture);
+        model.put("description", description);
+        model.put("descriptionZh", description);
+        model.put("catalogSource", "本地模型目录");
+        model.put("metrics", metrics.isEmpty()
+            ? unavailableMetrics("当前模型目录没有可读取的评估日志。")
+            : metrics);
+        model.put("datasetSummary", datasetSummary(datasetName, dataSource, dataFormat, dataset, stats));
+        model.put("trainingSummary", trainingSummary(root, artifact, log, entrypoint, config, callableThroughBackend));
+        model.put("parameterSummary", withDataFormat(parameterSummary, dataFormat));
+        model.put("visualProfile", visualProfile(datasetExists, artifactExists, logExists, codeExists, callableThroughBackend));
+        model.put("isOfficial", true);
+        model.put("official", true);
+        model.put("readOnly", true);
+        model.put("canManage", false);
+        model.put("canSync", false);
+        model.put("databaseBacked", false);
+        model.put("online", false);
+        model.put("canExecute", callableThroughBackend && artifactExists && datasetExists);
+        String integrationStatus = integrationStatus(datasetExists, artifactExists, logExists, codeExists, callableThroughBackend);
+        model.put("integrationStatus", integrationStatus);
+        model.put("statusLabel", statusLabelFor(integrationStatus));
+        model.put("latencyMs", null);
+        model.put("endpoint", callableThroughBackend ? "/api/v1/prediction/recommend" : null);
+        model.put("serviceUrl", callableThroughBackend ? "http://127.0.0.1:5000" : null);
+        model.put("artifactExists", artifactExists);
+        model.put("datasetExists", datasetExists);
+        model.put("artifactPath", pathText(root, artifact));
+        model.put("dataPath", pathText(root, dataset));
+        model.put("entrypointPath", pathText(root, entrypoint));
+        model.put("configPath", pathText(root, config));
+        model.put("metricSource", logExists ? pathText(root, log) : "当前目录没有评估日志");
+        model.put("statusReason", statusReason(datasetExists, artifactExists, logExists, codeExists, callableThroughBackend));
+        model.put("dataSource", dataSource);
+        return model;
+    }
+
+    private Map<String, Object> enrichRuntimeStatus(Map<String, Object> model, Map<String, Object> bsarecHealth) {
+        if (!"bsarec-job".equals(String.valueOf(model.get("id")))) {
+            return model;
+        }
+        boolean artifactExists = Boolean.TRUE.equals(model.get("artifactExists"));
+        boolean datasetExists = Boolean.TRUE.equals(model.get("datasetExists"));
+        boolean serviceOnline = Boolean.TRUE.equals(bsarecHealth.get("online"));
+        model.put("online", serviceOnline);
+        model.put("canExecute", artifactExists && datasetExists);
+        model.put("integrationStatus", serviceOnline ? "online" : "service-offline");
+        model.put("statusLabel", serviceOnline ? "在线" : "服务离线");
+        model.put("latencyMs", bsarecHealth.get("elapsedMs"));
+        model.put("serviceUrl", bsarecHealth.get("serviceUrl"));
+        model.put("runtimeHealth", bsarecHealth);
+        model.put("jobInfoExists", Files.isRegularFile(projectRoot().resolve("model/BSARec-main-api/output/item_id_to_job_info.json")));
+        model.put("statusReason", serviceOnline
+            ? "BSARec Flask 服务已响应 /health，后端代理可以调用 /recommend。"
+            : "权重和 Job.txt 数据已存在，但 BSARec Flask /health 当前不可达。");
+        model.put("visualProfile", linked(
+            "数据就绪度", datasetExists ? 100 : 0,
+            "权重就绪度", artifactExists ? 100 : 0,
+            "指标可信度", 100,
+            "代码就绪度", 100,
+            "服务就绪度", serviceOnline ? 100 : 0
+        ));
+        return model;
+    }
+
+    private Map<String, Object> latestMetricsFromLog(Path log) {
+        if (log == null || !Files.isRegularFile(log)) {
+            return Map.of();
+        }
+        try {
+            List<String> lines = Files.readAllLines(log, StandardCharsets.UTF_8);
+            LinkedHashMap<String, Object> metrics = new LinkedHashMap<>();
+            Object latestLoss = null;
+            Object latestLossEpoch = null;
+            for (int i = lines.size() - 1; i >= 0; i--) {
+                String line = lines.get(i);
+                LinkedHashMap<String, Object> pairs = metricPairsFromLine(line);
+                if (latestLoss == null) {
+                    String lossKey = firstExistingKey(pairs, "rec_loss", "loss", "Loss", "train_loss", "Train Loss", "masked_lm_loss");
+                    if (lossKey != null) {
+                        latestLoss = pairs.get(lossKey);
+                        String epochKey = firstExistingKey(pairs, "epoch", "Epoch");
+                        latestLossEpoch = epochKey == null ? null : pairs.get(epochKey);
+                    }
+                }
+
+                if (metrics.isEmpty() && (line.contains("NDCG") || line.contains("HR@") || line.contains("HIT@") || line.contains("Recall@") || line.contains("MRR"))) {
+                    metrics.putAll(pairs);
+                    if (metrics.containsKey("HIT@10") && !metrics.containsKey("HR@10")) {
+                        metrics.put("HR@10", metrics.get("HIT@10"));
+                    }
+                }
+
+                if (!metrics.isEmpty() && latestLoss != null) {
+                    break;
+                }
+            }
+            if (latestLoss != null) {
+                metrics.putIfAbsent("Loss", latestLoss);
+                if (latestLossEpoch != null) {
+                    metrics.putIfAbsent("Loss Epoch", latestLossEpoch);
+                }
+            }
+            if (!metrics.isEmpty()) {
+                return metrics;
+            }
+        } catch (IOException ignored) {
+            return Map.of();
+        }
+        return Map.of();
+    }
+
+    private LinkedHashMap<String, Object> metricPairsFromLine(String line) {
+        LinkedHashMap<String, Object> metrics = new LinkedHashMap<>();
+        Matcher matcher = METRIC_PAIR.matcher(line);
+        while (matcher.find()) {
+            String key = matcher.group(1).trim();
+            String value = matcher.group(2).trim();
+            metrics.put(key, value);
+        }
+        return metrics;
+    }
+
+    private String firstExistingKey(Map<String, Object> values, String... keys) {
+        for (String key : keys) {
+            if (values.containsKey(key)) {
+                return key;
+            }
+        }
         return null;
     }
 
-    private String getUseCases(String taskType) {
-        return switch (taskType) {
-            case "classification" -> "- 图像分类\n- 迁移学习特征提取\n- 细粒度识别\n- 医学影像分析";
-            case "detection" -> "- 实时目标检测\n- 安防监控\n- 自动驾驶感知\n- 工业缺陷检测";
-            case "segmentation" -> "- 语义分割\n- 医学图像分割\n- 自动驾驶场景理解\n- 遥感图像分析";
-            case "recommendation" -> "- CTR 预估\n- 个性化推荐\n- 广告排序\n- 用户行为预测";
-            case "nlp" -> "- 文本分类\n- 情感分析\n- 命名实体识别\n- 文本生成与摘要";
-            default -> "- 通用深度学习任务";
+    private DatasetStats datasetStats(Path path, DataFormat format) {
+        if (path == null || !Files.isRegularFile(path)) {
+            return DatasetStats.empty();
+        }
+        if (format == DataFormat.ARCHIVE) {
+            return new DatasetStats(0, 0, 0, 0, 0, 0.0, 0.0, 0.0, 0, null, null, null, null, null, fileSize(path));
+        }
+
+        Set<String> users = new HashSet<>();
+        Set<String> items = new HashSet<>();
+        long records = 0;
+        long interactions = 0;
+        int maxSequence = 0;
+        long ratingCount = 0;
+        double ratingSum = 0.0;
+        Double minRating = null;
+        Double maxRating = null;
+        Long minTimestamp = null;
+        Long maxTimestamp = null;
+
+        try (var lines = Files.lines(path, StandardCharsets.UTF_8)) {
+            boolean[] firstLine = {true};
+            for (String line : (Iterable<String>) lines::iterator) {
+                String trimmed = line.trim();
+                if (trimmed.isEmpty()) {
+                    continue;
+                }
+                if (firstLine[0] && format == DataFormat.RECBOLE_ATOMIC) {
+                    firstLine[0] = false;
+                    continue;
+                }
+                firstLine[0] = false;
+                records++;
+                String[] parts = format == DataFormat.RECBOLE_ATOMIC ? trimmed.split("\\t+") : trimmed.split("\\s+");
+                if (parts.length < 2) {
+                    continue;
+                }
+                users.add(parts[0]);
+                if (format == DataFormat.USER_ITEM_RATING_TIME || format == DataFormat.RECBOLE_ATOMIC || format == DataFormat.USER_ITEM) {
+                    items.add(parts[1]);
+                    interactions++;
+                    maxSequence = Math.max(maxSequence, 1);
+                    if (format == DataFormat.USER_ITEM_RATING_TIME || format == DataFormat.RECBOLE_ATOMIC) {
+                        Double rating = parts.length > 2 ? parseDouble(parts[2]) : null;
+                        if (rating != null) {
+                            ratingCount++;
+                            ratingSum += rating;
+                            minRating = minRating == null ? rating : Math.min(minRating, rating);
+                            maxRating = maxRating == null ? rating : Math.max(maxRating, rating);
+                        }
+                        Long timestamp = parts.length > 3 ? parseTimestamp(parts[3]) : null;
+                        if (timestamp != null) {
+                            minTimestamp = minTimestamp == null ? timestamp : Math.min(minTimestamp, timestamp);
+                            maxTimestamp = maxTimestamp == null ? timestamp : Math.max(maxTimestamp, timestamp);
+                        }
+                    }
+                    continue;
+                }
+                int sequenceLength = 0;
+                for (int i = 1; i < parts.length; i++) {
+                    items.add(parts[i]);
+                    sequenceLength++;
+                }
+                interactions += sequenceLength;
+                maxSequence = Math.max(maxSequence, sequenceLength);
+            }
+        } catch (IOException ignored) {
+            return DatasetStats.empty();
+        }
+        double avgInteractionsPerUser = users.isEmpty() ? 0.0 : (double) interactions / users.size();
+        double density = users.isEmpty() || items.isEmpty() ? 0.0 : (double) interactions / ((double) users.size() * items.size());
+        Double meanRating = ratingCount == 0 ? null : ratingSum / ratingCount;
+        return new DatasetStats(
+            records,
+            users.size(),
+            items.size(),
+            interactions,
+            maxSequence,
+            avgInteractionsPerUser,
+            density,
+            ratingSum,
+            ratingCount,
+            minRating,
+            maxRating,
+            meanRating,
+            minTimestamp,
+            maxTimestamp,
+            fileSize(path)
+        );
+    }
+
+    private Map<String, Object> datasetSummary(
+        String datasetName,
+        String dataSource,
+        DataFormat format,
+        Path dataset,
+        DatasetStats stats
+    ) {
+        LinkedHashMap<String, Object> summary = new LinkedHashMap<>();
+        summary.put("Dataset", datasetName);
+        summary.put("Data source", dataSource);
+        summary.put("Data format", format.label);
+        summary.put("数据文件", dataset == null ? "缺失" : dataset.getFileName().toString());
+        summary.put("文件大小", stats.fileSizeText);
+        if (format == DataFormat.ARCHIVE) {
+            summary.put("归档状态", Files.isRegularFile(dataset) ? "存在" : "缺失");
+            return summary;
+        }
+        summary.put("User scale", number(stats.users));
+        summary.put("Item scale", number(stats.items));
+        summary.put("Interactions", number(stats.interactions));
+        summary.put("Records", number(stats.records));
+        summary.put("Max sequence length", stats.maxSequenceLength > 0 ? number(stats.maxSequenceLength) : "未计算");
+        summary.put("Avg interactions/user", stats.users > 0 ? decimal(stats.avgInteractionsPerUser) : "Not calculated");
+        summary.put("Density", stats.users > 0 && stats.items > 0 ? percent(stats.density) : "Not calculated");
+        summary.put("Rating range", ratingRange(stats));
+        summary.put("Rating mean", stats.meanRating == null ? "Not recorded" : decimal(stats.meanRating));
+        summary.put("Timestamp range", timestampRange(stats));
+        summary.put("Stats source", "Calculated by scanning the local dataset file.");
+        return summary;
+    }
+
+    private Map<String, Object> trainingSummary(
+        Path root,
+        Path artifact,
+        Path log,
+        Path entrypoint,
+        Path config,
+        boolean callableThroughBackend
+    ) {
+        return linked(
+            "权重文件", artifact != null && Files.isRegularFile(artifact) ? "存在" : "缺失",
+            "评估日志", log != null && Files.isRegularFile(log) ? pathText(root, log) : "缺失",
+            "入口脚本", entrypoint != null && Files.isRegularFile(entrypoint) ? pathText(root, entrypoint) : "缺失",
+            "配置文件", config != null && Files.isRegularFile(config) ? pathText(root, config) : "不需要或未提供",
+            "推理服务", callableThroughBackend ? "后端代理 /api/v1/prediction/recommend" : "未注册"
+        );
+    }
+
+    private Map<String, Object> visualProfile(
+        boolean datasetExists,
+        boolean artifactExists,
+        boolean logExists,
+        boolean codeExists,
+        boolean callableThroughBackend
+    ) {
+        return linked(
+            "数据就绪度", datasetExists ? 100 : 0,
+            "权重就绪度", artifactExists ? 100 : 0,
+            "指标可信度", logExists ? 100 : 0,
+            "代码就绪度", codeExists ? 100 : 0,
+            "服务就绪度", callableThroughBackend ? 50 : 0
+        );
+    }
+
+    private Map<String, Object> withDataFormat(Map<String, Object> parameterSummary, DataFormat format) {
+        LinkedHashMap<String, Object> copy = new LinkedHashMap<>(parameterSummary);
+        copy.put("Data format", format.label);
+        return copy;
+    }
+
+    private String integrationStatus(
+        boolean datasetExists,
+        boolean artifactExists,
+        boolean logExists,
+        boolean codeExists,
+        boolean callableThroughBackend
+    ) {
+        if (callableThroughBackend) {
+            return "service-offline";
+        }
+        if (artifactExists && logExists && datasetExists) {
+            return "artifact-and-log";
+        }
+        if (artifactExists && datasetExists) {
+            return "artifact-only";
+        }
+        if (datasetExists && codeExists) {
+            return "code-and-data";
+        }
+        if (datasetExists) {
+            return "data-only";
+        }
+        return "missing-data";
+    }
+
+    private String statusLabelFor(String integrationStatus) {
+        return switch (integrationStatus) {
+            case "online" -> "在线";
+            case "service-offline" -> "服务离线";
+            case "artifact-and-log" -> "权重+日志";
+            case "artifact-only" -> "仅有权重";
+            case "code-and-data" -> "代码+数据";
+            case "data-only" -> "仅有数据";
+            case "missing-data" -> "缺少数据";
+            default -> "未注册推理";
         };
     }
 
-    private record OfficialModel(
-        String name,
-        String displayNameZh,
-        String taskType,
-        String taskTypeZh,
-        double paramCountM,
-        String inputSize,
-        String framework
+    private String statusReason(
+        boolean datasetExists,
+        boolean artifactExists,
+        boolean logExists,
+        boolean codeExists,
+        boolean callableThroughBackend
     ) {
+        if (callableThroughBackend) {
+            return "本地数据和权重已登记，运行状态由 BSARec Flask 服务健康检查决定。";
+        }
+        if (artifactExists && logExists) {
+            return "本地权重和评估日志已存在，但 DeepInsight 后端尚未为该模型注册推理接口。";
+        }
+        if (datasetExists && codeExists) {
+            return "本地代码和真实数据已存在，但还没有登记权重或可调用的后端推理接口。";
+        }
+        if (datasetExists) {
+            return "真实本地数据已存在，但未在预期位置找到可运行入口脚本。";
+        }
+        return "登记路径下没有找到可用数据文件。";
+    }
+
+    private Map<String, Object> unavailableMetrics(String reason) {
+        return linked("指标状态", "暂无真实评估日志", "原因", reason);
+    }
+
+    private String frameworkFor(String architecture) {
+        if ("BERT4Rec".equals(architecture) || "SASRec".equals(architecture) || "TiSASRec".equals(architecture)) {
+            return "TensorFlow";
+        }
+        if ("RecBole".equals(architecture) || "DuoRec".equals(architecture) || "FEARec".equals(architecture)) {
+            return "PyTorch / RecBole";
+        }
+        return "PyTorch";
+    }
+
+    private Map<String, Object> copyModel(Map<String, Object> source) {
+        return new LinkedHashMap<>(source);
+    }
+
+    private Path resolve(Path root, String relativePath) {
+        if (relativePath == null || relativePath.isBlank()) {
+            return null;
+        }
+        return root.resolve(relativePath).normalize();
+    }
+
+    private String pathText(Path root, Path path) {
+        if (path == null) {
+            return "";
+        }
+        Path normalized = path.toAbsolutePath().normalize();
+        Path normalizedRoot = root.toAbsolutePath().normalize();
+        if (normalized.startsWith(normalizedRoot)) {
+            return normalizedRoot.relativize(normalized).toString();
+        }
+        return normalized.toString();
+    }
+
+    private long fileSize(Path path) {
+        try {
+            return Files.isRegularFile(path) ? Files.size(path) : 0L;
+        } catch (IOException ignored) {
+            return 0L;
+        }
+    }
+
+    private String number(long value) {
+        return NumberFormat.getIntegerInstance(Locale.US).format(value);
+    }
+
+    private String decimal(double value) {
+        return String.format(Locale.US, "%.2f", value);
+    }
+
+    private String percent(double ratio) {
+        return String.format(Locale.US, "%.4f%%", ratio * 100.0);
+    }
+
+    private String ratingRange(DatasetStats stats) {
+        if (stats.minRating == null || stats.maxRating == null) {
+            return "Not recorded";
+        }
+        return String.format(Locale.US, "%.1f - %.1f", stats.minRating, stats.maxRating);
+    }
+
+    private String timestampRange(DatasetStats stats) {
+        if (stats.minTimestamp == null || stats.maxTimestamp == null) {
+            return "Not recorded";
+        }
+        return DATE_FORMAT.format(Instant.ofEpochSecond(stats.minTimestamp))
+            + " - "
+            + DATE_FORMAT.format(Instant.ofEpochSecond(stats.maxTimestamp));
+    }
+
+    private Double parseDouble(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Double.parseDouble(value.trim());
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private Long parseTimestamp(String value) {
+        Double parsed = parseDouble(value);
+        return parsed == null ? null : parsed.longValue();
+    }
+
+    private String formatBytes(long bytes) {
+        if (bytes <= 0) {
+            return "0 B";
+        }
+        double value = bytes;
+        String[] units = {"B", "KB", "MB", "GB"};
+        int unit = 0;
+        while (value >= 1024 && unit < units.length - 1) {
+            value /= 1024;
+            unit++;
+        }
+        return String.format(Locale.US, "%.1f %s", value, units[unit]);
+    }
+
+    private Path projectRoot() {
+        Path current = Paths.get("").toAbsolutePath().normalize();
+        if (Files.isDirectory(current.resolve("model"))) {
+            return current;
+        }
+        Path parent = current.getParent();
+        if (parent != null && Files.isDirectory(parent.resolve("model"))) {
+            return parent;
+        }
+        return current;
+    }
+
+    private static Map<String, Object> linked(Object... values) {
+        LinkedHashMap<String, Object> map = new LinkedHashMap<>();
+        for (int i = 0; i + 1 < values.length; i += 2) {
+            map.put(String.valueOf(values[i]), values[i + 1]);
+        }
+        return map;
+    }
+
+    private enum DataFormat {
+        USER_SEQUENCE("用户序列文本"),
+        USER_ITEM("用户-物品交互文本"),
+        USER_ITEM_RATING_TIME("用户-物品-评分-时间戳文本"),
+        RECBOLE_ATOMIC("RecBole atomic 交互文件"),
+        ARCHIVE("数据归档文件");
+
+        private final String label;
+
+        DataFormat(String label) {
+            this.label = label;
+        }
+    }
+
+    private record DataAsset(String name, String path, DataFormat format) {
+    }
+
+    private record DatasetStats(
+        long records,
+        long users,
+        long items,
+        long interactions,
+        int maxSequenceLength,
+        double avgInteractionsPerUser,
+        double density,
+        double ratingSum,
+        long ratingCount,
+        Double minRating,
+        Double maxRating,
+        Double meanRating,
+        Long minTimestamp,
+        Long maxTimestamp,
+        String fileSizeText
+    ) {
+        static DatasetStats empty() {
+            return new DatasetStats(0, 0, 0, 0, 0, 0.0, 0.0, 0.0, 0, null, null, null, null, null, "0 B");
+        }
+
+        DatasetStats(
+            long records,
+            long users,
+            long items,
+            long interactions,
+            int maxSequenceLength,
+            double avgInteractionsPerUser,
+            double density,
+            double ratingSum,
+            long ratingCount,
+            Double minRating,
+            Double maxRating,
+            Double meanRating,
+            Long minTimestamp,
+            Long maxTimestamp,
+            long bytes
+        ) {
+            this(
+                records,
+                users,
+                items,
+                interactions,
+                maxSequenceLength,
+                avgInteractionsPerUser,
+                density,
+                ratingSum,
+                ratingCount,
+                minRating,
+                maxRating,
+                meanRating,
+                minTimestamp,
+                maxTimestamp,
+                formatStaticBytes(bytes)
+            );
+        }
+
+        private static String formatStaticBytes(long bytes) {
+            if (bytes <= 0) {
+                return "0 B";
+            }
+            double value = bytes;
+            String[] units = {"B", "KB", "MB", "GB"};
+            int unit = 0;
+            while (value >= 1024 && unit < units.length - 1) {
+                value /= 1024;
+                unit++;
+            }
+            return String.format(Locale.US, "%.1f %s", value, units[unit]);
+        }
     }
 }

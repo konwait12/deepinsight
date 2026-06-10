@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 /**
  * 数据集实体
  * <p>
- * 记录用户上传的数据集元信息，支持分类/检测/分割等任务类型。
+ * 记录用户上传的数据集元信息，当前主要用于推荐数据、表格数据和工作区素材。
  * 实际文件存储在文件系统中，此表记录索引和状态。
  */
 @Entity
@@ -26,11 +26,11 @@ public class Dataset {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    /** 任务类型：classification/detection/segmentation/other */
+    /** 任务类型：recommendation/nlp/audio/other */
     @Column(name = "task_type", length = 50)
     private String taskType;
 
-    /** 数据格式：coco/voc/yolo/csv/image_folder */
+    /** 数据格式：csv/zip/txt/recbole_atomic/user_sequence */
     @Column(length = 30)
     private String format;
 

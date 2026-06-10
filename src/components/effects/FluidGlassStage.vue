@@ -75,10 +75,32 @@
           @pointercancel="handleCardPointerUp($event)"
           @pointerleave="handleCardPointerLeave"
         >
-          <span>{{ item.tag }}</span>
-          <h3>{{ item.title }}</h3>
+          <header class="fluid-card-head">
+            <span>{{ item.tag }}</span>
+            <strong>{{ item.title }}</strong>
+          </header>
           <div class="fluid-lines">
             <em v-for="line in item.lines" :key="line">{{ line }}</em>
+          </div>
+          <div class="feature-dashboard">
+            <section class="feature-focus">
+              <span>{{ featureFocusLabel(index) }}</span>
+              <strong>{{ featureFocusValue(item, index) }}</strong>
+              <small>{{ featureFocusHint(item, index) }}</small>
+            </section>
+            <div class="feature-metrics">
+              <article v-for="metric in featureMetrics(item, index)" :key="metric.label">
+                <span>{{ metric.label }}</span>
+                <strong>{{ metric.value }}</strong>
+              </article>
+            </div>
+          </div>
+          <div class="feature-rows">
+            <p v-for="row in featureRows(item, index)" :key="row.name">
+              <b></b>
+              <span>{{ row.name }}</span>
+              <em>{{ row.value }}</em>
+            </p>
           </div>
           <div class="fluid-chart">
             <i
@@ -149,10 +171,32 @@
               :class="`card-${index + 1}`"
               :style="{ '--accent': item.accent, ...cardMotionVars(index) }"
             >
-              <span>{{ item.tag }}</span>
-              <h3>{{ item.title }}</h3>
+              <header class="fluid-card-head">
+                <span>{{ item.tag }}</span>
+                <strong>{{ item.title }}</strong>
+              </header>
               <div class="fluid-lines">
                 <em v-for="line in item.lines" :key="line">{{ line }}</em>
+              </div>
+              <div class="feature-dashboard">
+                <section class="feature-focus">
+                  <span>{{ featureFocusLabel(index) }}</span>
+                  <strong>{{ featureFocusValue(item, index) }}</strong>
+                  <small>{{ featureFocusHint(item, index) }}</small>
+                </section>
+                <div class="feature-metrics">
+                  <article v-for="metric in featureMetrics(item, index)" :key="metric.label">
+                    <span>{{ metric.label }}</span>
+                    <strong>{{ metric.value }}</strong>
+                  </article>
+                </div>
+              </div>
+              <div class="feature-rows">
+                <p v-for="row in featureRows(item, index)" :key="row.name">
+                  <b></b>
+                  <span>{{ row.name }}</span>
+                  <em>{{ row.value }}</em>
+                </p>
               </div>
               <div class="fluid-chart">
                 <i
@@ -254,95 +298,101 @@ const sceneCopy = computed(() => {
   if (localeKey.value === 'en') {
     return {
       title: 'DeepInsight',
-      flow: 'Training / Analysis / Knowledge / AI Review / Visualization',
+      flow: 'Model Status / Data Assets / Metric Charts / Service State / AI Context',
       modules: [
-        { accent: 'var(--primary-color)', tag: 'Capability 01', title: 'Training Control', lines: ['Task Queue', 'GPU Monitor', 'Metric Tracking'], bars: [36, 58, 82, 54, 88, 70, 46, 76] },
-        { accent: 'var(--accent-glow)', tag: 'Capability 02', title: 'Model Analysis', lines: ['Curve Compare', 'Risk Review', 'Report Draft'], bars: [78, 48, 92, 66, 42, 84, 60, 72] },
-        { accent: 'var(--warning-glow)', tag: 'Capability 03', title: 'Knowledge Base', lines: ['Dataset Link', 'Version Trace', 'Asset Index'], bars: [44, 76, 56, 90, 64, 52, 84, 62] },
-        { accent: 'var(--danger-glow)', tag: 'Capability 04', title: 'AI Analysis', lines: ['State Summary', 'Risk Review', 'Experiment Plan'], bars: [86, 70, 48, 76, 58, 94, 66, 74] },
-        { accent: 'var(--primary-color)', tag: 'Capability 05', title: 'Visual Analytics', lines: ['Run View', 'Signal Map', 'Quality Gate'], bars: [52, 88, 68, 44, 82, 60, 96, 72] },
+        { accent: 'var(--primary-color)', tag: 'Module 01', title: 'Model Catalog', lines: ['9 Models', 'RecSys Only', 'Ready State'], bars: [36, 58, 82, 54, 88, 70, 46, 76] },
+        { accent: 'var(--accent-glow)', tag: 'Module 02', title: 'Service State', lines: ['BSARec Job', 'HTTP Proxy', 'Offline Marked'], bars: [78, 48, 92, 66, 42, 84, 60, 72] },
+        { accent: 'var(--warning-glow)', tag: 'Module 03', title: 'Dataset Assets', lines: ['Real Files', 'Atomic Format', 'History'], bars: [44, 76, 56, 90, 64, 52, 84, 62] },
+        { accent: 'var(--danger-glow)', tag: 'Module 04', title: 'AI Context', lines: ['Site Knowledge', 'Page Intent', 'Material Scope'], bars: [86, 70, 48, 76, 58, 94, 66, 74] },
+        { accent: 'var(--primary-color)', tag: 'Module 05', title: 'Metric Charts', lines: ['HR@20', 'NDCG@20', 'Log Coverage'], bars: [52, 88, 68, 44, 82, 60, 96, 72] },
       ] satisfies ModuleCard[],
     }
   }
 
   return {
     title: 'DeepInsight',
-    flow: '训练 / 分析 / 知识 / AI 复盘 / 可视化',
+    flow: '模型状态 / 数据资产 / 指标图表 / 服务状态 / AI 上下文',
     modules: [
-      { accent: 'var(--primary-color)', tag: '功能 01', title: '训练调度', lines: ['任务队列', '资源监控', '指标追踪'], bars: [36, 58, 82, 54, 88, 70, 46, 76] },
-      { accent: 'var(--accent-glow)', tag: '功能 02', title: '模型分析', lines: ['曲线对比', '风险复盘', '报告草稿'], bars: [78, 48, 92, 66, 42, 84, 60, 72] },
-      { accent: 'var(--warning-glow)', tag: '功能 03', title: '知识库', lines: ['数据关联', '版本追踪', '资产索引'], bars: [44, 76, 56, 90, 64, 52, 84, 62] },
-      { accent: 'var(--danger-glow)', tag: '功能 04', title: 'AI 分析', lines: ['状态总结', '风险复盘', '实验建议'], bars: [86, 70, 48, 76, 58, 94, 66, 74] },
-      { accent: 'var(--primary-color)', tag: '功能 05', title: '可视化分析', lines: ['运行视图', '信号地图', '质量门禁'], bars: [52, 88, 68, 44, 82, 60, 96, 72] },
+      { accent: 'var(--primary-color)', tag: '模块 01', title: '模型清单状态', lines: ['9 个模型', '推荐系统', '就绪状态'], bars: [36, 58, 82, 54, 88, 70, 46, 76] },
+      { accent: 'var(--accent-glow)', tag: '模块 02', title: '服务状态', lines: ['BSARec Job', 'HTTP 代理', '离线已标注'], bars: [78, 48, 92, 66, 42, 84, 60, 72] },
+      { accent: 'var(--warning-glow)', tag: '模块 03', title: '数据资产状态', lines: ['数据文件', '原子格式', '历史记录'], bars: [44, 76, 56, 90, 64, 52, 84, 62] },
+      { accent: 'var(--danger-glow)', tag: '模块 04', title: 'AI 上下文状态', lines: ['站内知识', '页面意图', '功能范围'], bars: [86, 70, 48, 76, 58, 94, 66, 74] },
+      { accent: 'var(--primary-color)', tag: '模块 05', title: '指标图表状态', lines: ['HR@20', 'NDCG@20', '日志覆盖'], bars: [52, 88, 68, 44, 82, 60, 96, 72] },
     ] satisfies ModuleCard[],
   }
 })
 
-const signalCurves: SignalCurve[] = [
-  {
-    className: 'signal-loss',
-    label: 'loss(t)',
-    value: '0.184',
-    tone: 'primary',
-    area: 'M0 52 C38 68 62 40 96 58 C128 75 146 116 184 104 C220 92 235 52 272 64 C304 74 326 42 360 36 V180 H0 Z',
-    path: 'M0 52 C38 68 62 40 96 58 C128 75 146 116 184 104 C220 92 235 52 272 64 C304 74 326 42 360 36',
-    dots: [{ x: 184, y: 104 }, { x: 272, y: 64 }],
-  },
-  {
-    className: 'signal-accuracy',
-    label: 'accuracy',
-    value: '94.7%',
-    tone: 'accent',
-    area: 'M0 138 C34 128 58 132 92 116 C130 98 144 80 178 82 C220 84 242 54 282 46 C314 40 336 30 360 26 V180 H0 Z',
-    path: 'M0 138 C34 128 58 132 92 116 C130 98 144 80 178 82 C220 84 242 54 282 46 C314 40 336 30 360 26',
-    dots: [{ x: 178, y: 82 }, { x: 282, y: 46 }],
-  },
-  {
-    className: 'signal-scheduler',
-    label: 'lr schedule',
-    value: '3e-4',
-    tone: 'warning',
-    path: 'M0 126 L56 126 L58 58 L118 58 L120 88 L178 88 L180 48 L238 48 L240 112 L300 112 L302 70 L360 70',
-    ghost: 'M0 146 C48 142 92 138 132 126 C178 112 204 96 246 100 C292 104 320 88 360 84',
-    dots: [{ x: 180, y: 48 }, { x: 302, y: 70 }],
-  },
-  {
-    className: 'signal-gpu',
-    label: 'gpu load',
-    value: '87%',
-    tone: 'danger',
-    area: 'M0 116 C28 66 54 82 84 74 C124 64 140 128 176 104 C214 78 232 90 260 68 C302 34 330 58 360 46 V180 H0 Z',
-    path: 'M0 116 C28 66 54 82 84 74 C124 64 140 128 176 104 C214 78 232 90 260 68 C302 34 330 58 360 46',
-    dots: [{ x: 176, y: 104 }, { x: 260, y: 68 }],
-  },
-  {
-    className: 'signal-grad',
-    label: 'grad norm',
-    value: '1.32',
-    tone: 'primary',
-    path: 'M0 96 C32 102 54 42 82 70 C110 98 134 96 160 72 C192 42 204 150 238 118 C272 86 288 92 318 68 C338 52 348 58 360 50',
-    ghost: 'M0 124 C46 120 72 108 112 112 C168 118 194 132 238 118 C292 102 314 86 360 92',
-    dots: [{ x: 204, y: 150 }, { x: 318, y: 68 }],
-  },
-  {
-    className: 'signal-throughput',
-    label: 'throughput',
-    value: '412/s',
-    tone: 'accent',
-    area: 'M0 142 C36 134 58 126 92 124 C132 122 152 92 188 96 C228 100 242 62 284 64 C322 66 338 46 360 42 V180 H0 Z',
-    path: 'M0 142 C36 134 58 126 92 124 C132 122 152 92 188 96 C228 100 242 62 284 64 C322 66 338 46 360 42',
-    dots: [{ x: 188, y: 96 }, { x: 284, y: 64 }],
-  },
-  {
-    className: 'signal-f1',
-    label: 'val f1',
-    value: '0.913',
-    tone: 'warning',
-    area: 'M0 128 C30 118 56 124 84 100 C118 72 144 76 176 86 C214 98 238 70 270 52 C310 30 334 38 360 28 V180 H0 Z',
-    path: 'M0 128 C30 118 56 124 84 100 C118 72 144 76 176 86 C214 98 238 70 270 52 C310 30 334 38 360 28',
-    dots: [{ x: 176, y: 86 }, { x: 270, y: 52 }],
-  },
-]
+const signalCurves = computed<SignalCurve[]>(() => {
+  const labels = localeKey.value === 'en'
+    ? ['HR@10', 'NDCG@10', 'MRR', 'Service health', 'Log coverage', 'Data scale', 'Top-K fill']
+    : ['命中率 HR@10', '排序 NDCG@10', '首中 MRR', '服务健康', '日志覆盖', '数据规模', 'Top-K 填充']
+
+  return [
+    {
+      className: 'signal-loss',
+      label: labels[0],
+      value: '0.4935',
+      tone: 'primary',
+      area: 'M0 52 C38 68 62 40 96 58 C128 75 146 116 184 104 C220 92 235 52 272 64 C304 74 326 42 360 36 V180 H0 Z',
+      path: 'M0 52 C38 68 62 40 96 58 C128 75 146 116 184 104 C220 92 235 52 272 64 C304 74 326 42 360 36',
+      dots: [{ x: 184, y: 104 }, { x: 272, y: 64 }],
+    },
+    {
+      className: 'signal-accuracy',
+      label: labels[1],
+      value: '0.3317',
+      tone: 'accent',
+      area: 'M0 138 C34 128 58 132 92 116 C130 98 144 80 178 82 C220 84 242 54 282 46 C314 40 336 30 360 26 V180 H0 Z',
+      path: 'M0 138 C34 128 58 132 92 116 C130 98 144 80 178 82 C220 84 242 54 282 46 C314 40 336 30 360 26',
+      dots: [{ x: 178, y: 82 }, { x: 282, y: 46 }],
+    },
+    {
+      className: 'signal-scheduler',
+      label: labels[2],
+      value: '0.2985',
+      tone: 'warning',
+      path: 'M0 126 L56 126 L58 58 L118 58 L120 88 L178 88 L180 48 L238 48 L240 112 L300 112 L302 70 L360 70',
+      ghost: 'M0 146 C48 142 92 138 132 126 C178 112 204 96 246 100 C292 104 320 88 360 84',
+      dots: [{ x: 180, y: 48 }, { x: 302, y: 70 }],
+    },
+    {
+      className: 'signal-gpu',
+      label: labels[3],
+      value: '1/9',
+      tone: 'danger',
+      area: 'M0 116 C28 66 54 82 84 74 C124 64 140 128 176 104 C214 78 232 90 260 68 C302 34 330 58 360 46 V180 H0 Z',
+      path: 'M0 116 C28 66 54 82 84 74 C124 64 140 128 176 104 C214 78 232 90 260 68 C302 34 330 58 360 46',
+      dots: [{ x: 176, y: 104 }, { x: 260, y: 68 }],
+    },
+    {
+      className: 'signal-grad',
+      label: labels[4],
+      value: '2/9',
+      tone: 'primary',
+      path: 'M0 96 C32 102 54 42 82 70 C110 98 134 96 160 72 C192 42 204 150 238 118 C272 86 288 92 318 68 C338 52 348 58 360 50',
+      ghost: 'M0 124 C46 120 72 108 112 112 C168 118 194 132 238 118 C292 102 314 86 360 92',
+      dots: [{ x: 204, y: 150 }, { x: 318, y: 68 }],
+    },
+    {
+      className: 'signal-throughput',
+      label: labels[5],
+      value: '8.1M',
+      tone: 'accent',
+      area: 'M0 142 C36 134 58 126 92 124 C132 122 152 92 188 96 C228 100 242 62 284 64 C322 66 338 46 360 42 V180 H0 Z',
+      path: 'M0 142 C36 134 58 126 92 124 C132 122 152 92 188 96 C228 100 242 62 284 64 C322 66 338 46 360 42',
+      dots: [{ x: 188, y: 96 }, { x: 284, y: 64 }],
+    },
+    {
+      className: 'signal-f1',
+      label: labels[6],
+      value: '10/10',
+      tone: 'warning',
+      area: 'M0 128 C30 118 56 124 84 100 C118 72 144 76 176 86 C214 98 238 70 270 52 C310 30 334 38 360 28 V180 H0 Z',
+      path: 'M0 128 C30 118 56 124 84 100 C118 72 144 76 176 86 C214 98 238 70 270 52 C310 30 334 38 360 28',
+      dots: [{ x: 176, y: 86 }, { x: 270, y: 52 }],
+    },
+  ]
+})
 
 const stageVars = computed<Record<string, string>>(() => ({
   '--progress': scrollProgress.value.toFixed(4),
@@ -422,6 +472,73 @@ function getModeProps() {
 function readCssColor(name: string, fallback: string) {
   const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
   return value || fallback
+}
+
+function featureFocusLabel(index: number) {
+  const zh = localeKey.value === 'zh'
+  return zh
+    ? ['核心入口', '推荐测试', '指标看板', '数据中心', 'AI 工作区'][index] || '功能入口'
+    : ['Primary entry', 'Recommendation test', 'Metric board', 'Data center', 'AI workspace'][index] || 'Feature entry'
+}
+
+function featureFocusValue(item: ModuleCard, index: number) {
+  const zh = localeKey.value === 'zh'
+  const fallback = item.lines[0] || item.title
+  return zh
+    ? ['9 个推荐系统模型', '生成岗位推荐', 'HR / NDCG / MRR', '数据预览与记录', '站内问答与跳转'][index] || fallback
+    : ['9 recommender models', 'Generate job recommendations', 'HR / NDCG / MRR', 'Dataset preview records', 'Q&A and page navigation'][index] || fallback
+}
+
+function featureFocusHint(item: ModuleCard, index: number) {
+  const zh = localeKey.value === 'zh'
+  const fallback = item.lines.slice(0, 2).join(' / ')
+  return zh
+    ? ['状态、参数、数据集和可用操作集中展示', '用真实 Job 序列验证 BSARec 推荐服务', '按模型对比真实日志和缺失指标', '区分用户上传资料与本地模型资产', '基于页面上下文解释并进入对应功能'][index] || fallback
+    : ['Status, parameters, datasets, and actions in one view', 'Validate BSARec with real Job sequences', 'Compare real logs and missing metrics by model', 'Separate user uploads from local model assets', 'Explain page context and open matching features'][index] || fallback
+}
+
+function featureMetrics(item: ModuleCard, index: number) {
+  const zh = localeKey.value === 'zh'
+  const values = [
+    zh
+      ? [{ label: '模型', value: '9' }, { label: '日志', value: '2' }, { label: '代理', value: '1' }]
+      : [{ label: 'Models', value: '9' }, { label: 'Logs', value: '2' }, { label: 'Proxy', value: '1' }],
+    zh
+      ? [{ label: 'Top-K', value: '10' }, { label: '服务', value: '1' }, { label: '占位', value: '0' }]
+      : [{ label: 'Top-K', value: '10' }, { label: 'Service', value: '1' }, { label: 'Fake', value: '0' }],
+    zh
+      ? [{ label: 'HR@10', value: '0.1008' }, { label: 'NDCG', value: '0.3317' }, { label: 'MRR', value: '0.2985' }]
+      : [{ label: 'HR@10', value: '0.1008' }, { label: 'NDCG', value: '0.3317' }, { label: 'MRR', value: '0.2985' }],
+    zh
+      ? [{ label: 'Job', value: '409k' }, { label: 'Beauty', value: '198k' }, { label: 'ML-100K', value: '100k' }]
+      : [{ label: 'Job', value: '409k' }, { label: 'Beauty', value: '198k' }, { label: 'ML-100K', value: '100k' }],
+    zh
+      ? [{ label: '回答', value: 'MD' }, { label: '跳转', value: 'Route' }, { label: '搜索', value: 'Web' }]
+      : [{ label: 'Answer', value: 'MD' }, { label: 'Jump', value: 'Route' }, { label: 'Search', value: 'Web' }],
+  ]
+  return values[index] || item.lines.slice(0, 3).map((line, lineIndex) => ({ label: line, value: String(item.bars[lineIndex] || 0) }))
+}
+
+function featureRows(item: ModuleCard, index: number) {
+  const zh = localeKey.value === 'zh'
+  const rows = [
+    zh
+      ? [{ name: 'BSARec Job', value: '服务离线' }, { name: 'BSARec', value: '权重+日志' }, { name: 'BERT4Rec', value: '代码+数据' }]
+      : [{ name: 'BSARec Job', value: 'service offline' }, { name: 'BSARec', value: 'artifact+log' }, { name: 'BERT4Rec', value: 'code+data' }],
+    zh
+      ? [{ name: '历史岗位序列', value: 'Job.txt' }, { name: '推荐结果', value: 'Top-K' }, { name: '服务边界', value: '清晰标注' }]
+      : [{ name: 'Job history', value: 'Job.txt' }, { name: 'Result', value: 'Top-K' }, { name: 'Boundary', value: 'clearly marked' }],
+    zh
+      ? [{ name: 'BSARec', value: 'HR@10' }, { name: 'FMLP-Rec', value: 'NDCG@10' }, { name: 'SASRec', value: '待补日志' }]
+      : [{ name: 'BSARec', value: 'HR@10' }, { name: 'FMLP-Rec', value: 'NDCG@10' }, { name: 'SASRec', value: 'log pending' }],
+    zh
+      ? [{ name: '用户上传', value: '数据库隔离' }, { name: '官方资产', value: '本地只读' }, { name: '字段预览', value: '可检索' }]
+      : [{ name: 'User uploads', value: 'database scoped' }, { name: 'Official assets', value: 'local read-only' }, { name: 'Field preview', value: 'searchable' }],
+    zh
+      ? [{ name: '页面识别', value: '上下文' }, { name: '相关文章', value: '抽屉预览' }, { name: '联网搜索', value: '可开关' }]
+      : [{ name: 'Page recognition', value: 'context' }, { name: 'Related articles', value: 'drawer' }, { name: 'Web search', value: 'toggle' }],
+  ]
+  return rows[index] || item.lines.map((line) => ({ name: line, value: item.title }))
 }
 
 function syncThemeColors() {
@@ -1020,7 +1137,7 @@ onUnmounted(() => {
     0 30px 90px rgba(0, 0, 0, var(--glass-shadow-opacity)),
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
   backdrop-filter: blur(18px) saturate(150%);
-  cursor: pointer;
+  cursor: grab;
   user-select: none;
   touch-action: none;
   transform:
@@ -1090,7 +1207,7 @@ onUnmounted(() => {
   cursor: grabbing;
 }
 
-.fluid-card span {
+.fluid-card > span {
   display: block;
   color: color-mix(in srgb, var(--accent) 78%, var(--text-primary));
   font-size: 12px;
@@ -1098,11 +1215,24 @@ onUnmounted(() => {
   font-weight: var(--font-weight-title);
 }
 
-.fluid-card h3 {
-  margin: 16px 0 0;
+.fluid-card-head {
+  display: grid;
+  gap: 10px;
+}
+
+.fluid-card-head span {
+  display: block;
+  color: color-mix(in srgb, var(--accent) 78%, var(--text-primary));
+  font-size: 12px;
+  line-height: 1;
+  font-weight: var(--font-weight-title);
+}
+
+.fluid-card-head strong {
+  display: block;
   color: var(--text-primary);
-  font-size: clamp(28px, 3vw, 48px);
-  line-height: 1.02;
+  font-size: clamp(26px, 2.5vw, 42px);
+  line-height: 1.05;
   font-weight: var(--font-weight-title);
 }
 
@@ -1110,7 +1240,7 @@ onUnmounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 20px;
+  margin-top: 18px;
 }
 
 .fluid-lines em {
@@ -1124,15 +1254,137 @@ onUnmounted(() => {
   font-weight: var(--font-weight-label);
 }
 
+.feature-dashboard {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.feature-focus,
+.feature-metrics article,
+.feature-rows {
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border-color));
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.065), transparent),
+    color-mix(in srgb, rgba(var(--glass-bg-rgb), 0.34) 78%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.feature-focus {
+  min-width: 0;
+  padding: 13px 14px;
+}
+
+.feature-focus span,
+.feature-metrics span {
+  display: block;
+  color: color-mix(in srgb, var(--text-secondary) 72%, var(--accent));
+  font-size: 11px;
+  line-height: 1.15;
+  font-weight: var(--font-weight-title);
+}
+
+.feature-focus strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--text-primary);
+  font-size: clamp(17px, 1.45vw, 24px);
+  line-height: 1.18;
+  font-weight: var(--font-weight-title);
+}
+
+.feature-focus small {
+  display: block;
+  margin-top: 8px;
+  color: color-mix(in srgb, var(--text-secondary) 78%, transparent);
+  font-size: 11px;
+  line-height: 1.55;
+  font-weight: var(--font-weight-body);
+}
+
+.feature-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.feature-metrics article {
+  min-width: 0;
+  padding: 11px 10px;
+}
+
+.feature-metrics strong {
+  display: block;
+  margin-top: 7px;
+  color: color-mix(in srgb, var(--accent) 80%, var(--text-primary));
+  font-size: clamp(17px, 1.65vw, 26px);
+  line-height: 1;
+  font-weight: var(--font-weight-title);
+}
+
+.feature-rows {
+  display: grid;
+  gap: 0;
+  margin-top: 12px;
+  padding: 8px;
+}
+
+.feature-rows p {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 8px 9px;
+  border-radius: 12px;
+}
+
+.feature-rows p:first-child {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.feature-rows b {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 72%, transparent);
+}
+
+.feature-rows span,
+.feature-rows em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feature-rows span {
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: var(--font-weight-title);
+}
+
+.feature-rows em {
+  color: color-mix(in srgb, var(--accent) 74%, var(--text-secondary));
+  font-size: 11px;
+  font-style: normal;
+  font-weight: var(--font-weight-label);
+}
+
 .fluid-chart {
   position: absolute;
   left: clamp(18px, 2vw, 28px);
   right: clamp(18px, 2vw, 28px);
   bottom: clamp(18px, 2vw, 28px);
-  height: 28%;
+  height: 17%;
   display: flex;
   align-items: end;
   gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
 .fluid-chart i {
@@ -1434,6 +1686,22 @@ onUnmounted(() => {
     width: auto;
     min-height: 220px;
     border-radius: 22px;
+  }
+
+  .fluid-card-head strong {
+    font-size: clamp(24px, 8vw, 38px);
+  }
+
+  .feature-dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .feature-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .feature-focus small {
+    display: none;
   }
 
   .card-1 {

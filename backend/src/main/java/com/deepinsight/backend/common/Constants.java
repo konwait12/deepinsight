@@ -50,7 +50,8 @@ public final class Constants {
     public static final String[] PUBLIC_GET_PATHS = {
         "/api/v1/models",
         "/api/v1/models/official",
-        "/api/v1/prediction/models"
+        "/api/v1/prediction/models",
+        "/api/v1/prediction/health"
     };
 
     // ==================== 用户角色 ====================

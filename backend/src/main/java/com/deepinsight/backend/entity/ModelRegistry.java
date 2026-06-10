@@ -18,7 +18,7 @@ public class ModelRegistry {
     private String displayNameZh;
 
     @Column(length = 50, nullable = false)
-    private String taskType;  // classification, detection, segmentation, recommendation, nlp, other
+    private String taskType;  // recommendation, nlp, audio, other
 
     @Column(name = "task_type_zh", length = 80)
     private String taskTypeZh;

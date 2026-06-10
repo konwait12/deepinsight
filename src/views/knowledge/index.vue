@@ -9,7 +9,7 @@
         <p>{{ pageText.heroDesc }}</p>
         <div class="hero-actions">
           <button type="button" @click="scrollToTutorials">{{ pageText.startLearning }}</button>
-          <button type="button" class="ghost" @click="showArticleIndex = true">{{ pageText.officialArticles }} {{ officialArticles.length }}</button>
+          <button type="button" class="ghost" @click="openArticleIndex">{{ pageText.officialArticles }} {{ officialArticles.length }}</button>
         </div>
       </div>
       <div class="kg-system-panel">
@@ -64,33 +64,39 @@
         </div>
       </div>
       <div class="mt-6 text-center" v-if="officialArticles.length > 0">
-        <el-button class="article-index-button" @click="showArticleIndex = true">
+        <el-button class="article-index-button" @click="openArticleIndex">
           {{ pageText.viewOfficialPrefix }} {{ officialArticles.length }} {{ pageText.viewOfficialSuffix }}
         </el-button>
       </div>
     </section>
 
-    <Transition name="article-index">
-      <aside v-if="showArticleIndex" class="article-index-panel">
-        <div class="article-index-head">
-          <div>
-            <span>{{ pageText.articleIndexTitle }}</span>
-            <small>{{ pageText.articleIndexHint }}</small>
-          </div>
-          <button type="button" @click="showArticleIndex = false">×</button>
-        </div>
-        <div class="articles-dialog-list">
-          <div v-for="a in officialArticles" :key="a.id" class="article-dialog-item" @click="openKnowledgeArticle(a.id); showArticleIndex = false">
-            <span class="article-dot" :style="{ background: 'var(--primary-color)' }"></span>
+    <Teleport to="body">
+      <Transition name="article-index">
+        <aside
+          v-if="showArticleIndex"
+          class="article-index-panel"
+          :class="{ 'article-index-panel--reader-open': readerOpen }"
+        >
+          <div class="article-index-head">
             <div>
-              <h4>{{ a.title }}</h4>
-              <span class="article-meta-text">{{ pageText.related }}: {{ a.nodeLabel || pageText.general }} · {{ pageText.views }} {{ a.viewCount || 0 }}</span>
+              <span>{{ pageText.articleIndexTitle }}</span>
+              <small>{{ pageText.articleIndexHint }}</small>
             </div>
+            <button type="button" @click="closeArticleIndex">×</button>
           </div>
-          <div v-if="!officialArticles.length" class="article-index-empty">{{ pageText.noOfficialArticles }}</div>
-        </div>
-      </aside>
-    </Transition>
+          <div class="articles-dialog-list">
+            <div v-for="a in officialArticles" :key="a.id" class="article-dialog-item" @click="openKnowledgeArticle(a.id)">
+              <span class="article-dot" :style="{ background: 'var(--primary-color)' }"></span>
+              <div>
+                <h4>{{ a.title }}</h4>
+                <span class="article-meta-text">{{ pageText.related }}: {{ a.nodeLabel || pageText.general }} · {{ pageText.views }} {{ a.viewCount || 0 }}</span>
+              </div>
+            </div>
+            <div v-if="!officialArticles.length" class="article-index-empty">{{ pageText.noOfficialArticles }}</div>
+          </div>
+        </aside>
+      </Transition>
+    </Teleport>
 
     <!-- ========== 训练曲线解读 ========== -->
     <section class="kb-section">
@@ -183,6 +189,7 @@
 
 <script setup lang="ts">
 import { ref, nextTick, onMounted, watch, computed, onBeforeUnmount } from 'vue';
+import { useRoute } from 'vue-router';
 import { useThemeStore } from '@/stores/theme.store';
 import { ArrowDown } from '@element-plus/icons-vue';
 import * as echarts from 'echarts';
@@ -196,6 +203,7 @@ import { ROUTES } from '@/constants';
 
 const themeStore = useThemeStore();
 const { locale } = useI18n();
+const route = useRoute();
 const isZh = computed(() => locale.value.startsWith('zh'));
 const curveRefs = ref<Record<string, HTMLDivElement>>({});
 const setCurveRef = (id: string, el: any) => { if (el) curveRefs.value[id] = el; };
@@ -836,6 +844,40 @@ const officialArticles = ref<any[]>([]);
 const readerOpen = ref(false);
 const activeArticle = ref<any>(null);
 const articleLoading = ref(false);
+const articleIndexRestoreKey = 'deepinsight:knowledge:articleIndex';
+
+const openArticleIndex = () => {
+  showArticleIndex.value = true;
+};
+
+const closeArticleIndex = () => {
+  showArticleIndex.value = false;
+  if (typeof window === 'undefined' || !shouldRestoreArticleIndex(route.query.articleIndex)) return;
+
+  const url = new URL(window.location.href);
+  url.searchParams.delete('articleIndex');
+  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+};
+
+const shouldRestoreArticleIndex = (value: unknown) => {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return raw === 'open' || raw === '1' || raw === 'true';
+};
+
+const consumeArticleIndexRestoreFlag = () => {
+  if (typeof window === 'undefined') return false;
+  const shouldRestore = window.sessionStorage.getItem(articleIndexRestoreKey) === 'open';
+  if (shouldRestore) window.sessionStorage.removeItem(articleIndexRestoreKey);
+  return shouldRestore;
+};
+
+const restoreArticleIndexFromRoute = () => {
+  const fromRoute = shouldRestoreArticleIndex(route.query.articleIndex);
+  const fromSession = consumeArticleIndexRestoreFlag();
+  if (!fromRoute && !fromSession) return;
+
+  openArticleIndex();
+};
 
 const closeKnowledgeOverlays = () => {
   showArticleIndex.value = false;
@@ -884,6 +926,7 @@ const fetchOfficialArticles = async () => {
 
 onMounted(() => {
   clearKnowledgeModalResidue();
+  restoreArticleIndexFromRoute();
   nextTick(() => initCurveCharts());
   fetchOfficialArticles();
 });
@@ -907,6 +950,10 @@ watch([() => themeStore.isDarkMode, isZh], () => {
 
 watch(readerOpen, (open) => {
   document.documentElement.classList.toggle('knowledge-overlay-open', open);
+});
+
+watch(() => route.query.articleIndex, () => {
+  restoreArticleIndexFromRoute();
 });
 </script>
 
@@ -970,11 +1017,11 @@ watch(readerOpen, (open) => {
 /* 左上标题 */
 .kg-hero-title {
   position: absolute;
-  top: clamp(22px, 4.2vw, 48px);
-  left: clamp(18px, 5vw, 64px);
+  top: clamp(20px, 3.5vw, 40px);
+  left: clamp(18px, 4.2vw, 52px);
   z-index: 20;
-  width: min(480px, calc(100vw - 36px));
-  padding: clamp(15px, 1.7vw, 20px);
+  width: min(410px, calc(100vw - 36px));
+  padding: clamp(13px, 1.45vw, 17px);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 22px;
   background:
@@ -999,24 +1046,24 @@ watch(readerOpen, (open) => {
 }
 .hero-badge {
   display: inline-block;
-  padding: 5px 14px;
+  padding: 4px 11px;
   border-radius: 999px;
   border: 1px solid rgba(var(--primary-rgb),0.34);
   background: rgba(var(--primary-rgb),0.1);
-  font-size: 9px;
+  font-size: 8px;
   font-weight: var(--font-weight-title);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--primary-color);
-  margin-bottom: 12px;
+  margin-bottom: 9px;
   backdrop-filter: blur(8px);
 }
 .kg-hero-title h1 {
-  font-size: clamp(32px, 4.4vw, 52px);
+  font-size: clamp(28px, 3.55vw, 43px);
   font-weight: var(--font-weight-title);
   letter-spacing: 0;
   color: var(--text-primary);
-  margin: 0 0 12px;
+  margin: 0 0 9px;
   line-height: 1.02;
 }
 :global(.light .kg-hero-title h1) {
@@ -1035,11 +1082,11 @@ watch(readerOpen, (open) => {
   font-style: normal;
 }
 .kg-hero-title p {
-  max-width: 54ch;
-  font-size: 12.5px;
-  line-height: 1.68;
+  max-width: 48ch;
+  font-size: 11.5px;
+  line-height: 1.58;
   color: var(--text-secondary);
-  margin: 0 0 16px;
+  margin: 0 0 12px;
 }
 :global(.light .kg-hero-title p) {
   max-width: 40ch;
@@ -1051,13 +1098,13 @@ watch(readerOpen, (open) => {
 .hero-actions { display:flex; flex-wrap:wrap; gap:10px; }
 .hero-actions button,
 .article-index-button {
-  height: 36px;
-  padding: 0 15px;
+  height: 32px;
+  padding: 0 12px;
   border: 1px solid rgba(var(--primary-rgb),0.28);
   border-radius: 999px;
   background: rgba(var(--primary-rgb),0.16);
   color: color-mix(in srgb, var(--primary-color) 62%, white);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: var(--font-weight-label);
   cursor: pointer;
   transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
@@ -1103,11 +1150,11 @@ watch(readerOpen, (open) => {
 
 .kg-system-panel {
   position: absolute;
-  right: 32px;
-  top: 48px;
+  right: 24px;
+  top: 40px;
   z-index: 20;
-  width: 160px;
-  padding: 14px;
+  width: 132px;
+  padding: 11px 12px;
   border: 1px solid rgba(var(--primary-rgb), 0.14);
   border-radius: 16px;
   background:
@@ -1130,10 +1177,10 @@ watch(readerOpen, (open) => {
     0 14px 38px rgba(68, 84, 118, 0.08);
 }
 .kg-system-panel span,
-.kg-system-panel em { display:block; color:var(--text-muted); font-size:10px; font-weight:850; text-transform:uppercase; font-style:normal; letter-spacing: 0.04em; }
+.kg-system-panel em { display:block; color:var(--text-muted); font-size:9px; font-weight:850; text-transform:uppercase; font-style:normal; letter-spacing: 0.04em; }
 :global(.light .kg-system-panel span),
 :global(.light .kg-system-panel em) { color:var(--text-muted); }
-.kg-system-panel strong { display:block; margin:5px 0; color:var(--primary-color); font-size:30px; font-weight:950; }
+.kg-system-panel strong { display:block; margin:3px 0; color:var(--primary-color); font-size:25px; font-weight:950; }
 :global(.light .kg-system-panel strong) {
   margin: 3px 0;
   font-size: 24px;
@@ -1142,17 +1189,17 @@ watch(readerOpen, (open) => {
 /* 右上简化图例 */
 .kg-legend-simple {
   position: absolute;
-  top: 160px;
-  right: 32px;
+  top: 136px;
+  right: 24px;
   z-index: 20;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
   background: rgba(var(--glass-bg-rgb), 0.42);
   backdrop-filter: blur(16px);
   border: 1px solid rgba(var(--primary-rgb), 0.12);
-  border-radius: 16px;
-  padding: 12px 14px;
+  border-radius: 14px;
+  padding: 10px 12px;
 }
 :global(.light .kg-legend-simple) {
   top: auto;
@@ -1175,15 +1222,15 @@ watch(readerOpen, (open) => {
 .leg-row {
   display: flex;
   align-items: center;
-  gap: 7px;
-  font-size: 10px;
+  gap: 6px;
+  font-size: 9px;
   font-weight: var(--font-weight-body);
   color: var(--text-secondary);
 }
 :global(.light .leg-row) { color: var(--text-secondary); }
 .leg-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
   box-shadow: 0 0 10px rgba(var(--primary-rgb), 0.18);
@@ -1685,10 +1732,10 @@ watch(readerOpen, (open) => {
 }
 .article-index-panel {
   position: fixed;
-  right: 18px;
-  top: 88px;
-  bottom: 24px;
-  z-index: 2600;
+  right: clamp(18px, 5vw, 72px);
+  top: clamp(72px, 8vh, 92px);
+  bottom: clamp(18px, 4vh, 34px);
+  z-index: 3300;
   display: flex;
   flex-direction: column;
   width: min(440px, 90vw);
@@ -1703,6 +1750,22 @@ watch(readerOpen, (open) => {
   backdrop-filter: blur(26px) saturate(155%);
   -webkit-backdrop-filter: blur(26px) saturate(155%);
   overflow: hidden;
+}
+.article-index-panel--reader-open {
+  right: calc(min(620px, 92vw) + 28px);
+  width: min(400px, calc(100vw - min(620px, 92vw) - 64px));
+}
+@media (max-width: 1220px) {
+  .article-index-panel--reader-open {
+    right: auto;
+    left: clamp(14px, 3vw, 24px);
+    width: min(360px, calc(100vw - 660px));
+  }
+}
+@media (max-width: 1020px) {
+  .article-index-panel--reader-open {
+    display: none;
+  }
 }
 .article-index-head { flex: 0 0 auto; display:flex; justify-content:space-between; align-items:flex-start; gap: 12px; margin-bottom:10px; padding: 6px 4px 13px; border-bottom: 1px solid var(--border-color); }
 .article-index-head span { display:block; color:var(--text-primary); font-size:13px; font-weight:900; text-transform:uppercase; letter-spacing:.08em; }

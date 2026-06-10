@@ -24,16 +24,19 @@ const router = createRouter({
     },
     {
       path: ROUTES.DASHBOARD,
-      component: mainLayout,
-      meta: { requiresAuth: true },
-      children: [
-        {
-          path: '',
-          name: 'Dashboard',
-          component: () => import('@/views/dashboard/index.vue'),
-        },
-      ],
+      redirect: ROUTES.TRAINING,
     },
+    { path: '/training', redirect: ROUTES.TRAINING },
+    { path: '/prediction', redirect: ROUTES.PREDICTION },
+    { path: '/dataset-viz', redirect: ROUTES.DATASET_VIZ },
+    { path: '/data', redirect: ROUTES.DATA },
+    { path: '/ai', redirect: ROUTES.AI },
+    { path: '/knowledge', redirect: ROUTES.KNOWLEDGE },
+    { path: '/knowledge/article/:id(\\d+)', redirect: (to) => `${ROUTES.KNOWLEDGE}/article/${to.params.id}` },
+    { path: '/forum', redirect: ROUTES.FORUM },
+    { path: '/forum/:id(\\d+)', redirect: (to) => `${ROUTES.FORUM}/${to.params.id}` },
+    { path: '/viz', redirect: ROUTES.VIZ },
+    { path: '/viz/:module(.*)*', redirect: ROUTES.VIZ },
     {
       path: ROUTES.DATA,
       component: mainLayout,
@@ -60,7 +63,7 @@ const router = createRouter({
     },
     {
       path: ROUTES.ANALYSIS,
-      redirect: ROUTES.VIZ,
+      redirect: ROUTES.ANALYSIS_WORKBENCH,
     },
     {
       path: ROUTES.PREDICTION,
@@ -71,6 +74,18 @@ const router = createRouter({
           path: '',
           name: 'Prediction',
           component: () => import('@/views/prediction/index.vue'),
+        },
+      ],
+    },
+    {
+      path: ROUTES.DATASET_VIZ,
+      component: mainLayout,
+      meta: { requiresAuth: true },
+      children: [
+        {
+          path: '',
+          name: 'DatasetVisualization',
+          component: () => import('@/views/dataset-viz/index.vue'),
         },
       ],
     },
@@ -86,42 +101,51 @@ const router = createRouter({
         },
       ],
     },
-    { path: '/viz/:module(.*)*', redirect: ROUTES.VIZ },
     {
-      path: '/ai',
+      path: ROUTES.ANALYSIS_WORKBENCH,
+      component: mainLayout,
+      meta: { requiresAuth: true },
+      children: [
+        {
+          path: '',
+          name: 'AnalysisWorkbench',
+          component: () => import('@/views/visualization/VisualAnalysisWorkbench.vue'),
+        },
+      ],
+    },
+    {
+      path: ROUTES.AI,
       name: 'AI',
       component: () => import('@/views/ai/index.vue'),
       meta: { requiresAuth: true },
     },
     {
-      path: '/forum',
+      path: ROUTES.FORUM,
       name: 'Forum',
       component: () => import('@/views/forum/index.vue'),
       meta: { requiresAuth: false },
     },
     {
-      path: '/forum/:id(\\d+)',
+      path: `${ROUTES.FORUM}/:id(\\d+)`,
       name: 'ForumDetail',
       component: () => import('@/views/forum/detail.vue'),
       meta: { requiresAuth: false },
     },
     {
-      path: '/knowledge/article/:id(\\d+)',
+      path: `${ROUTES.KNOWLEDGE}/article/:id(\\d+)`,
       name: 'KnowledgeArticle',
       component: () => import('@/views/knowledge/article.vue'),
       meta: { requiresAuth: false },
     },
     {
-      path: '/knowledge',
+      path: ROUTES.KNOWLEDGE,
       name: 'Knowledge',
       component: () => import('@/views/knowledge/index.vue'),
       meta: { requiresAuth: false },
     },
     {
       path: ROUTES.CLOUD,
-      name: 'Cloud',
-      component: () => import('@/views/cloud/index.vue'),
-      meta: { requiresAuth: true },
+      redirect: ROUTES.DATA,
     },
     {
       path: '/profile',
@@ -130,19 +154,13 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: '/model-article/:id(\\d+)',
-      name: 'ModelArticle',
-      component: () => import('@/views/models/article.vue'),
-      meta: { requiresAuth: false },
-    },
-    {
       path: '/admin',
       component: () => import('@/layout/AdminLayout.vue'),
       meta: { requiresAuth: true, requiresAdmin: true },
-      redirect: '/admin/users',
+      redirect: '/admin/overview',
       children: [
+        { path: 'overview', name: 'AdminOverview', component: () => import('@/views/admin/OverviewPage.vue') },
         { path: 'users', name: 'AdminUsers', component: () => import('@/views/admin/UsersPage.vue') },
-        { path: 'models', name: 'AdminModels', component: () => import('@/views/admin/ModelsPage.vue') },
         { path: 'ai', name: 'AdminAi', component: () => import('@/views/admin/AiPage.vue') },
         { path: 'kb', name: 'AdminKb', component: () => import('@/views/admin/KbPage.vue') },
         { path: 'forum', name: 'AdminForum', component: () => import('@/views/admin/ForumPage.vue') },
@@ -160,10 +178,11 @@ router.beforeEach((to, _from, next) => {
   if (to.meta.requiresAuth && !token) {
     next(ROUTES.LOGIN)
   } else if (to.meta.requiresAdmin && role !== 'ADMIN') {
-    next(ROUTES.DASHBOARD)
+    next(ROUTES.TRAINING)
   } else {
     next()
   }
 })
 
 export default router
+

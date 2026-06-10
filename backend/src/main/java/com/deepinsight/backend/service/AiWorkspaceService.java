@@ -203,6 +203,11 @@ public class AiWorkspaceService {
             item.put("readOnly", official);
             item.put("canManage", !official);
             item.put("canSync", !official);
+            if (official) {
+                item.put("sourceScope", "official");
+                item.put("storageMode", "virtual");
+                item.put("virtual", true);
+            }
             resources.add(item);
         });
 
@@ -242,6 +247,51 @@ public class AiWorkspaceService {
             Map<String, Object> item = baseResource("saved_view", numberToLong(row.get("id")), text(row.get("title")), text(row.get("view_type")));
             item.put("status", text(row.get("format")));
             item.put("summary", "已保存视图 · " + text(row.get("format")));
+            resources.add(item);
+        });
+
+        jdbcTemplate.queryForList(
+            """
+            SELECT id, title, node_id, content, is_pinned, updated_at
+            FROM knowledge_articles
+            ORDER BY is_pinned DESC, updated_at DESC, id DESC
+            LIMIT 80
+            """
+        ).forEach(row -> {
+            Map<String, Object> item = readOnlySiteResource("knowledge_article", numberToLong(row.get("id")), text(row.get("title")), text(row.get("node_id")));
+            item.put("summary", "知识文章 · " + trimContext(text(row.get("content")), 120));
+            item.put("pinned", row.get("is_pinned"));
+            item.put("nodeId", text(row.get("node_id")));
+            resources.add(item);
+        });
+
+        jdbcTemplate.queryForList(
+            """
+            SELECT id, title, category, tags, content, created_at
+            FROM knowledge_docs
+            ORDER BY created_at DESC, id DESC
+            LIMIT 80
+            """
+        ).forEach(row -> {
+            Map<String, Object> item = readOnlySiteResource("knowledge_doc", numberToLong(row.get("id")), text(row.get("title")), text(row.get("category")));
+            item.put("summary", "AI 训练知识 · " + trimContext(text(row.get("content")), 120));
+            item.put("category", text(row.get("category")));
+            item.put("tags", text(row.get("tags")));
+            resources.add(item);
+        });
+
+        jdbcTemplate.queryForList(
+            """
+            SELECT id, title, model_id, paper_url, content, updated_at
+            FROM model_articles
+            ORDER BY updated_at DESC, id DESC
+            LIMIT 80
+            """
+        ).forEach(row -> {
+            Map<String, Object> item = readOnlySiteResource("model_article", numberToLong(row.get("id")), text(row.get("title")), "model #" + text(row.get("model_id")));
+            item.put("summary", "模型文章 · " + trimContext(text(row.get("content")), 120));
+            item.put("modelId", numberToLong(row.get("model_id")));
+            item.put("paperUrl", text(row.get("paper_url")));
             resources.add(item);
         });
 
@@ -698,6 +748,10 @@ public class AiWorkspaceService {
 
     private void appendOwnedResourceContext(StringBuilder context, Long userId, Map<?, ?> map) {
         String type = text(firstNonNull(map.get("type"), map.get("itemType"), map.get("sourceType")));
+        if ("page_context".equals(type) || "current_page".equals(type)) {
+            appendPageContext(context, map);
+            return;
+        }
         Long id = numberToLong(map.get("id"));
         if (id == null) {
             context.append("- ").append(type.isBlank() ? "resource" : type).append(" 未提供资源 ID\n");
@@ -744,6 +798,9 @@ public class AiWorkspaceService {
                     .append("\n"), () -> context.append("- 上传运行#").append(id).append(" 无权访问或不存在\n"));
             case "analysis_result" -> appendSavedAnalysisRecord(context, userId, id);
             case "saved_view" -> appendSavedVisualView(context, userId, id);
+            case "knowledge_article" -> appendKnowledgeArticleContext(context, id);
+            case "knowledge_doc" -> appendKnowledgeDocContext(context, id);
+            case "model_article" -> appendModelArticleContext(context, id);
             case "context_bundle", "file", "image", "text", "upload" -> findWorkspaceItem(userId, id)
                 .ifPresentOrElse(stored -> {
                     context.append("- 工作素材#").append(id).append(" ").append(text(stored.get("title")))
@@ -756,6 +813,74 @@ public class AiWorkspaceService {
                 .append(text(map.get("title")))
                 .append(" | ").append(text(firstNonNull(map.get("summary"), map.get("meta"))))
                 .append("\n");
+        }
+    }
+
+    private void appendKnowledgeArticleContext(StringBuilder context, Long id) {
+        try {
+            Map<String, Object> row = jdbcTemplate.queryForMap(
+                "SELECT id, title, node_id, content FROM knowledge_articles WHERE id = ?",
+                id
+            );
+            context.append("- 知识文章#").append(id)
+                .append(" ").append(text(row.get("title")))
+                .append(" | 节点：").append(text(row.get("node_id")))
+                .append("\n  内容：").append(trimContext(text(row.get("content")), 2600))
+                .append("\n");
+        } catch (Exception e) {
+            context.append("- 知识文章#").append(id).append(" 不存在\n");
+        }
+    }
+
+    private void appendKnowledgeDocContext(StringBuilder context, Long id) {
+        try {
+            Map<String, Object> row = jdbcTemplate.queryForMap(
+                "SELECT id, title, category, tags, content FROM knowledge_docs WHERE id = ?",
+                id
+            );
+            context.append("- AI训练知识#").append(id)
+                .append(" ").append(text(row.get("title")))
+                .append(" | 分类：").append(text(row.get("category")))
+                .append(" | 标签：").append(text(row.get("tags")))
+                .append("\n  内容：").append(trimContext(text(row.get("content")), 2600))
+                .append("\n");
+        } catch (Exception e) {
+            context.append("- AI训练知识#").append(id).append(" 不存在\n");
+        }
+    }
+
+    private void appendModelArticleContext(StringBuilder context, Long id) {
+        try {
+            Map<String, Object> row = jdbcTemplate.queryForMap(
+                "SELECT id, title, model_id, paper_url, content FROM model_articles WHERE id = ?",
+                id
+            );
+            context.append("- 模型文章#").append(id)
+                .append(" ").append(text(row.get("title")))
+                .append(" | 模型ID：").append(text(row.get("model_id")))
+                .append(text(row.get("paper_url")).isBlank() ? "" : " | 论文：" + text(row.get("paper_url")))
+                .append("\n  内容：").append(trimContext(text(row.get("content")), 2600))
+                .append("\n");
+        } catch (Exception e) {
+            context.append("- 模型文章#").append(id).append(" 不存在\n");
+        }
+    }
+
+    private void appendPageContext(StringBuilder context, Map<?, ?> map) {
+        String title = text(firstNonNull(map.get("title"), map.get("pageTitle")));
+        String path = text(map.get("path"));
+        String lastInteraction = text(map.get("lastInteraction"));
+        String visibleText = text(firstNonNull(map.get("visibleText"), map.get("summary")));
+
+        context.append("- 当前页面：")
+            .append(title.isBlank() ? "未知页面" : trimContext(title, 120))
+            .append(path.isBlank() ? "" : " | 路由：" + trimContext(path, 180))
+            .append("\n");
+        if (!lastInteraction.isBlank()) {
+            context.append("  最近点击：").append(trimContext(lastInteraction, 180)).append("\n");
+        }
+        if (!visibleText.isBlank()) {
+            context.append("  页面可见摘要：").append(trimContext(visibleText, 1200)).append("\n");
         }
     }
 
@@ -825,6 +950,7 @@ public class AiWorkspaceService {
     private Map<String, Object> baseResource(String type, Long id, String title, String meta) {
         Map<String, Object> item = new LinkedHashMap<>();
         item.put("type", type);
+        item.put("resourceType", type);
         item.put("id", id);
         item.put("title", title == null || title.isBlank() ? type + " #" + id : title);
         item.put("meta", meta == null ? "" : meta);
@@ -832,6 +958,22 @@ public class AiWorkspaceService {
         item.put("readOnly", false);
         item.put("canManage", true);
         item.put("canSync", true);
+        item.put("sourceScope", "owned");
+        item.put("storageMode", "database");
+        item.put("virtual", false);
+        return item;
+    }
+
+    private Map<String, Object> readOnlySiteResource(String type, Long id, String title, String meta) {
+        Map<String, Object> item = baseResource(type, id, title, meta);
+        item.put("status", "official");
+        item.put("official", true);
+        item.put("readOnly", true);
+        item.put("canManage", false);
+        item.put("canSync", false);
+        item.put("sourceScope", "official");
+        item.put("storageMode", "virtual");
+        item.put("virtual", true);
         return item;
     }
 
@@ -850,6 +992,9 @@ public class AiWorkspaceService {
         normalized.put("readOnly", readOnly);
         normalized.put("canManage", !readOnly);
         normalized.put("canSync", false);
+        normalized.put("sourceScope", readOnly ? "official" : "stored");
+        normalized.put("storageMode", readOnly ? "virtual" : "persisted");
+        normalized.put("virtual", readOnly);
         if (!includeBlob) normalized.remove("fileBlob");
         return normalized;
     }

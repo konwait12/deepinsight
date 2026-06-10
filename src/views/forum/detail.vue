@@ -2,102 +2,152 @@
   <div class="detail-page">
     <div class="detail-container">
       <nav class="detail-nav">
-        <button class="back-btn" @click="$router.push('/forum')">&larr; 返回论坛</button>
+        <button class="back-btn" type="button" @click="router.push(ROUTES.FORUM)">返回社区</button>
       </nav>
 
-      <div v-if="loading" class="loading-state">加载中...</div>
+      <div v-if="loading" class="loading-state">文章加载中...</div>
 
       <template v-else-if="post">
         <article class="article-main">
           <header class="article-header">
             <div class="header-badges">
-              <span v-if="post.isOfficial" class="badge badge-official">官方</span>
+              <span v-if="post.isOfficial" class="badge badge-official">平台文章</span>
               <span v-if="post.isPinned" class="badge badge-pinned">置顶</span>
             </div>
             <h1 class="article-title">{{ post.title }}</h1>
             <div class="article-meta">
               <span>#{{ post.id }}</span>
-              <span>&middot;</span>
-              <span>浏览 {{ post.viewCount }}</span>
-              <span>&middot;</span>
+              <span>浏览 {{ post.viewCount || 0 }}</span>
               <span>{{ formatTime(post.createdAt) }}</span>
             </div>
-            <img v-if="post.coverUrl" :src="post.coverUrl" class="cover-img" />
+            <img v-if="displayCoverUrl" :src="displayCoverUrl" :alt="post.title" class="cover-img" />
           </header>
 
+          <ArticleToc v-if="headings.length > 1" :headings="headings" />
           <div class="article-body" v-html="renderedHtml" />
 
-          <div class="comments-section">
-            <h4>评论 ({{ comments.length }})</h4>
+          <section class="comments-section">
+            <h4>评论 {{ comments.length }}</h4>
+            <div v-if="!comments.length" class="empty-comments">暂无评论</div>
             <div v-for="cm in comments" :key="cm.id" class="comment-item">
-              <span class="cm-author">用户#{{ cm.userId }}</span>
+              <span class="cm-author">用户 #{{ cm.userId }}</span>
               <span class="cm-time">{{ formatTime(cm.createdAt) }}</span>
               <p class="cm-text">{{ cm.content }}</p>
             </div>
-            <div class="add-comment" v-if="isLoggedIn">
+            <div v-if="isLoggedIn" class="add-comment">
               <el-input v-model="newComment" placeholder="写下你的评论..." @keyup.enter="submitComment" />
-              <el-button size="small" type="primary" @click="submitComment" class="!ml-2 !rounded-lg">评论</el-button>
+              <el-button size="small" type="primary" @click="submitComment">发送</el-button>
             </div>
-          </div>
+          </section>
         </article>
       </template>
+
+      <div v-else class="loading-state">内容不存在或已被删除</div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
-import { useRoute } from 'vue-router';
-import { ElMessage } from 'element-plus';
-import { forumApi } from '@/api';
-import { renderMarkdown } from '@/utils/markdown';
-import { hasStoredAuthToken } from '@/utils/authState';
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { forumApi } from '@/api'
+import ArticleToc from '@/components/common/ArticleToc.vue'
+import { enrichArticleContent, extractHeadings, renderMarkdown } from '@/utils/markdown'
+import { hasStoredAuthToken } from '@/utils/authState'
+import { ROUTES } from '@/constants'
 
-const route = useRoute();
-const post = ref<any>(null);
-const comments = ref<any[]>([]);
-const newComment = ref('');
-const loading = ref(true);
-const isLoggedIn = computed(() => hasStoredAuthToken());
+const route = useRoute()
+const router = useRouter()
+const post = ref<any>(null)
+const comments = ref<any[]>([])
+const newComment = ref('')
+const loading = ref(true)
+const isLoggedIn = computed(() => hasStoredAuthToken())
 
-const renderedHtml = computed(() => post.value?.content ? renderMarkdown(post.value.content) : '');
+const displayCoverUrl = computed(() => {
+  const explicitCover = String(post.value?.coverUrl || '').trim()
+  if (explicitCover) return explicitCover
+  return firstMarkdownImage(post.value?.content || '')
+})
 
-const formatTime = (t: string) => {
-  if (!t) return '';
-  return new Date(t).toLocaleDateString('zh-CN', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
-};
+const articleContent = computed(() => {
+  const content = removeDisplayedCover(post.value?.content || '', displayCoverUrl.value)
+  return enrichArticleContent(content, post.value?.title || '')
+})
+
+const headings = computed(() => extractHeadings(articleContent.value).filter((heading) => heading.level <= 3))
+const renderedHtml = computed(() => articleContent.value ? renderMarkdown(articleContent.value) : '')
+
+const formatTime = (value?: string) => {
+  if (!value) return ''
+  return new Date(value).toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+const firstMarkdownImage = (markdown: string) => {
+  const match = markdown.match(/!\[[^\]]*]\(([^)\s]+)(?:\s+['"][^'"]*['"])?\)/)
+  return match?.[1]?.trim() || ''
+}
+
+const normalizeUrl = (value: string) => value.trim().replace(/^['"]|['"]$/g, '')
+
+const removeDisplayedCover = (markdown: string, coverUrl: string) => {
+  if (!coverUrl) return markdown
+  let removed = false
+  return markdown.replace(/!\[[^\]]*]\(([^)\s]+)(?:\s+['"][^'"]*['"])?\)\s*/g, (full, url) => {
+    if (!removed && normalizeUrl(url) === normalizeUrl(coverUrl)) {
+      removed = true
+      return ''
+    }
+    return full
+  })
+}
+
+const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'auto' })
 
 const fetchPost = async () => {
-  loading.value = true;
-  document.querySelector('.app-body')?.scrollTo({ top: 0 });
+  loading.value = true
+  scrollToTop()
   try {
     const [postRes, commentsRes] = await Promise.all([
       forumApi.getPost(route.params.id as string),
       forumApi.getComments(route.params.id as string),
-    ]);
-    if (postRes.data.code === 200) post.value = postRes.data.data;
-    if (commentsRes.data.code === 200) comments.value = commentsRes.data.data || [];
-  } catch {}
-  loading.value = false;
-};
+    ])
+    post.value = postRes.data.code === 200 ? postRes.data.data : null
+    comments.value = commentsRes.data.code === 200 ? postRes.data.data || [] : []
+  } catch (error) {
+    console.error(error)
+    post.value = null
+    comments.value = []
+    ElMessage.error('帖子加载失败')
+  } finally {
+    loading.value = false
+  }
+}
 
 const submitComment = async () => {
-  if (!newComment.value.trim() || !post.value) return;
+  if (!newComment.value.trim() || !post.value) return
   try {
-    const res = await forumApi.addComment(post.value.id, newComment.value);
+    const res = await forumApi.addComment(post.value.id, newComment.value.trim())
     if (res.data.code === 200) {
-      newComment.value = '';
-      fetchPost();
+      newComment.value = ''
+      await fetchPost()
     } else {
-      ElMessage.error(res.data.message || '评论失败');
+      ElMessage.error(res.data.message || '评论失败')
     }
-  } catch (e: any) {
-    ElMessage.error(e.response?.data?.message || '评论失败');
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.message || '评论失败')
   }
-};
+}
 
-onMounted(fetchPost);
-watch(() => route.params.id, fetchPost);
+onMounted(fetchPost)
+watch(() => route.params.id, fetchPost)
 </script>
 
 <style scoped>
@@ -112,6 +162,14 @@ watch(() => route.params.id, fetchPost);
   background-size: auto, auto, 48px 48px, 48px 48px, auto;
 }
 
+:global(.light) .detail-page {
+  background:
+    radial-gradient(circle at 12% 8%, rgba(var(--primary-rgb), 0.11), transparent 34%),
+    radial-gradient(circle at 84% 12%, rgba(96, 165, 250, 0.1), transparent 32%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.42), transparent 42%),
+    var(--bg-color);
+}
+
 .detail-container {
   max-width: 920px;
   margin: 0 auto;
@@ -124,7 +182,7 @@ watch(() => route.params.id, fetchPost);
 
 .back-btn {
   border: 1px solid color-mix(in srgb, var(--primary-color) 18%, var(--border-color));
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   background: rgba(var(--glass-bg-rgb), 0.62);
   color: var(--text-secondary);
   cursor: pointer;
@@ -144,12 +202,18 @@ watch(() => route.params.id, fetchPost);
 .loading-state,
 .article-main {
   border: 1px solid color-mix(in srgb, var(--primary-color) 16%, var(--border-color));
-  border-radius: 32px;
+  border-radius: var(--radius-lg);
   background:
     radial-gradient(circle at 16% 0%, rgba(var(--primary-rgb), 0.1), transparent 36%),
     rgba(var(--glass-bg-rgb), 0.72);
   box-shadow: 0 34px 100px rgba(0, 0, 0, 0.34), 0 0 0 1px rgba(var(--primary-rgb), 0.05);
   backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+}
+
+:global(.light) .loading-state,
+:global(.light) .article-main {
+  box-shadow: 0 24px 70px rgba(30, 41, 59, 0.1);
 }
 
 .loading-state {
@@ -200,15 +264,15 @@ watch(() => route.params.id, fetchPost);
   color: var(--text-primary);
   font-size: clamp(32px, 5vw, 56px);
   font-weight: var(--font-weight-title);
-  letter-spacing: -0.06em;
-  line-height: 1.04;
+  letter-spacing: 0;
+  line-height: 1.06;
 }
 
 .article-meta {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 7px;
+  gap: 12px;
   margin-bottom: 18px;
   color: var(--text-muted);
   font-size: 13px;
@@ -220,47 +284,194 @@ watch(() => route.params.id, fetchPost);
   max-height: 460px;
   object-fit: cover;
   border: 1px solid color-mix(in srgb, var(--primary-color) 14%, var(--border-color));
-  border-radius: 22px;
+  border-radius: var(--radius-sm);
   margin-top: 10px;
   box-shadow: 0 22px 64px rgba(0, 0, 0, 0.28);
 }
 
-/* —— MD 排版 ——— */
-.article-body { font-size:15px; line-height:1.9; color:var(--text-primary); }
-.article-body :deep(h1) { font-size:24px; font-weight:900; margin:36px 0 14px; }
-.article-body :deep(h2) { font-size:20px; font-weight:800; margin:30px 0 12px; border-left:4px solid var(--primary-color); padding-left:12px; }
-.article-body :deep(h3) { font-size:17px; font-weight:700; margin:24px 0 10px; }
-.article-body :deep(h4) { font-size:15px; font-weight:700; margin:18px 0 8px; }
-.article-body :deep(p) { margin:0 0 12px; }
-.article-body :deep(a) { color:var(--primary-color); text-decoration:underline; text-decoration-style:dashed; text-underline-offset:3px; }
-.article-body :deep(blockquote) { border-left:4px solid var(--primary-color); background:rgba(var(--primary-rgb), 0.08); border-radius:0 10px 10px 0; padding:10px 16px; margin:14px 0; color:var(--text-secondary); font-style:italic; }
-.article-body :deep(hr) { border:none; border-top:1px solid var(--border-color); margin:24px 0; }
-.article-body :deep(ul), .article-body :deep(ol) { padding-left:20px; margin:0 0 12px; }
-.article-body :deep(li) { margin-bottom:3px; }
-.article-body :deep(li::marker) { color:var(--primary-color); }
-.article-body :deep(img) { max-width:100%; border-radius:12px; margin:12px 0; }
-.article-body :deep(table) { width:100%; border-collapse:collapse; margin:14px 0; font-size:13px; }
-.article-body :deep(th) { background:rgba(var(--primary-rgb), 0.08); font-weight:700; text-align:left; padding:8px 12px; border-bottom:2px solid var(--border-color); }
-.article-body :deep(td) { padding:6px 12px; border-bottom:1px solid var(--border-color); }
-.article-body :deep(tr:hover td) { background:rgba(var(--primary-rgb), 0.06); }
-.article-body :deep(code) { font-family:'JetBrains Mono',monospace; font-size:13px; background:rgba(var(--primary-rgb), 0.08); color:var(--primary-color); padding:2px 6px; border-radius:5px; }
-.article-body :deep(pre) { background:rgba(var(--glass-bg-rgb), 0.72); border:1px solid color-mix(in srgb, var(--primary-color) 14%, var(--border-color)); border-radius:12px; padding:16px; overflow-x:auto; margin:16px 0; }
-.article-body :deep(pre code) { background:transparent; padding:0; color:var(--text-primary); }
-.article-body :deep(.hljs-keyword) { color:#c792ea; }
-.article-body :deep(.hljs-string) { color:#c3e88d; }
-.article-body :deep(.hljs-comment) { color:#546e7a; font-style:italic; }
-.article-body :deep(.hljs-function) { color:#82aaff; }
-.article-body :deep(.hljs-number) { color:#f78c6c; }
-.article-body :deep(.hljs-title) { color:#82aaff; }
-.article-body :deep(.hljs-built_in) { color:#ffcb6b; }
+:global(.light) .cover-img {
+  box-shadow: 0 18px 50px rgba(30, 41, 59, 0.12);
+}
 
-.comments-section { margin-top:40px; padding-top:24px; border-top:1px solid color-mix(in srgb, var(--primary-color) 16%, var(--border-color)); }
-.comments-section h4 { font-size:14px; font-weight:800; color:var(--text-primary); margin:0 0 14px; }
-.comment-item { padding:12px 0; border-bottom:1px solid color-mix(in srgb, var(--primary-color) 10%, var(--border-color)); }
-.cm-author { font-size:12px; font-weight:700; color:var(--primary-color); }
-.cm-time { font-size:10px; color:var(--text-secondary); margin-left:8px; }
-.cm-text { margin:4px 0 0; font-size:13px; color:var(--text-primary); }
-.add-comment { display:flex; margin-top:16px; }
+.article-body {
+  color: var(--text-primary);
+  font-size: 15px;
+  line-height: 1.9;
+}
+
+.article-body :deep(h1),
+.article-body :deep(h2),
+.article-body :deep(h3),
+.article-body :deep(h4) {
+  scroll-margin-top: 96px;
+}
+
+.article-body :deep(h1) {
+  margin: 36px 0 14px;
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.article-body :deep(h2) {
+  margin: 30px 0 12px;
+  border-left: 4px solid var(--primary-color);
+  padding-left: 12px;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.article-body :deep(h3) {
+  margin: 24px 0 10px;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.article-body :deep(h4) {
+  margin: 18px 0 8px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.article-body :deep(p) {
+  margin: 0 0 12px;
+  color: var(--text-secondary);
+}
+
+.article-body :deep(strong) {
+  color: var(--text-primary);
+}
+
+.article-body :deep(a) {
+  color: var(--primary-color);
+  text-decoration: underline;
+  text-decoration-style: dashed;
+  text-underline-offset: 3px;
+}
+
+.article-body :deep(blockquote) {
+  margin: 14px 0;
+  border-left: 4px solid var(--primary-color);
+  border-radius: 0 10px 10px 0;
+  background: rgba(var(--primary-rgb), 0.08);
+  padding: 10px 16px;
+  color: var(--text-secondary);
+}
+
+.article-body :deep(ul),
+.article-body :deep(ol) {
+  margin: 0 0 12px;
+  padding-left: 20px;
+  color: var(--text-secondary);
+}
+
+.article-body :deep(li) {
+  margin-bottom: 3px;
+}
+
+.article-body :deep(li::marker) {
+  color: var(--primary-color);
+}
+
+.article-body :deep(img) {
+  max-width: 100%;
+  border-radius: var(--radius-sm);
+  margin: 12px 0;
+}
+
+.article-body :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 14px 0;
+  font-size: 13px;
+}
+
+.article-body :deep(th) {
+  border-bottom: 2px solid var(--border-color);
+  background: rgba(var(--primary-rgb), 0.08);
+  padding: 8px 12px;
+  text-align: left;
+  font-weight: 700;
+}
+
+.article-body :deep(td) {
+  border-bottom: 1px solid var(--border-color);
+  padding: 6px 12px;
+}
+
+.article-body :deep(code) {
+  border-radius: 5px;
+  background: rgba(var(--primary-rgb), 0.08);
+  color: var(--primary-color);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+  padding: 2px 6px;
+}
+
+.article-body :deep(pre) {
+  overflow-x: auto;
+  margin: 16px 0;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 14%, var(--border-color));
+  border-radius: var(--radius-sm);
+  background: rgba(var(--glass-bg-rgb), 0.72);
+  padding: 16px;
+}
+
+.article-body :deep(pre code) {
+  background: transparent;
+  color: var(--text-primary);
+  padding: 0;
+}
+
+.comments-section {
+  margin-top: 40px;
+  border-top: 1px solid color-mix(in srgb, var(--primary-color) 16%, var(--border-color));
+  padding-top: 24px;
+}
+
+.comments-section h4 {
+  margin: 0 0 14px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.empty-comments {
+  border: 1px solid color-mix(in srgb, var(--primary-color) 10%, var(--border-color));
+  border-radius: var(--radius-sm);
+  background: rgba(var(--glass-bg-rgb), 0.34);
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 12px 14px;
+}
+
+.comment-item {
+  border-bottom: 1px solid color-mix(in srgb, var(--primary-color) 10%, var(--border-color));
+  padding: 12px 0;
+}
+
+.cm-author {
+  color: var(--primary-color);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.cm-time {
+  margin-left: 8px;
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.cm-text {
+  margin: 4px 0 0;
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.add-comment {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
 
 @media (max-width: 720px) {
   .detail-container {
@@ -273,7 +484,6 @@ watch(() => route.params.id, fetchPost);
 
   .add-comment {
     display: grid;
-    gap: 10px;
   }
 }
 </style>

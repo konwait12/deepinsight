@@ -3,7 +3,7 @@
 @variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-sans: "Inter", "Outfit", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans: "Outfit", "SF Pro Text", "SF Pro Display", "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 :root {
@@ -54,10 +54,10 @@
   --bg-tint: rgba(var(--primary-rgb), 0.04);
 
   --glass-bg-rgb: 28, 31, 38;
-  --glass-opacity: 0.68;
+  --glass-opacity: 0.58;
   --glass-border-opacity: 0.14;
   --glass-shadow-opacity: 0.1;
-  --glass-blur: 20px;
+  --glass-blur: 18px;
   --glass-saturate: 160%;
   --glass-highlight-opacity: 0.18;
   --spotlight-x: 50%;
@@ -89,30 +89,41 @@
   --edge-glow-opacity: var(--edge-glow-strength);
   --edge-glow-color: var(--primary-color);
   --edge-glow-soft: rgb(var(--primary-color-rgb) / calc(var(--edge-glow-strength) * 0.08));
-  --edge-glow-hot: rgba(255, 255, 255, 0.32);
-  --edge-glow-radius: 40px;
+  --edge-glow-hot: rgba(255, 255, 255, 0.22);
+  --edge-glow-radius: 30px;
   /* mesh gradient stops for border glow */
   --glow-one: radial-gradient(at 80% 55%, var(--primary-color) 0px, transparent 50%);
   --glow-two: radial-gradient(at 69% 34%, var(--accent-glow) 0px, transparent 50%);
-  --glow-three: radial-gradient(at 8% 6%, var(--tone-violet) 0px, transparent 50%);
+  --glow-three: radial-gradient(at 8% 6%, color-mix(in srgb, var(--primary-color) 62%, var(--accent-glow)) 0px, transparent 50%);
   --glow-four: radial-gradient(at 41% 38%, var(--primary-color) 0px, transparent 50%);
   --glow-five: radial-gradient(at 86% 85%, var(--accent-glow) 0px, transparent 50%);
-  --glow-six: radial-gradient(at 82% 18%, var(--tone-violet) 0px, transparent 50%);
+  --glow-six: radial-gradient(at 82% 18%, color-mix(in srgb, var(--primary-color) 62%, var(--accent-glow)) 0px, transparent 50%);
   --glow-seven: radial-gradient(at 51% 4%, var(--accent-glow) 0px, transparent 50%);
   --glow-base: linear-gradient(var(--primary-color) 0 100%);
-  --motion-quick: 180ms;
-  --motion-medium: 280ms;
-  --motion-slow: 400ms;
-  --ease-smooth: cubic-bezier(0.25, 0.1, 0.25, 1);
-  --ease-spring: cubic-bezier(0.42, 0, 0.58, 1);
-  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --motion-quick: 160ms;
+  --motion-medium: 260ms;
+  --motion-slow: 360ms;
+  --motion-hover: 240ms;
+  --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.2, 1, 0.22, 1);
+  --ease-bounce: cubic-bezier(0.22, 1.22, 0.36, 1);
+  --ease-liquid: cubic-bezier(0.18, 1.12, 0.32, 1);
+  --ease-press: cubic-bezier(0.2, 0, 0, 1);
 
   --font-weight-title: 600;
   --font-weight-label: 550;
   --font-weight-body: 500;
-  --tracking-title: -0.02em;
-  --tracking-label: 0.01em;
-  --tracking-body: -0.01em;
+  --tracking-title: 0;
+  --tracking-label: 0;
+  --tracking-body: 0;
+  --glass-border-gradient:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--primary-color) 78%, white),
+      var(--accent-glow),
+      color-mix(in srgb, var(--primary-color) 68%, var(--text-primary)),
+      var(--primary-color)
+    );
 
   --sand-noise-opacity: 0.03;
   --sand-dot-opacity: 0.06;
@@ -129,7 +140,7 @@
   --danger-glow: #fb7185;
   --primary-glow: rgba(66, 230, 164, 0.1);
   --primary-subtle: rgba(66, 230, 164, 0.035);
-  --bg-color: #f4f7fb;
+  --bg-color: #eef6f5;
   --bg-elevated: #ffffff;
   --bg-card: rgba(250, 252, 255, 0.78);
   --bg-card-hover: rgba(255, 255, 255, 0.9);
@@ -151,7 +162,7 @@
     rgba(250, 252, 255, 0.8);
   --bg-tint: rgba(66, 230, 164, 0.028);
   --glass-bg-rgb: 250, 252, 255;
-  --glass-opacity: 0.72;
+  --glass-opacity: 0.66;
   --glass-border-opacity: 0.12;
   --glass-shadow-opacity: 0.07;
   --glass-blur: 16px;
@@ -172,9 +183,9 @@
     linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(246, 249, 253, 0.5) 45%, rgba(15, 23, 42, 0.022)),
     rgba(250, 252, 255, 0.58);
   --workbench-shadow: 0 12px 34px rgba(30, 41, 59, 0.075), 0 1px 0 rgba(255, 255, 255, 0.72) inset;
-  --sand-noise-opacity: 0.018;
-  --sand-dot-opacity: 0.05;
-  --sand-orb-opacity-mult: 0.46;
+  --sand-noise-opacity: 0.012;
+  --sand-dot-opacity: 0;
+  --sand-orb-opacity-mult: 0.36;
   color-scheme: light;
 }
 
@@ -207,7 +218,7 @@
   --tone-green: #22c55e;
 
   --glass-bg-rgb: 28, 31, 38;
-  --glass-opacity: 0.68;
+  --glass-opacity: 0.58;
   --glass-border-opacity: 0.14;
   --glass-shadow-opacity: 0.1;
   --glass-highlight-opacity: 0.18;
@@ -277,7 +288,7 @@ html {
   scroll-behavior: smooth;
 }
 html.light {
-  background: #edf4f2 !important;
+  background: #eef6f5 !important;
   color: #1d1d1f !important;
 }
 html.dark {
@@ -299,6 +310,31 @@ body {
   -webkit-font-smoothing: antialiased;
   cursor: default;
   transition: background-color 260ms ease, color 260ms ease;
+}
+
+:where(
+  body,
+  button,
+  input,
+  textarea,
+  select,
+  a,
+  p,
+  span,
+  small,
+  strong,
+  em,
+  label,
+  th,
+  td,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6
+) {
+  letter-spacing: 0 !important;
 }
 
 html.light body,
@@ -325,6 +361,19 @@ body {
 h1, h2, h3, h4, h5, h6 {
   letter-spacing: var(--tracking-title);
   font-weight: var(--font-weight-title);
+}
+
+:where(.page-header, .section-heading, .card-header, .panel-head, .toolbar, .control-bar) {
+  min-width: 0;
+}
+
+:where(.page-header, .section-heading, .card-header, .panel-head) :where(h1, h2, h3, strong, p, span) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+:where(.card-header, .panel-head, .toolbar, .control-bar) :where(button, .el-button, .el-tag) {
+  flex-shrink: 1;
 }
 
 #app {
@@ -413,20 +462,53 @@ button {
   --spotlight-color: var(--spotlight-button-color);
   --edge-sensitivity: 20;
   min-height: 40px;
-  min-width: max-content;
+  min-width: 0;
+  max-width: 100%;
   padding-inline: clamp(14px, 1.3vw, 18px);
+  white-space: nowrap;
   border-color: color-mix(in srgb, currentColor 10%, rgba(255, 255, 255, 0.06)) !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     inset 0 -1px 0 rgba(0, 0, 0, 0.06),
     0 2px 6px rgba(0, 0, 0, 0.06);
   transition:
-    transform 180ms var(--ease-smooth),
-    border-color 180ms ease,
-    background 180ms ease,
-    color 180ms ease,
-    box-shadow 200ms ease,
-    opacity 180ms ease;
+    transform var(--motion-hover) var(--ease-liquid),
+    border-color 260ms ease,
+    background 300ms var(--ease-smooth),
+    color 220ms ease,
+    box-shadow 360ms var(--ease-liquid),
+    opacity 220ms ease;
+}
+
+:where(
+  button.primary-action,
+  button.secondary-action,
+  button.text-action,
+  button.back-btn,
+  button.ctrl-toggle,
+  button.focus-btn,
+  button.msg-btn,
+  button.send-btn,
+  button.stop-btn,
+  button.model-action,
+  button.rule-action,
+  .mode-switch button,
+  .pager-chip button,
+  .hero-actions button,
+  .panel-expand button,
+  .quick-chips button,
+  .assistant-actions button,
+  .ai-panel-actions button,
+  .result-view-switch button,
+  .result-filter-chips button,
+  .smart-select-action,
+  .clear-select-action,
+  .module-select-toggle
+) > :where(span, strong, b, em) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 :where(
@@ -462,7 +544,7 @@ button {
   border-radius: inherit;
   background: none;
   opacity: 0;
-  transition: opacity 420ms ease;
+  transition: opacity var(--motion-medium) ease;
 }
 
 :where(
@@ -498,7 +580,7 @@ button {
   border-radius: inherit;
   padding: 1.5px;
   background:
-    linear-gradient(135deg, var(--primary-color), var(--accent-glow), var(--tone-violet), var(--primary-color)) border-box;
+    var(--glass-border-gradient) border-box;
   opacity: 0;
   filter: saturate(1.2) brightness(1.05);
   transition: opacity 0.2s ease-out;
@@ -655,7 +737,7 @@ button {
   .clear-select-action,
   .module-select-toggle
 ):active:not(:disabled) {
-  transform: translateY(0) scale(0.985);
+  transform: translate3d(0, 0.5px, 0) scale(0.992);
 }
 
 a {
@@ -679,8 +761,8 @@ a {
   border-radius: inherit;
   padding: 1.5px;
   background:
-    linear-gradient(135deg, var(--primary-color), var(--accent-glow), var(--tone-violet), var(--primary-color)) border-box;
-  opacity: clamp(0, calc((var(--edge-proximity, 0) - 25) / 75), 0.65);
+    var(--glass-border-gradient) border-box;
+  opacity: clamp(0, calc((var(--edge-proximity, 0) - 25) / 75), 0.42);
   filter: saturate(1.2) brightness(1.05);
   transition: opacity 0.2s ease-out;
   -webkit-mask:
@@ -740,10 +822,10 @@ a {
   --spotlight-color: rgba(var(--primary-rgb), 0.2);
   transform-origin: center;
   transition:
-    transform var(--motion-medium) var(--ease-smooth),
+    transform var(--motion-hover) var(--ease-liquid),
     border-color 220ms ease,
-    background 240ms ease,
-    box-shadow 280ms ease;
+    background 300ms var(--ease-smooth),
+    box-shadow 360ms var(--ease-liquid);
 }
 
 :where(.icon-btn, .lang-btn, .avatar-btn, .top-nav button, .palette-switcher button, .module-icon, .tut-icon, .app-icon-tile)::after {
@@ -754,13 +836,13 @@ a {
   border-radius: inherit;
   background: none;
   opacity: 0;
-  transition: opacity 420ms ease;
+  transition: opacity 520ms var(--ease-smooth);
 }
 
 :where(.icon-btn:hover, .lang-btn:hover, .avatar-btn:hover, .top-nav button:hover, .palette-switcher button:hover, .module-icon:hover, .tut-icon:hover, .app-icon-tile:hover) {
-  transform: translateY(-0.5px);
+  transform: translate3d(0, -1px, 0) scale(1.006);
   box-shadow:
-    0 4px 10px rgba(0, 0, 0, 0.08),
+    0 8px 18px rgba(0, 0, 0, 0.075),
     inset 0 1px 0 rgba(255,255,255,0.08);
 }
 
@@ -769,24 +851,24 @@ a {
 }
 
 :where(.icon-btn:active, .lang-btn:active, .avatar-btn:active, .top-nav button:active, .palette-switcher button:active, .module-icon:active, .tut-icon:active, .app-icon-tile:active) {
-  transform: translateY(0) scale(0.995);
+  transform: translate3d(0, 0.5px, 0) scale(0.992);
 }
 
 :where(.icon-btn:hover, .lang-btn:hover, .avatar-btn:hover, .top-nav button:hover, .palette-switcher button:hover, .module-icon:hover, .tut-icon:hover, .app-icon-tile:hover) :where(.el-icon, svg),
 :where(.icon-btn:focus-visible, .lang-btn:focus-visible, .avatar-btn:focus-visible, .top-nav button:focus-visible, .palette-switcher button:focus-visible) :where(.el-icon, svg) {
-  animation: icon-kinetic 600ms var(--ease-smooth);
-  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.06));
+  animation: icon-kinetic 720ms var(--ease-liquid);
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.08));
 }
 
 :where(.icon-btn:hover, .lang-btn:hover, .avatar-btn:hover, .top-nav button:hover, .palette-switcher button:hover, .module-icon:hover, .tut-icon:hover, .app-icon-tile:hover) :where(svg[fill="none"]) :where(path, line, polyline, polygon, circle, rect),
 :where(.icon-btn:focus-visible, .lang-btn:focus-visible, .avatar-btn:focus-visible, .top-nav button:focus-visible, .palette-switcher button:focus-visible) :where(svg[fill="none"]) :where(path, line, polyline, polygon, circle, rect) {
-  animation: icon-line-flow 800ms var(--ease-smooth);
-  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.06));
+  animation: icon-line-flow 980ms var(--ease-liquid);
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.08));
 }
 
 :where(.icon-btn:hover, .lang-btn:hover, .avatar-btn:hover, .top-nav button:hover, .palette-switcher button:hover, .module-icon:hover, .tut-icon:hover, .app-icon-tile:hover) :where(.el-icon)::after,
 :where(.icon-btn:focus-visible, .lang-btn:focus-visible, .avatar-btn:focus-visible, .top-nav button:focus-visible, .palette-switcher button:focus-visible) :where(.el-icon)::after {
-  animation: icon-thread-sweep 700ms var(--ease-smooth) both;
+  animation: icon-thread-sweep 860ms var(--ease-liquid) both;
 }
 
 .icon-btn:hover :where(svg, .el-icon),
@@ -799,8 +881,8 @@ a {
 
 @keyframes icon-kinetic {
   0% { transform: translate3d(0, 0, 0) scale(1) rotate(0deg); }
-  42% { transform: translate3d(0, -1px, 0) scale(1.035) rotate(0deg); }
-  74% { transform: translate3d(0, 0, 0) scale(1.012) rotate(0deg); }
+  46% { transform: translate3d(0, -0.5px, 0) scale(1.018) rotate(0deg); }
+  76% { transform: translate3d(0, 0, 0) scale(1.006) rotate(0deg); }
   100% { transform: translate3d(0, 0, 0) scale(1) rotate(0deg); }
 }
 
@@ -897,7 +979,7 @@ a {
   border-radius: inherit;
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.28), transparent) top / 100% 1px no-repeat;
   opacity: 0.4;
-  transition: opacity 420ms ease;
+  transition: opacity var(--motion-medium) ease;
 }
 
 .glass-panel::before,
@@ -912,7 +994,7 @@ a {
   border-radius: inherit;
   padding: 1.5px;
   background:
-    linear-gradient(135deg, var(--primary-color), var(--accent-glow), var(--tone-violet), var(--primary-color)) border-box;
+    var(--glass-border-gradient) border-box;
   opacity: 0;
   filter: saturate(1.2) brightness(1.05);
   transition: opacity 0.2s ease-out;
@@ -938,7 +1020,7 @@ a {
 .glass-panel-light.edge-glow-active::before,
 .glass-panel-heavy.edge-glow-active::before,
 .surface-hover.edge-glow-active::before {
-  opacity: clamp(0, calc((var(--edge-proximity, 0) - 25) / 75), 0.65);
+  opacity: clamp(0, calc((var(--edge-proximity, 0) - 25) / 75), 0.42);
 }
 
 .glass-panel:hover::after,
@@ -1136,7 +1218,7 @@ a {
   border-radius: inherit;
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.24), transparent) top / 100% 1px no-repeat;
   opacity: 0;
-  transition: opacity 420ms ease;
+  transition: opacity var(--motion-medium) ease;
 }
 
 .surface-hover:hover {

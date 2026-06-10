@@ -46,7 +46,11 @@ deploy/*backup*.sql
 
 # Browser/test artifacts and screenshots
 .playwright-mcp/
+.playwright-cli/
 artifacts/
+output/
+outputs/
+work/
 .tmp*/
 .tmp-*
 tmp-jar-check/

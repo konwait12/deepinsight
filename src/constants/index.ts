@@ -14,6 +14,7 @@ export const STORAGE_KEYS = {
   CURVE_SATURATION: 'curve-saturation',
   AUTO_SYNC: 'auto-sync',
   ASSISTANT_POS: 'assistant-pos',
+  ASSISTANT_PROACTIVE: 'assistant-proactive',
 } as const
 
 export const APP_EVENTS = {
@@ -25,16 +26,18 @@ export const ROUTES = {
   HOME: '/',
   LOGIN: '/login',
   DASHBOARD: '/dashboard',
-  DATA: '/data',
-  TRAINING: '/training',
+  DATA: '/data-center',
+  TRAINING: '/model-overview',
   ANALYSIS: '/analysis',
-  PREDICTION: '/prediction',
-  AI: '/ai',
+  ANALYSIS_WORKBENCH: '/analysis-workbench',
+  PREDICTION: '/model-access-test',
+  DATASET_VIZ: '/dataset-visualization',
+  AI: '/ai-studio',
   CLOUD: '/cloud',
-  FORUM: '/forum',
-  KNOWLEDGE: '/knowledge',
+  FORUM: '/community-forum',
+  KNOWLEDGE: '/knowledge-base',
   PROFILE: '/profile',
-  VIZ: '/viz',
+  VIZ: '/performance-dashboard',
   ADMIN: '/admin',
 } as const
 
@@ -56,16 +59,16 @@ export const API_ENDPOINTS = {
   },
   PREDICTION: {
     MODELS: '/prediction/models',
-    CLASSIFY: '/prediction/classify',
     RECOMMEND: '/prediction/recommend',
+    HEALTH: '/prediction/health',
   },
   AI: {
     CHAT: '/ai/chat',
+    CHAT_STREAM: '/ai/chat/stream',
   },
   ADMIN: {
     STATUS: '/admin/status',
     USERS: '/admin/users',
-    MODELS: '/admin/models',
     AI_CONFIGS: '/ai/configs',
     KNOWLEDGE_NODES: '/admin/knowledge-nodes',
     KNOWLEDGE_ARTICLES: '/admin/knowledge-articles',
@@ -85,7 +88,7 @@ export const API_ENDPOINTS = {
   VISUAL_DATA: '/visual-data',
 } as const
 
-/** API 基础路径（开发环境通过 Vite proxy 转发到后端，生产部署可设置 VITE_API_BASE_URL 环境变量） */
+/** API 基础路径。开发环境通过 Vite proxy 转发到后端，生产部署可设置 VITE_API_BASE_URL。 */
 export const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || '/api/v1'
 
 /** 分页默认值 */
@@ -99,3 +102,4 @@ export const POLL_INTERVAL = {
   TRAINING: 5000,
   ANALYSIS: 8000,
 } as const
+

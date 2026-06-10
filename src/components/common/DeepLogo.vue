@@ -21,6 +21,7 @@ defineProps<{
   display: inline-flex;
   align-items: center;
   gap: 10px;
+  padding: 3px 0 3px 2px;
   transform-origin: left center;
   transform: scale(var(--logo-scale, 1));
   color: var(--text-primary);
@@ -34,15 +35,18 @@ defineProps<{
 
 .logo-mark {
   position: relative;
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
   border: 1px solid rgba(var(--primary-rgb), 0.42);
   background:
     radial-gradient(circle at 24% 18%, rgba(255,255,255,0.78), transparent 18%),
     linear-gradient(135deg, rgba(var(--primary-rgb), 0.24), transparent 52%),
     var(--surface-2);
-  box-shadow: 0 12px 36px rgba(var(--primary-rgb), 0.18);
+  box-shadow:
+    0 10px 30px rgba(var(--primary-rgb), 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
   overflow: hidden;
   transform-origin: center;
   animation: logo-breathe 4.6s ease-in-out infinite;
@@ -68,24 +72,24 @@ defineProps<{
 }
 
 .logo-mark::before {
-  width: 16px;
+  width: 17px;
   height: 2px;
-  left: 8px;
-  top: 11px;
+  left: 9px;
+  top: 13px;
 }
 
 .logo-mark::after {
   width: 2px;
-  height: 16px;
-  right: 10px;
-  bottom: 7px;
+  height: 17px;
+  right: 11px;
+  bottom: 8px;
 }
 
 .logo-mark span {
   width: 7px;
   height: 7px;
-  left: 9px;
-  bottom: 9px;
+  left: 10px;
+  bottom: 10px;
   animation: logo-node-pulse 2.4s ease-in-out infinite;
 }
 

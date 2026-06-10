@@ -12,12 +12,12 @@
           class="nav-item" :class="{ active: route.path.startsWith(item.path) }"
           @click="router.push(item.path)">
           <el-icon :size="16"><component :is="item.icon" /></el-icon>
-          <span>{{ t(item.label) }}</span>
+          <span>{{ navLabel(item) }}</span>
         </div>
       </nav>
 
       <div class="sidebar-foot">
-        <div class="nav-item exit" @click="router.push('/dashboard')">
+        <div class="nav-item exit" @click="router.push(ROUTES.TRAINING)">
           <el-icon :size="16"><Back /></el-icon>
           <span>{{ t('admin.back') }}</span>
         </div>
@@ -37,7 +37,11 @@
         </div>
       </div>
       <div class="admin-content">
-        <router-view />
+        <router-view v-slot="{ Component }">
+          <Transition name="admin-page" mode="out-in" appear>
+            <component :is="Component" :key="route.fullPath" class="admin-view-shell" />
+          </Transition>
+        </router-view>
       </div>
     </main>
   </div>
@@ -51,7 +55,7 @@ import { useThemeStore } from '@/stores/theme.store';
 import { authApi, adminApi } from '@/api';
 import { ROUTES } from '@/constants';
 import { clearAuthStorage } from '@/utils/authState';
-import { User, Cpu, Collection, ChatLineSquare, ChatDotRound, DataAnalysis, Back } from '@element-plus/icons-vue';
+import { User, Collection, ChatLineSquare, ChatDotRound, DataAnalysis, Back, Monitor } from '@element-plus/icons-vue';
 
 const route = useRoute(); const router = useRouter();
 const { t } = useI18n();
@@ -61,13 +65,18 @@ const stats = ref<Record<string,number>>({});
 const username = ref('');
 
 const navItems = [
+  { key:'overview', label:'overview', path:'/admin/overview', icon:'Monitor' },
   { key:'users',  label:'admin.users', path:'/admin/users',  icon:'User' },
-  { key:'models', label:'admin.models', path:'/admin/models', icon:'Cpu' },
   { key:'ai',     label:'admin.ai',  path:'/admin/ai',    icon:'ChatDotRound' },
   { key:'kb',     label:'admin.knowledge',   path:'/admin/kb',     icon:'Collection' },
   { key:'forum',  label:'admin.forum', path:'/admin/forum',  icon:'ChatLineSquare' },
   { key:'data',   label:'admin.dataTraining', path:'/admin/data',  icon:'DataAnalysis' },
 ];
+
+const navLabel = (item: { key: string; label: string }) => {
+  if (item.key === 'overview') return theme.lang === 'zh' ? '总览' : 'Overview'
+  return t(item.label)
+};
 
 const logout = () => {
   clearAuthStorage()
@@ -165,6 +174,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
   min-height: 42px;
   padding: 10px 12px;
   border: 1px solid transparent;
@@ -174,6 +184,13 @@ onMounted(async () => {
   font-size: 13px;
   font-weight: var(--font-weight-label);
   transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+.nav-item span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .nav-item:hover {
@@ -238,6 +255,8 @@ onMounted(async () => {
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  min-width: 0;
+  max-width: 100%;
   min-height: 28px;
   padding: 0 10px;
   border: 1px solid var(--border-color);
@@ -245,6 +264,9 @@ onMounted(async () => {
   background: var(--surface-2);
   color: var(--text-secondary);
   font-weight: var(--font-weight-body);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .user-tag {
@@ -266,27 +288,55 @@ onMounted(async () => {
   flex: 1;
   width: min(100%, 1440px);
   margin: 0 auto;
-  padding: var(--page-padding);
+  padding: clamp(22px, 3vw, 34px);
+  perspective: 1400px;
+}
+
+.admin-view-shell {
+  min-width: 0;
+  transform-origin: center 24px;
+}
+
+.admin-page-enter-active,
+.admin-page-leave-active {
+  transition:
+    opacity 300ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 360ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 300ms ease;
+  will-change: opacity, transform, filter;
+}
+
+.admin-page-enter-from {
+  opacity: 0;
+  filter: blur(9px) saturate(0.94);
+  transform: translate3d(0, 14px, 0) scale(0.99);
+}
+
+.admin-page-leave-to {
+  opacity: 0;
+  filter: blur(6px) saturate(0.96);
+  transform: translate3d(0, -7px, 0) scale(0.995);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-page-enter-active,
+  .admin-page-leave-active {
+    transition: none;
+  }
 }
 
 :deep(.page-title) {
   position: relative;
-  margin: 0 0 18px !important;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--border-color);
+  margin: 0 !important;
+  padding-bottom: 0;
+  border-bottom: 0;
   color: var(--text-primary) !important;
-  font-size: 28px !important;
+  font-size: clamp(24px, 2.7vw, 34px) !important;
   font-weight: var(--font-weight-title) !important;
 }
 
 :deep(.page-title::after) {
-  content: "";
-  position: absolute;
-  left: 0;
-  bottom: -1px;
-  width: 180px;
-  height: 1px;
-  background: linear-gradient(90deg, var(--primary-color), transparent);
+  display: none;
 }
 
 :deep(.sub) {
@@ -311,6 +361,185 @@ onMounted(async () => {
   background: var(--admin-table-bg);
   box-shadow: var(--shadow-soft);
   overflow: hidden;
+}
+
+:deep(.admin-page) {
+  display: grid;
+  gap: 18px;
+}
+
+:deep(.admin-hero),
+:deep(.admin-panel) {
+  border: 1px solid var(--border-color);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), transparent 62%),
+    rgba(var(--glass-bg-rgb), 0.58);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(18px) saturate(130%);
+  -webkit-backdrop-filter: blur(18px) saturate(130%);
+}
+
+:deep(.admin-hero) {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px;
+}
+
+:deep(.admin-hero span),
+:deep(.admin-panel-head span),
+:deep(.admin-metric-grid article span) {
+  display: block;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: var(--font-weight-title);
+}
+
+:deep(.admin-hero p) {
+  max-width: 68ch;
+  margin: 10px 0 0;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+:deep(.hero-actions),
+:deep(.admin-toolbar) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+:deep(.admin-toolbar) {
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  background: rgba(var(--glass-bg-rgb), 0.42);
+}
+
+:deep(.toolbar-left),
+:deep(.toolbar-right) {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+:deep(.admin-metric-grid) {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+:deep(.admin-metric-grid article) {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  background: rgba(var(--glass-bg-rgb), 0.5);
+  box-shadow: var(--shadow-soft);
+}
+
+:deep(.admin-metric-grid article strong) {
+  display: block;
+  margin-top: 8px;
+  color: var(--text-primary);
+  font-size: 26px;
+}
+
+:deep(.admin-metric-grid article small) {
+  display: block;
+  margin-top: 6px;
+  color: var(--text-secondary);
+}
+
+:deep(.admin-grid) {
+  display: grid;
+  gap: 16px;
+}
+
+:deep(.admin-grid.two) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+:deep(.admin-panel) {
+  min-width: 0;
+  padding: 16px;
+}
+
+:deep(.admin-panel-head) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+:deep(.admin-panel-head strong) {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-primary);
+  font-size: 16px;
+}
+
+:deep(.status-list),
+:deep(.shortcut-list) {
+  display: grid;
+  gap: 8px;
+}
+
+:deep(.status-list div),
+:deep(.shortcut-list button) {
+  width: 100%;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+:deep(.status-list div) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+:deep(.status-list span),
+:deep(.shortcut-list small) {
+  color: var(--text-secondary);
+}
+
+:deep(.shortcut-list button) {
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 180ms ease, border-color 180ms ease, transform 180ms ease;
+}
+
+:deep(.shortcut-list button:hover) {
+  transform: translateY(-1px);
+  border-color: rgba(var(--primary-rgb), 0.26);
+  background: rgba(var(--primary-rgb), 0.08);
+}
+
+:deep(.shortcut-list span) {
+  display: block;
+  font-weight: var(--font-weight-title);
+}
+
+:deep(.empty-hint) {
+  padding: 28px;
+  border: 1px dashed var(--border-color);
+  border-radius: 16px;
+  color: var(--text-secondary);
+  text-align: center;
+  background: rgba(var(--glass-bg-rgb), 0.34);
 }
 
 :deep(.el-table__inner-wrapper::before),
@@ -361,6 +590,10 @@ onMounted(async () => {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .nav-item {
+    border-radius: 14px;
+  }
+
   .admin-topbar {
     position: relative;
     align-items: flex-start;
@@ -370,5 +603,16 @@ onMounted(async () => {
   :deep(.page-title) {
     font-size: 24px !important;
   }
+
+  :deep(.admin-hero) {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  :deep(.admin-metric-grid),
+  :deep(.admin-grid.two) {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
+

@@ -2,7 +2,7 @@
   <section class="cloud-portal" :class="[`cloud-portal--${variant}`, { expanded: portalOpen }]">
     <header class="cloud-portal-top">
       <div class="cloud-title">
-        <span>{{ compact ? 'Cloud' : copy.eyebrow }}</span>
+        <span>{{ compact ? (isZh ? '素材' : 'Materials') : copy.eyebrow }}</span>
         <strong>{{ title }}</strong>
         <em>{{ subtitle }}</em>
       </div>
@@ -18,6 +18,14 @@
 
     <Transition name="cloud-drop">
       <div v-if="portalOpen" class="cloud-workspace">
+        <div class="cloud-quick-stats">
+          <article v-for="item in quickStats" :key="item.label">
+            <span>{{ item.label }}</span>
+            <strong>{{ item.value }}</strong>
+            <em>{{ item.hint }}</em>
+          </article>
+        </div>
+
         <nav class="cloud-nav" :aria-label="copy.navLabel">
           <button
             v-for="tab in tabs"
@@ -206,7 +214,7 @@ const props = withDefaults(defineProps<{
   variant?: 'workspace' | 'knowledge' | 'ai' | 'page'
 }>(), {
   title: '统一管理保存的分析材料',
-  subtitle: '模型、数据、矩阵视图和上传文件会在这里形成可继续调用的云端素材库。',
+  subtitle: '模型、数据、矩阵视图和上传文件会在这里形成可继续调用的素材库。',
   compact: false,
   defaultOpen: false,
   selectable: false,
@@ -223,13 +231,13 @@ const isZh = computed(() => locale.value.startsWith('zh'))
 const copy = computed(() => {
   if (!isZh.value) {
     return {
-      eyebrow: 'Cloud Workspace',
-      sync: 'Sync cloud',
+      eyebrow: 'Material Library',
+      sync: 'Refresh materials',
       syncing: 'Syncing',
-      open: 'Open cloud',
+      open: 'Open library',
       close: 'Collapse',
-      navLabel: 'Cloud material navigation',
-      root: 'Cloud root',
+      navLabel: 'Material library navigation',
+      root: 'Library root',
       search: 'Search',
       searchPlaceholder: 'Search name, type, summary...',
       list: 'List',
@@ -245,26 +253,34 @@ const copy = computed(() => {
       uploading: 'Uploading',
       select: 'Use',
       preview: 'Preview',
-      savedItem: 'Saved cloud material',
+      savedItem: 'Saved material',
       record: 'Record',
-      empty: 'No cloud material in this view',
-      detailFallback: 'This cloud item can be used as AI context or analysis material.',
-      detailEmpty: 'Select a cloud item to view details',
+      empty: 'No material in this view',
+      detailFallback: 'This material can be used as AI context or analysis input.',
+      detailEmpty: 'Select a material to view details',
       download: 'Download',
       copySummary: 'Copy summary',
-      noLogin: 'Please sign in before using cloud storage',
-      readOnly: 'Official read-only',
-      readOnlyDetail: 'Official assets can be read by AI, but can only be managed in Admin.',
+      noLogin: 'Please sign in before using the material library',
+      readOnly: 'Built-in read-only',
+      readOnlyDetail: 'Built-in assets can be read by AI, but can only be managed in Admin.',
+      statFolders: 'Folders',
+      statFoldersHint: 'Personal organization',
+      statFiles: 'Files',
+      statFilesHint: 'Uploaded or synced',
+      statAnalysis: 'Analysis',
+      statAnalysisHint: 'Reusable results',
+      statReadonly: 'Read-only',
+      statReadonlyHint: 'Built-in resources',
     }
   }
   return {
-    eyebrow: '云端工作台',
-    sync: '同步云端',
+    eyebrow: '素材库',
+    sync: '刷新素材',
     syncing: '同步中',
-    open: '打开云端',
+    open: '打开素材库',
     close: '收起入口',
-    navLabel: '云端素材导航',
-    root: '云端根目录',
+    navLabel: '素材库导航',
+    root: '素材库根目录',
     search: '搜索',
     searchPlaceholder: '搜索名称、类型、摘要...',
     list: '列表',
@@ -280,16 +296,24 @@ const copy = computed(() => {
     uploading: '上传中',
     select: '使用',
     preview: '预览',
-    savedItem: '云端保存项',
+    savedItem: '素材库保存项',
     record: '记录',
-    empty: '当前视图暂无云端素材',
-    detailFallback: '这条云端记录可以继续作为 AI 上下文或分析材料使用。',
-    detailEmpty: '选择一个云端素材查看详情',
+    empty: '当前视图暂无素材',
+    detailFallback: '这条记录可以继续作为 AI 上下文或分析材料使用。',
+    detailEmpty: '选择一个素材查看详情',
     download: '下载',
     copySummary: '复制摘要',
-    noLogin: '请先登录后再使用云端存储',
-    readOnly: '官方只读',
-    readOnlyDetail: '官方资产可被 AI 读取，但只能在管理后台维护。',
+    noLogin: '请先登录后再使用素材库',
+    readOnly: '内置只读',
+    readOnlyDetail: '内置资产可被 AI 读取，但只能在管理后台维护。',
+    statFolders: '文件夹',
+    statFoldersHint: '个人整理结构',
+    statFiles: '文件素材',
+    statFilesHint: '上传或同步入库',
+    statAnalysis: '分析结果',
+    statAnalysisHint: '可复用输出',
+    statReadonly: '只读资源',
+    statReadonlyHint: '内置模型/资产',
   }
 })
 
@@ -313,11 +337,17 @@ const draggingFolder = ref<CloudFolder | null>(null)
 
 const tabs = computed(() => [
   { key: 'all', label: isZh.value ? '全部' : 'All' },
-  { key: 'image', label: isZh.value ? '图片' : 'Images' },
   { key: 'file', label: isZh.value ? '文件' : 'Files' },
   { key: 'analysis', label: isZh.value ? '分析' : 'Analysis' },
   { key: 'model', label: isZh.value ? '模型' : 'Models' },
   { key: 'dataset', label: isZh.value ? '数据' : 'Data' },
+])
+
+const quickStats = computed(() => [
+  { label: copy.value.statFolders, value: folders.value.length, hint: copy.value.statFoldersHint },
+  { label: copy.value.statFiles, value: cloudItems.value.filter((item) => ['file', 'image'].includes(item.group)).length, hint: copy.value.statFilesHint },
+  { label: copy.value.statAnalysis, value: cloudItems.value.filter((item) => item.group === 'analysis').length, hint: copy.value.statAnalysisHint },
+  { label: copy.value.statReadonly, value: cloudItems.value.filter(isReadOnlyItem).length, hint: copy.value.statReadonlyHint },
 ])
 
 const activeFolder = computed(() => folders.value.find((folder) => folder.id === activeFolderId.value) || null)
@@ -380,7 +410,7 @@ async function loadCloudItems() {
   } catch (error: any) {
     cloudItems.value = []
     folders.value = []
-    ElMessage.error(error?.response?.data?.message || (isZh.value ? '云端素材读取失败' : 'Failed to load cloud items'))
+    ElMessage.error(error?.response?.data?.message || (isZh.value ? '素材库读取失败' : 'Failed to load materials'))
   } finally {
     loading.value = false
   }
@@ -400,7 +430,7 @@ function normalizeRecords(records: any[]): CloudItem[] {
   return records.map((raw, index) => {
     const isWorkspaceItem = raw.itemType != null
     const type = String(raw.itemType || raw.type || raw.sourceType || 'resource')
-    const title = String(raw.title || raw.fileName || raw.name || `${isZh.value ? '云端素材' : 'Cloud item'} ${index + 1}`)
+    const title = String(raw.title || raw.fileName || raw.name || `${isZh.value ? '素材' : 'Material'} ${index + 1}`)
     const format = String(raw.format || raw.mimeType || raw.status || '')
     const folderId = raw.folderId == null ? null : Number(raw.folderId)
     const official = Boolean(raw.official || raw.isOfficial || raw.payload?.official)
@@ -602,7 +632,7 @@ async function deleteItem(item: CloudItem) {
   }
   if (!item.id) return
   await ElMessageBox.confirm(
-    isZh.value ? '确认删除这条云端素材？' : 'Delete this cloud item?',
+    isZh.value ? '确认删除这条素材？' : 'Delete this material?',
     copy.value.delete,
     { type: 'warning', confirmButtonText: copy.value.delete, cancelButtonText: isZh.value ? '取消' : 'Cancel' },
   )
@@ -619,7 +649,7 @@ async function downloadItem(item: CloudItem) {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = item.fileName || item.title || 'cloud-item'
+    link.download = item.fileName || item.title || 'material-item'
     document.body.appendChild(link)
     link.click()
     link.remove()
@@ -635,7 +665,7 @@ function copyItem(item: CloudItem) {
 }
 
 function groupOf(type: string) {
-  if (['image'].includes(type)) return 'image'
+  if (['image'].includes(type)) return 'file'
   if (['file', 'text', 'context_bundle', 'data_asset', 'cloud_item'].includes(type)) return 'file'
   if (['analysis_result', 'saved_view', 'visual_view'].includes(type)) return 'analysis'
   if (['model'].includes(type)) return 'model'
@@ -676,7 +706,21 @@ function typeLabel(type: string) {
 }
 
 function typeIcon(item: CloudItem) {
-  const icons: Record<string, string> = {
+  const zhIcons: Record<string, string> = {
+    image: '图',
+    file: '文',
+    text: '文',
+    context_bundle: '包',
+    data_asset: '数据',
+    analysis_result: '矩阵',
+    saved_view: '视图',
+    visual_view: '视图',
+    model: '模型',
+    dataset: '数据',
+    training: '训练',
+    run: '日志',
+  }
+  const enIcons: Record<string, string> = {
     image: 'IMG',
     file: 'DOC',
     text: 'TXT',
@@ -690,7 +734,7 @@ function typeIcon(item: CloudItem) {
     training: 'RUN',
     run: 'LOG',
   }
-  return icons[item.type] || 'CLD'
+  return (isZh.value ? zhIcons : enIcons)[item.type] || (isZh.value ? '云' : 'CLD')
 }
 
 function countByTab(key: string) {
@@ -714,11 +758,18 @@ function folderName(folderId: number | null | undefined) {
   position: relative;
   z-index: 8;
   margin: 0 0 18px;
+  --cloud-glass-bg:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.018)),
+    color-mix(in srgb, rgba(var(--glass-bg-rgb), var(--glass-opacity)) 78%, transparent);
+  --cloud-card-bg:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), transparent),
+    color-mix(in srgb, var(--panel-bg) 84%, transparent);
   border: 1px solid color-mix(in srgb, var(--primary-color) 20%, var(--border-color));
-  border-radius: 26px;
-  background: var(--workbench-shell-bg);
-  box-shadow: var(--workbench-shadow);
-  backdrop-filter: blur(18px);
+  border-radius: 8px;
+  background: var(--cloud-glass-bg);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   overflow: hidden;
 }
 
@@ -733,8 +784,9 @@ function folderName(folderId: number | null | undefined) {
 
 .cloud-portal--page {
   margin: 0;
-  border-radius: 34px;
-  background: var(--workbench-shell-bg-strong);
+  border-radius: 8px;
+  background: var(--cloud-glass-bg);
+  overflow: visible;
 }
 
 .cloud-portal-top {
@@ -764,9 +816,13 @@ function folderName(folderId: number | null | undefined) {
 }
 
 .cloud-title strong {
+  min-width: 0;
+  overflow: hidden;
   color: var(--text-primary);
   font-size: clamp(18px, 2vw, 26px);
   font-weight: var(--font-weight-title);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cloud-portal--page .cloud-title strong {
@@ -775,11 +831,15 @@ function folderName(folderId: number | null | undefined) {
 }
 
 .cloud-title em {
+  display: -webkit-box;
   max-width: 780px;
+  overflow: hidden;
   color: var(--text-secondary);
   font-size: 12px;
   font-style: normal;
   line-height: 1.6;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .cloud-actions,
@@ -795,14 +855,22 @@ function folderName(folderId: number | null | undefined) {
 .folder-tools button,
 .folder-manage button,
 .upload-zone button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
   min-height: 34px;
+  min-width: 0;
   padding: 0 13px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid var(--border-color);
   border-radius: 999px;
   background: var(--workbench-control-bg);
   color: var(--text-secondary);
   font-size: 11px;
   font-weight: var(--font-weight-title);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
 }
 
@@ -812,7 +880,7 @@ function folderName(folderId: number | null | undefined) {
 .folder-manage button:hover,
 .upload-zone button:hover {
   transform: translateY(-1px);
-  border-color: rgba(255, 255, 255, 0.24);
+  border-color: color-mix(in srgb, var(--primary-color) 42%, var(--border-color));
   background: rgba(var(--primary-rgb), 0.09);
 }
 
@@ -830,7 +898,7 @@ function folderName(folderId: number | null | undefined) {
 
 .cloud-workspace {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto minmax(0, 1fr);
   gap: 12px;
   min-height: 0;
   padding: 0 16px 16px;
@@ -839,14 +907,59 @@ function folderName(folderId: number | null | undefined) {
 }
 
 .cloud-portal--page .cloud-workspace {
+  height: auto;
+  min-height: 0;
   padding: 0 22px 22px;
+  overflow: visible;
+  overscroll-behavior: auto;
+}
+
+.cloud-quick-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.cloud-quick-stats article {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-2) 68%, transparent);
+}
+
+.cloud-quick-stats span,
+.cloud-quick-stats strong,
+.cloud-quick-stats em {
+  display: block;
+}
+
+.cloud-quick-stats span {
+  color: var(--primary-color);
+  font-size: 11px;
+  font-weight: var(--font-weight-title);
+}
+
+.cloud-quick-stats strong {
+  margin: 6px 0 4px;
+  color: var(--text-primary);
+  font-size: 24px;
+}
+
+.cloud-quick-stats em {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cloud-nav,
 .cloud-toolbar,
 .cloud-body {
   border: 1px solid var(--border-color);
-  background: var(--workbench-panel-bg);
+  background: var(--cloud-card-bg);
 }
 
 .cloud-nav {
@@ -854,10 +967,11 @@ function folderName(folderId: number | null | undefined) {
   flex-wrap: wrap;
   gap: 8px;
   padding: 8px;
-  border-radius: 18px;
+  border-radius: 8px;
 }
 
 .cloud-nav button {
+  min-width: 0;
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -867,6 +981,13 @@ function folderName(folderId: number | null | undefined) {
   color: var(--text-secondary);
   font-size: 11px;
   font-weight: var(--font-weight-title);
+}
+
+.cloud-nav button span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cloud-nav button.active {
@@ -881,7 +1002,7 @@ function folderName(folderId: number | null | undefined) {
   align-items: center;
   gap: 10px;
   padding: 10px;
-  border-radius: 18px;
+  border-radius: 8px;
 }
 
 .cloud-path {
@@ -926,6 +1047,7 @@ function folderName(folderId: number | null | undefined) {
 .cloud-search span {
   font-size: 10px;
   font-weight: var(--font-weight-title);
+  white-space: nowrap;
 }
 
 .cloud-search input {
@@ -944,14 +1066,17 @@ function folderName(folderId: number | null | undefined) {
   height: min(760px, calc(100dvh - 220px));
   min-height: 520px;
   padding: 12px;
-  border-radius: 22px;
+  border-radius: 8px;
   overflow: hidden;
 }
 
 .cloud-portal--page .cloud-body {
-  height: 100%;
+  height: auto;
   min-height: 0;
   grid-template-columns: 300px minmax(0, 1fr) 320px;
+  align-items: start;
+  overflow: visible;
+  overscroll-behavior: auto;
 }
 
 .cloud-folder-pane,
@@ -959,8 +1084,8 @@ function folderName(folderId: number | null | undefined) {
 .cloud-detail {
   min-width: 0;
   border: 1px solid var(--border-color);
-  border-radius: 18px;
-  background: var(--workbench-panel-bg);
+  border-radius: 8px;
+  background: var(--cloud-card-bg);
 }
 
 .cloud-folder-pane {
@@ -1004,10 +1129,14 @@ function folderName(folderId: number | null | undefined) {
   padding: 7px 8px 7px calc(8px + var(--level, 0) * 16px);
   border: 1px solid var(--border-color);
   border-radius: 14px;
-  background: var(--workbench-panel-bg);
+  background: var(--cloud-card-bg);
   color: var(--text-secondary);
   text-align: left;
-  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+  transition:
+    transform var(--motion-hover) var(--ease-liquid),
+    border-color var(--motion-hover) var(--ease-liquid),
+    background var(--motion-medium) var(--ease-smooth),
+    box-shadow var(--motion-medium) var(--ease-smooth);
 }
 
 .folder-row:hover,
@@ -1125,7 +1254,7 @@ function folderName(folderId: number | null | undefined) {
   border-radius: 18px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.018) 42%, rgba(0, 0, 0, 0.08)),
-    var(--workbench-panel-bg);
+    var(--cloud-card-bg);
 }
 
 .upload-zone.over {
@@ -1176,9 +1305,14 @@ function folderName(folderId: number | null | undefined) {
   padding: 10px;
   border: 1px solid var(--border-color);
   border-radius: 15px;
-  background: var(--workbench-panel-bg);
+  background: var(--cloud-card-bg);
   color: var(--text-secondary);
   text-align: left;
+  transition:
+    transform var(--motion-hover) var(--ease-liquid),
+    border-color var(--motion-hover) var(--ease-liquid),
+    background var(--motion-medium) var(--ease-smooth),
+    box-shadow var(--motion-medium) var(--ease-smooth);
 }
 
 .table-row.selected,
@@ -1206,6 +1340,13 @@ function folderName(folderId: number | null | undefined) {
 
 .table-row strong,
 .table-row small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.table-row em,
+.table-row i {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1297,7 +1438,40 @@ function folderName(folderId: number | null | undefined) {
   transform: translateY(12px);
 }
 
+@media (hover: hover) and (pointer: fine) {
+  .cloud-portal:hover,
+  .cloud-folder-pane:hover,
+  .cloud-showcase:hover,
+  .cloud-detail:hover {
+    border-color: color-mix(in srgb, var(--primary-color) 32%, var(--border-color));
+  }
+
+  .folder-row:hover,
+  .table-row:hover {
+    box-shadow: var(--shadow-ring);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cloud-actions button,
+  .detail-actions button,
+  .folder-tools button,
+  .folder-manage button,
+  .upload-zone button,
+  .folder-row,
+  .table-row,
+  .cloud-drop-enter-active,
+  .cloud-drop-leave-active {
+    transition: none;
+    transform: none !important;
+  }
+}
+
 @media (max-width: 1180px) {
+  .cloud-quick-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .cloud-body,
   .cloud-portal--page .cloud-body {
     grid-template-columns: 240px minmax(0, 1fr);
@@ -1307,10 +1481,13 @@ function folderName(folderId: number | null | undefined) {
     grid-column: 1 / -1;
     max-height: 320px;
   }
-
 }
 
 @media (max-width: 860px) {
+  .cloud-quick-stats {
+    grid-template-columns: 1fr;
+  }
+
   .cloud-portal-top,
   .cloud-toolbar,
   .upload-zone {
@@ -1333,6 +1510,28 @@ function folderName(folderId: number | null | undefined) {
   .table-row small {
     grid-column: 2;
   }
+}
+
+.cloud-portal--page .cloud-folder-pane,
+.cloud-portal--page .cloud-showcase,
+.cloud-portal--page .cloud-detail {
+  overflow: visible;
+}
+
+.cloud-portal--page .cloud-folder-pane {
+  grid-template-rows: auto auto auto auto auto;
+}
+
+.cloud-portal--page .cloud-showcase {
+  grid-template-rows: auto auto;
+}
+
+.cloud-portal--page .folder-tree,
+.cloud-portal--page .cloud-table,
+.cloud-portal--page .cloud-detail {
+  max-height: none;
+  overflow: visible;
+  overscroll-behavior: auto;
 }
 
 </style>

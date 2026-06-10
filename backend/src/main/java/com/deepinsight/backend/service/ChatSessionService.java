@@ -77,26 +77,32 @@ public class ChatSessionService {
 
     // ========== Messages ==========
 
-    public void saveHistory(Long convId, List<Map<String, String>> history) {
+    public void saveHistory(Long convId, List<? extends Map<String, ?>> history) {
         String key = SESSION_PREFIX + convId;
         redisTemplate.delete(key);
-        for (Map<String, String> msg : history) redisTemplate.opsForList().rightPush(key, msg);
+        for (Map<String, ?> msg : history) redisTemplate.opsForList().rightPush(key, new LinkedHashMap<>(msg));
         redisTemplate.expire(key, TTL_DAYS, TimeUnit.DAYS);
     }
 
     @SuppressWarnings("unchecked")
-    public List<Map<String, String>> getHistory(Long convId) {
+    public List<Map<String, Object>> getHistory(Long convId) {
         String key = SESSION_PREFIX + convId;
         List<Object> raw = redisTemplate.opsForList().range(key, 0, -1);
         if (raw == null) return new ArrayList<>();
-        List<Map<String, String>> result = new ArrayList<>();
-        for (Object obj : raw) if (obj instanceof Map) result.add((Map<String, String>) obj);
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Object obj : raw) {
+            if (obj instanceof Map<?, ?> map) {
+                Map<String, Object> item = new LinkedHashMap<>();
+                map.forEach((field, value) -> item.put(String.valueOf(field), value));
+                result.add(item);
+            }
+        }
         return result;
     }
 
-    public void appendMessage(Long convId, Map<String, String> message) {
+    public void appendMessage(Long convId, Map<String, ?> message) {
         String key = SESSION_PREFIX + convId;
-        redisTemplate.opsForList().rightPush(key, message);
+        redisTemplate.opsForList().rightPush(key, new LinkedHashMap<>(message));
         redisTemplate.expire(key, TTL_DAYS, TimeUnit.DAYS);
         bumpConversation(convId);
     }

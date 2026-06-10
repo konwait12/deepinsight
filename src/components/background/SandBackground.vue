@@ -83,39 +83,43 @@ const route = useRoute()
 }
 
 .light .ambient-ribbon {
-  opacity: 0.075;
-  filter: blur(128px);
+  opacity: 0.045;
+  filter: blur(142px);
+}
+
+.light .ambient-bg {
+  background:
+    linear-gradient(180deg, rgba(250, 253, 255, 0.96), rgba(232, 245, 242, 0.88) 52%, rgba(224, 239, 247, 0.82)),
+    linear-gradient(118deg, rgba(66, 230, 164, 0.045), transparent 36%, rgba(96, 165, 250, 0.065)),
+    var(--bg-color);
 }
 
 .light .ambient-gradient {
   opacity: 1;
-  filter: blur(4px) saturate(112%);
+  filter: blur(12px) saturate(112%);
   background:
-    radial-gradient(920px circle at 13% 13%, rgba(var(--primary-rgb), 0.16), transparent 46%),
-    radial-gradient(840px circle at 88% 17%, color-mix(in srgb, var(--accent-glow) 18%, transparent), transparent 48%),
-    radial-gradient(760px circle at 50% 108%, rgba(125, 211, 252, 0.13), transparent 52%),
-    linear-gradient(118deg, transparent 0%, rgba(255, 255, 255, 0.36) 44%, transparent 64%);
+    linear-gradient(105deg, transparent 0%, rgba(255, 255, 255, 0.5) 42%, transparent 62%),
+    linear-gradient(158deg, rgba(var(--primary-rgb), 0.08), transparent 28%, rgba(96, 165, 250, 0.07) 78%, transparent),
+    linear-gradient(26deg, transparent, rgba(255, 255, 255, 0.38), transparent 70%);
 }
 
 .light .ambient-grid {
-  opacity: 0.48;
+  opacity: 0.72;
   background-image:
-    linear-gradient(rgba(30, 80, 92, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(30, 80, 92, 0.04) 1px, transparent 1px),
-    linear-gradient(rgba(var(--primary-rgb), 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(var(--primary-rgb), 0.03) 1px, transparent 1px);
-  background-position: 0 0, 0 0, 18px 18px, 18px 18px;
-  background-size: 72px 72px, 72px 72px, 18px 18px, 18px 18px;
-  mask-image: linear-gradient(180deg, rgba(0,0,0,0.72), rgba(0,0,0,0.46) 58%, transparent 94%);
+    linear-gradient(118deg, transparent 0 30%, rgba(255, 255, 255, 0.42) 44%, transparent 58%),
+    linear-gradient(172deg, rgba(32, 82, 98, 0.035), transparent 28%, rgba(255, 255, 255, 0.26) 54%, transparent 78%),
+    linear-gradient(88deg, transparent, rgba(66, 230, 164, 0.035), transparent 52%);
+  background-position: 0 0, 0 0, 0 0;
+  background-size: 100% 100%;
+  mask-image: linear-gradient(180deg, rgba(0,0,0,0.78), rgba(0,0,0,0.5) 62%, transparent 96%);
 }
 
 .light .ambient-grain {
-  opacity: 0.18;
+  opacity: 0.16;
   background-image:
-    radial-gradient(circle at 20% 20%, rgba(36, 71, 82, 0.2) 0 0.7px, transparent 1px),
-    radial-gradient(circle at 80% 50%, color-mix(in srgb, var(--accent-glow) 18%, transparent) 0 0.8px, transparent 1px),
-    linear-gradient(135deg, transparent, rgba(255, 255, 255, 0.24), transparent);
-  background-size: 18px 18px, 27px 27px, 100% 100%;
+    linear-gradient(90deg, rgba(255, 255, 255, 0.18), transparent 18%, rgba(34, 93, 108, 0.028) 48%, transparent 78%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 36%, rgba(66, 230, 164, 0.024));
+  background-size: 100% 100%;
 }
 
 @keyframes slow-drift {

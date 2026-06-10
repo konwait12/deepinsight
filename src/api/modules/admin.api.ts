@@ -19,15 +19,6 @@ export const adminApi = {
     },
   },
 
-  models: {
-    list() {
-      return apiClient.get<ApiResponse<any[]>>(API_ENDPOINTS.ADMIN.MODELS)
-    },
-    delete(id: number) {
-      return apiClient.delete(`${API_ENDPOINTS.ADMIN.MODELS}/${id}`)
-    },
-  },
-
   aiConfigs: {
     list() {
       return apiClient.get<ApiResponse<any[]>>(API_ENDPOINTS.ADMIN.AI_CONFIGS)
@@ -41,6 +32,15 @@ export const adminApi = {
     },
     delete(id: number) {
       return apiClient.delete(`${API_ENDPOINTS.ADMIN.AI_CONFIGS}/${id}`)
+    },
+  },
+
+  aiKnowledgeTraining: {
+    status() {
+      return apiClient.get<ApiResponse<any>>('/ai/knowledge/train/status')
+    },
+    train() {
+      return apiClient.post<ApiResponse<any>>('/ai/knowledge/train')
     },
   },
 

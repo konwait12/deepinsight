@@ -1,4 +1,4 @@
-import apiClient from '../client'
+﻿import apiClient from '../client'
 import { API_ENDPOINTS } from '@/constants'
 import type { ApiResponse } from '@/types/common'
 import type { TrainingJob, TrainingConfig, ModelOption } from '@/types/models'
@@ -29,14 +29,6 @@ export const trainingApi = {
   },
 
   listModels() {
-    return apiClient.get<ApiResponse<{ official: ModelOption[]; userModels: ModelOption[] }>>(API_ENDPOINTS.MODELS)
-  },
-
-  createModel(data: Partial<ModelOption>) {
-    return apiClient.post(API_ENDPOINTS.MODELS, data)
-  },
-
-  getArticle(id: number) {
-    return apiClient.get<ApiResponse<any>>(`/models/articles/${id}`)
+    return apiClient.get<ApiResponse<{ official: ModelOption[]; userModels: ModelOption[]; databaseBacked: boolean; modelUploadEnabled: boolean }>>(API_ENDPOINTS.MODELS)
   },
 }

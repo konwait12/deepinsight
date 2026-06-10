@@ -9,8 +9,18 @@
       @pointercancel="handlePointerLeave"
     >
       <SandBackground />
-      <ReactBitsCursor
+      <IridescenceField
         v-if="!isLandingPage"
+        class="app-iridescence-field"
+        :active="!themeStore.isDarkMode"
+        :speed="0.46"
+        :amplitude="0.045"
+        :opacity="0.3"
+        :theme-strength="0.72"
+        :mouse-react="true"
+      />
+      <ReactBitsCursor
+        v-if="!isLandingPage && themeStore.isDarkMode"
         :dark="themeStore.isDarkMode"
         :paused="false"
       />
@@ -21,7 +31,9 @@
         </div>
         <div class="app-content">
           <router-view v-slot="{ Component }">
-            <component :is="Component" />
+            <Transition name="route-cinema" mode="out-in" appear>
+              <component :is="Component" :key="rootViewKey" class="route-view-shell" />
+            </Transition>
           </router-view>
           <Footer v-if="!isPublicPreview" />
         </div>
@@ -37,12 +49,13 @@ import Header from '@/components/common/Header.vue'
 import Sidebar from '@/components/common/Sidebar.vue'
 import Footer from '@/components/common/Footer.vue'
 import SandBackground from '@/components/background/SandBackground.vue'
+import IridescenceField from '@/components/effects/IridescenceField.vue'
 import ReactBitsCursor from '@/components/effects/ReactBitsCursor.vue'
 import { onMounted, onUnmounted, computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useThemeStore } from '@/stores/theme.store'
 import { useAuthStore } from '@/stores/auth.store'
-import { APP_EVENTS } from '@/constants'
+import { APP_EVENTS, ROUTES } from '@/constants'
 
 const themeStore = useThemeStore()
 const authStore = useAuthStore()
@@ -58,7 +71,9 @@ let pointerRaf = 0
 let pendingPointerX = window.innerWidth / 2
 let pendingPointerY = window.innerHeight / 2
 let activeSpotlightElements = new Set<HTMLElement>()
-const EDGE_GLOW_REACH = 100
+const EDGE_GLOW_REACH = 104
+const TILT_MAX_ROTATION = 1.18
+const TILT_COMPACT_ROTATION = 0.34
 const spotlightTargetSelector = [
   'button',
   '[role="button"]',
@@ -134,6 +149,36 @@ const nativeGlowSurfaceSelector = [
   '.tut-icon',
   '.app-icon-tile',
 ].join(',')
+const kineticTiltSelector = [
+  'button:not(:disabled)',
+  'a[href]',
+  '[role="button"]',
+  '.el-button:not(.is-disabled)',
+  '.model-row',
+  '.asset-row',
+  '.dataset-card-button',
+  '.asset-tab',
+  '.module-chip',
+  '.mode-tabs button',
+  '.task-tabs button',
+  '.top-nav button',
+  '.mini-row',
+  '.cloud-folder-dock',
+].join(',')
+const compactKineticSelector = [
+  'button',
+  'a[href]',
+  '[role="button"]',
+  '.el-button',
+  '.icon-btn',
+  '.lang-btn',
+  '.avatar-btn',
+  '.top-nav button',
+  '.palette-switcher button',
+  '.result-view-switch button',
+  '.result-filter-chips button',
+  '.analysis-mode-switch button',
+].join(',')
 const textEntrySurfaceSelector = [
   'input',
   'textarea',
@@ -158,6 +203,60 @@ const textEntrySurfaceSelector = [
 let languageTransitionCleanupTimer = 0
 let globalStateCleanupTimer = 0
 const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+const coarsePointer = () => typeof window !== 'undefined' && window.matchMedia('(hover: none), (pointer: coarse)').matches
+const clampNumber = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value))
+const isPointerInsideRect = (rect: DOMRect, x: number, y: number) => x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
+
+const resetKineticTiltElement = (element: HTMLElement | null) => {
+  if (!element?.isConnected) return
+  element.classList.remove('kinetic-tilt-active', 'kinetic-tilt-compact')
+  element.style.removeProperty('--tilt-rx')
+  element.style.removeProperty('--tilt-ry')
+  element.style.removeProperty('--tilt-lift')
+  element.style.removeProperty('--tilt-scale')
+  element.style.removeProperty('--tilt-glint')
+}
+
+const isKineticTiltCandidate = (element: HTMLElement) => {
+  if (element.closest('[data-tilt="off"], .tilt-disabled')) return false
+  if (element.matches(textEntrySurfaceSelector) || element.closest(textEntrySurfaceSelector)) return false
+  if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement) return false
+  return element.matches(kineticTiltSelector)
+}
+
+const isCompactKineticSurface = (element: HTMLElement) =>
+  element.matches(compactKineticSelector) ||
+  element.closest('.top-nav, .palette-switcher, .result-view-switch, .result-filter-chips, .analysis-mode-switch, .ai-panel-actions') !== null
+
+const applyKineticTiltState = (element: HTMLElement, rect: DOMRect, localX: number, localY: number, strength: number) => {
+  if (reducedMotion() || !isKineticTiltCandidate(element)) {
+    resetKineticTiltElement(element)
+    return
+  }
+  if (localX < 0 || localX > rect.width || localY < 0 || localY > rect.height) {
+    resetKineticTiltElement(element)
+    return
+  }
+
+  const compact = isCompactKineticSurface(element)
+  const maxRotation = compact ? TILT_COMPACT_ROTATION : TILT_MAX_ROTATION
+  const strength01 = Math.min(strength, 1)
+  const dx = localX - rect.width / 2
+  const dy = localY - rect.height / 2
+  const rotateX = clampNumber((-dy / Math.max(rect.height / 2, 1)) * maxRotation, -maxRotation, maxRotation)
+  const rotateY = clampNumber((dx / Math.max(rect.width / 2, 1)) * maxRotation, -maxRotation, maxRotation)
+  const lift = compact ? -0.1 - strength01 * 0.24 : -0.28 - strength01 * 0.64
+  const scale = 1 + strength01 * (compact ? 0.0016 : 0.0038)
+  const glint = compact ? Math.min(0.12, 0.03 + strength * 0.08) : Math.min(0.18, 0.04 + strength * 0.12)
+
+  element.classList.add('kinetic-tilt-active')
+  element.classList.toggle('kinetic-tilt-compact', compact)
+  element.style.setProperty('--tilt-rx', `${rotateX.toFixed(3)}deg`)
+  element.style.setProperty('--tilt-ry', `${rotateY.toFixed(3)}deg`)
+  element.style.setProperty('--tilt-lift', `${lift.toFixed(3)}px`)
+  element.style.setProperty('--tilt-scale', scale.toFixed(4))
+  element.style.setProperty('--tilt-glint', glint.toFixed(3))
+}
 
 const clearLanguageTransition = () => {
   if (languageTransitionCleanupTimer) {
@@ -187,7 +286,7 @@ const triggerLanguageTransition = () => {
   languageTransitionCleanupTimer = window.setTimeout(() => {
     document.documentElement.classList.remove('lang-soft-switching')
     languageTransitionCleanupTimer = 0
-  }, 360)
+  }, 240)
 }
 
 const handleLanguageToggleRequest = () => {
@@ -227,8 +326,9 @@ const applyGlowTargetState = (nextSpotlightElements: Map<HTMLElement, { rect: DO
     let angleDeg = radians * (180 / Math.PI) + 90
     if (angleDeg < 0) angleDeg += 360
 
-    const radius = Math.max(148, Math.min(260, EDGE_GLOW_REACH + Math.max(rect.width, rect.height) * 0.24))
+    const radius = Math.max(116, Math.min(210, EDGE_GLOW_REACH + Math.max(rect.width, rect.height) * 0.18))
     const pseudoClass = resolveGlowPseudoClass(element)
+    const glowOpacity = Math.min(0.62, strength * 0.62)
 
     element.classList.add('edge-glow-active')
     if (pseudoClass) element.classList.add(pseudoClass)
@@ -239,8 +339,9 @@ const applyGlowTargetState = (nextSpotlightElements: Map<HTMLElement, { rect: DO
     element.style.setProperty('--edge-proximity', `${(strength * 100).toFixed(3)}`)
     element.style.setProperty('--cursor-angle', `${angleDeg.toFixed(3)}deg`)
     element.style.setProperty('--edge-glow-strength', strength.toFixed(3))
-    element.style.setProperty('--edge-glow-opacity', strength.toFixed(3))
+    element.style.setProperty('--edge-glow-opacity', glowOpacity.toFixed(3))
     element.style.setProperty('--edge-glow-radius', `${radius.toFixed(1)}px`)
+    applyKineticTiltState(element, rect, x, y, strength)
   })
 
   activeSpotlightElements = new Set(nextSpotlightElements.keys())
@@ -258,6 +359,7 @@ const resetSpotlightElement = (element: HTMLElement | null) => {
   element.style.removeProperty('--edge-glow-opacity')
   element.style.removeProperty('--edge-glow-radius')
   element.style.removeProperty('--spotlight-color')
+  resetKineticTiltElement(element)
   element.classList.remove('edge-glow-active')
   element.classList.remove('edge-glow-pseudo-before')
   element.classList.remove('edge-glow-pseudo-after')
@@ -312,15 +414,16 @@ const collectGlowTargets = (root: HTMLElement) => {
     .map((element) => {
       const rect = element.getBoundingClientRect()
       const distance = distanceToRectEdge(rect, pendingPointerX, pendingPointerY)
-      const rawStrength = Math.max(0, 1 - distance / EDGE_GLOW_REACH)
+      const pointerInside = isPointerInsideRect(rect, pendingPointerX, pendingPointerY)
+      const rawStrength = pointerInside ? Math.max(0.18, 1 - distance / EDGE_GLOW_REACH) : Math.max(0, 1 - distance / EDGE_GLOW_REACH)
       return {
         element,
         rect,
         distance,
-        strength: Math.pow(rawStrength, 1.28),
+        strength: Math.pow(rawStrength, 1.35),
       }
     })
-    .filter(({ strength }) => strength > 0.035)
+    .filter(({ strength }) => strength > 0.06)
     .sort((a, b) => a.distance - b.distance || a.rect.width * a.rect.height - b.rect.width * b.rect.height)
 
   const targets: typeof candidates = []
@@ -328,7 +431,7 @@ const collectGlowTargets = (root: HTMLElement) => {
     const overlapsSelected = targets.some(({ element }) => element.contains(candidate.element) || candidate.element.contains(element))
     if (overlapsSelected) continue
     targets.push(candidate)
-    if (targets.length >= 5) break
+    if (targets.length >= 3) break
   }
 
   return new Map(targets.map(({ element, rect, strength }) => [element, { rect, strength }]))
@@ -355,6 +458,7 @@ const resolveGlowPseudoClass = (element: HTMLElement) => {
 }
 
 const handlePointerMove = (event: PointerEvent) => {
+  if (reducedMotion() || coarsePointer()) return
   pendingPointerX = event.clientX
   pendingPointerY = event.clientY
   if (!pointerRaf) pointerRaf = window.requestAnimationFrame(flushPointerVars)
@@ -368,7 +472,26 @@ const routeName = computed(() => String(route.name || ''))
 const isLandingPage = computed(() => routeName.value === 'Landing')
 const isPublicPreview = computed(() => ['Landing', 'Login'].includes(routeName.value))
 const usesIsolatedScroll = computed(() => isolatedScrollRoutes.has(routeName.value))
-const isAiWorkspaceRoute = computed(() => route.path === '/ai')
+const isAiWorkspaceRoute = computed(() => route.path === ROUTES.AI || route.path === '/ai')
+const workspaceRouteAliases = new Set([
+  ROUTES.TRAINING,
+  '/training',
+  ROUTES.DATA,
+  '/data',
+  ROUTES.PREDICTION,
+  '/prediction',
+  ROUTES.DATASET_VIZ,
+  '/dataset-viz',
+  ROUTES.VIZ,
+  '/viz',
+])
+const rootViewKey = computed(() => {
+  const path = route.path
+  if (workspaceRouteAliases.has(path) || path.startsWith('/analysis')) return 'workspace-layout'
+  if (path === ROUTES.AI || path === '/ai') return 'ai-workspace'
+  if (path.startsWith('/admin')) return 'admin-layout'
+  return route.fullPath
+})
 const showFloatingAssistant = computed(() => !isPublicPreview.value && !isAiWorkspaceRoute.value)
 const showSidebar = computed(() => {
   if (route.path === '/login') return false
@@ -451,23 +574,70 @@ onUnmounted(() => {
   position: relative;
   z-index: 2;
   overscroll-behavior: contain;
+  perspective: 1600px;
+}
+
+.app-iridescence-field {
+  z-index: 1;
+  opacity: 0.95;
+  filter: saturate(1.08) contrast(1.02);
+}
+
+html.light .app-root {
+  background:
+    linear-gradient(180deg, rgba(250, 253, 255, 0.34), rgba(238, 246, 245, 0.2)),
+    var(--bg-color);
+}
+
+.route-view-shell {
+  min-width: 0;
+  transform-origin: center 24px;
+  backface-visibility: hidden;
+}
+
+.route-cinema-enter-active,
+.route-cinema-leave-active {
+  transition:
+    opacity 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 260ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 220ms ease;
+  will-change: opacity, transform, filter;
+}
+
+.route-cinema-enter-from {
+  opacity: 0;
+  filter: blur(5px) saturate(0.97);
+  transform: translate3d(0, 8px, 0) scale(0.996);
+}
+
+.route-cinema-leave-to {
+  opacity: 0;
+  filter: blur(4px) saturate(0.98);
+  transform: translate3d(0, -4px, 0) scale(0.998);
+}
+
+.route-cinema-enter-to,
+.route-cinema-leave-from {
+  opacity: 1;
+  filter: blur(0) saturate(1);
+  transform: translate3d(0, 0, 0) scale(1) rotateX(0deg);
 }
 
 :global(html.lang-soft-switching) .app-content,
 :global(html.lang-soft-switching) .topbar,
 :global(html.lang-soft-switching) .sidebar-slot {
-  animation: language-soft-refresh 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: language-soft-refresh 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @keyframes language-soft-refresh {
   0% {
-    opacity: 0.74;
-    filter: blur(5px) saturate(0.92);
-    transform: translateY(2px);
+    opacity: 0.84;
+    filter: blur(2px) saturate(0.97);
+    transform: translateY(1px);
   }
   42% {
     opacity: 0.96;
-    filter: blur(1px) saturate(1.04);
+    filter: blur(0.5px) saturate(1.02);
   }
   100% {
     opacity: 1;
@@ -496,6 +666,11 @@ onUnmounted(() => {
   :global(html.lang-soft-switching) .topbar,
   :global(html.lang-soft-switching) .sidebar-slot {
     animation: none;
+  }
+
+  .route-cinema-enter-active,
+  .route-cinema-leave-active {
+    transition: none;
   }
 }
 

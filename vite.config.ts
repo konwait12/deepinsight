@@ -33,5 +33,43 @@ export default defineConfig(({mode}) => {
         },
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes('node_modules')) {
+              return undefined;
+            }
+
+            if (id.includes('echarts') || id.includes('zrender')) {
+              return 'charts';
+            }
+            if (id.includes('@antv')) {
+              return 'antv';
+            }
+            if (id.includes('three')) {
+              return 'three';
+            }
+            if (id.includes('element-plus') || id.includes('@element-plus')) {
+              return 'element-plus';
+            }
+            if (id.includes('markdown-it') || id.includes('highlight.js')) {
+              return 'markdown';
+            }
+            if (id.includes('@google/genai')) {
+              return 'ai-sdk';
+            }
+            if (id.includes('gsap') || id.includes('motion')) {
+              return 'motion-vendor';
+            }
+            if (id.includes('vue') || id.includes('pinia')) {
+              return 'vue-vendor';
+            }
+
+            return 'vendor';
+          },
+        },
+      },
+    },
   };
 });

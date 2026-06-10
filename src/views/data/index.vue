@@ -1,197 +1,186 @@
 <template>
-  <div class="data-page">
-    <section class="data-hero entrance-hero">
+  <div class="data-center-page">
+    <section class="data-center-hero entrance-hero">
       <div class="hero-copy">
-        <span>Data Asset Center</span>
-        <h1>数据资产管理</h1>
-        <p>统一管理数据集、训练任务、运行日志、分析结果、保存视图和云端素材。数据进入训练、可视化和 AI 分析前，先在这里确认来源、状态和可复用性。</p>
+        <span>{{ copy.heroEyebrow }}</span>
+        <h1>{{ copy.title }}</h1>
+        <p>{{ copy.subtitle }}</p>
+        <div class="pipeline-strip">
+          <article v-for="item in pipelineCards" :key="item.label">
+            <span>{{ item.label }}</span>
+            <strong>{{ item.value }}</strong>
+            <em>{{ item.hint }}</em>
+          </article>
+        </div>
       </div>
       <div class="hero-actions">
         <button type="button" class="ghost-btn" :disabled="loading" @click="loadAssets">
-          <el-icon><Refresh /></el-icon>
-          {{ loading ? '同步中' : '刷新资产' }}
+          {{ loading ? copy.syncing : copy.refreshAssets }}
         </button>
-        <button type="button" class="primary-btn" @click="showUpload = true">
-          <el-icon><Upload /></el-icon>
-          登记数据集
-        </button>
+        <button type="button" class="primary-btn" @click="scrollToDataset">{{ copy.datasetViz }}</button>
+        <button type="button" class="primary-btn" @click="scrollToCloud">{{ copy.cloudLibrary }}</button>
       </div>
     </section>
 
-    <section class="asset-command-grid entrance-up">
-      <article v-for="card in summaryCards" :key="card.label" class="summary-card">
-        <span>{{ card.label }}</span>
-        <strong>{{ card.value }}</strong>
-        <em>{{ card.hint }}</em>
-      </article>
-    </section>
-
-    <section class="asset-workbench">
-      <aside class="asset-sidebar entrance-up">
-        <div class="side-head">
-          <span>资产范围</span>
-          <strong>{{ filteredAssets.length }} 项</strong>
+    <section class="asset-section center-section">
+      <div class="section-head">
+        <div>
+          <span>{{ copy.assetIndex }}</span>
+          <strong>{{ copy.assetSyncTitle }}</strong>
+          <p>{{ copy.assetSyncDesc }}</p>
         </div>
-        <button
-          v-for="tab in tabs"
-          :key="tab.key"
-          type="button"
-          class="asset-tab"
-          :class="{ active: activeTab === tab.key }"
-          @click="activeTab = tab.key"
-        >
-          <span>{{ tab.label }}</span>
-          <b>{{ countByTab(tab.key) }}</b>
-        </button>
+        <div class="asset-updated">{{ copy.updated }}{{ overview?.updatedAt || copy.waitingSync }}</div>
+      </div>
 
-        <div class="cloud-brief">
-          <span>云端联动</span>
-          <strong>{{ overview?.summary.cloud || 0 }} 项已沉淀</strong>
-          <p>同步后可在云端中心、AI 对话和可视化分析中继续读取。</p>
-          <button type="button" @click="router.push('/cloud')">进入云端中心</button>
-        </div>
+      <div class="summary-grid">
+        <article v-for="card in summaryCards" :key="card.label">
+          <span>{{ card.label }}</span>
+          <strong>{{ card.value }}</strong>
+          <em>{{ card.hint }}</em>
+        </article>
+      </div>
 
-        <div class="readonly-note">
-          <span>权限边界</span>
-          <p>官方资产在普通数据管理界面始终只读，管理员也需要进入管理后台才能维护。</p>
-        </div>
-      </aside>
-
-      <main class="asset-main entrance-up">
-        <div class="asset-toolbar">
-          <div class="search-shell">
-            <el-icon><Search /></el-icon>
-            <input v-model="search" type="search" placeholder="搜索名称、类型、状态、摘要..." />
+      <div class="asset-workbench">
+        <aside class="asset-sidebar">
+          <div class="side-head">
+            <span>{{ copy.assetScope }}</span>
+            <strong>{{ filteredAssets.length }} {{ copy.itemsUnit }}</strong>
           </div>
-          <el-select v-model="statusFilter" aria-label="状态筛选" popper-class="glass-select-popper">
-            <el-option label="全部状态" value="" />
-            <el-option label="可用 / 已保存" value="ready" />
-            <el-option label="待处理" value="pending" />
-            <el-option label="异常" value="error" />
-          </el-select>
-        </div>
-
-        <div class="selection-bar">
-          <span>已选择 {{ selectedKeys.length }} 项</span>
-          <button type="button" :disabled="!selectedKeys.length || syncing" @click="syncSelected">
-            {{ syncing ? '同步中' : '选择同步云端' }}
-          </button>
-          <button type="button" :disabled="!syncableAssets.length || syncing" @click="syncVisible">
-            同步当前筛选
-          </button>
-          <button type="button" :disabled="!selectedKeys.length" @click="selectedKeys = []">清空选择</button>
-        </div>
-
-        <div class="asset-table" v-loading="loading">
           <button
-            v-for="asset in filteredAssets"
-            :key="asset.key"
+            v-for="tab in tabs"
+            :key="tab.key"
             type="button"
-            class="asset-row"
-            :class="{ active: activeAsset?.key === asset.key, selected: selectedKeys.includes(asset.key), readonly: isReadOnly(asset) }"
-            @click="activeAsset = asset"
+            class="asset-tab"
+            :class="{ active: activeTab === tab.key }"
+            @click="activeTab = tab.key"
           >
-            <span class="row-type">{{ typeCode(asset) }}</span>
-            <strong>{{ asset.title }}</strong>
-            <em>{{ asset.typeLabel }}</em>
-            <i>{{ asset.readiness }}</i>
-            <small>{{ isReadOnly(asset) ? '官方只读' : asset.cloudSaved ? '已同步' : '未同步' }}</small>
-            <b :class="{ disabled: !canSyncAsset(asset) }" @click.stop="toggleSelect(asset)">
-              {{ selectedKeys.includes(asset.key) ? '已选' : canSyncAsset(asset) ? '选择' : '只读' }}
-            </b>
+            <span>{{ tab.label }}</span>
+            <b>{{ countByTab(tab.key) }}</b>
           </button>
-          <div v-if="!filteredAssets.length" class="empty-state">暂无匹配的数据资产</div>
-        </div>
-      </main>
 
-      <aside class="asset-detail entrance-up">
-        <template v-if="activeAsset">
-          <div class="detail-title">
-            <span>{{ activeAsset.subtype }}</span>
-            <h2>{{ activeAsset.title }}</h2>
-            <p>{{ activeAsset.summary }}</p>
+          <div class="cloud-brief">
+            <span>{{ copy.cloudLinkage }}</span>
+            <strong>{{ overview?.summary.cloud || 0 }} {{ copy.cloudStoredUnit }}</strong>
+        <p>{{ copy.cloudLinkageDesc }}</p>
           </div>
-          <div class="detail-tags">
-            <b>{{ statusText(activeAsset) }}</b>
-            <b>{{ activeAsset.format }}</b>
-            <b v-if="isReadOnly(activeAsset)">官方只读</b>
-            <b>{{ activeAsset.cloudSaved ? '已同步云端' : '站内资产' }}</b>
-          </div>
-          <div class="metric-list">
-            <div v-for="(value, key) in activeAsset.metrics" :key="key">
-              <span>{{ key }}</span>
-              <strong>{{ value }}</strong>
+        </aside>
+
+        <main class="asset-main">
+          <div class="asset-toolbar">
+            <div class="search-shell">
+              <input v-model="search" type="search" :placeholder="copy.searchPlaceholder" />
             </div>
+            <select v-model="statusFilter" :aria-label="copy.statusFilter">
+              <option value="">{{ copy.allStatus }}</option>
+              <option value="ready">{{ copy.readyStatus }}</option>
+              <option value="pending">{{ copy.pendingStatus }}</option>
+              <option value="error">{{ copy.errorStatus }}</option>
+            </select>
           </div>
-          <div class="detail-actions">
-            <button type="button" class="primary-btn" :disabled="!canSyncAsset(activeAsset) || syncing" @click="syncOne(activeAsset)">
-              {{ syncActionText(activeAsset) }}
+
+          <div class="selection-bar">
+            <span>{{ copy.selectedPrefix }} {{ selectedKeys.length }} {{ copy.itemsUnit }}</span>
+            <button type="button" :disabled="!selectedKeys.length || syncing" @click="syncSelected">
+              {{ syncing ? copy.syncing : copy.syncSelected }}
             </button>
-            <button v-if="activeAsset.route" type="button" class="ghost-btn" @click="router.push(activeAsset.route)">
-              前往相关工作区
-            </button>
+            <button type="button" :disabled="!syncableAssets.length || syncing" @click="syncVisible">{{ copy.syncVisible }}</button>
+            <button type="button" :disabled="!selectedKeys.length" @click="selectedKeys = []">{{ copy.clearSelection }}</button>
           </div>
-        </template>
-        <div v-else class="detail-empty">选择一个资产查看详情和云端操作</div>
-      </aside>
+
+          <div class="asset-table" :class="{ loading }">
+            <button
+              v-for="asset in filteredAssets"
+              :key="asset.key"
+              type="button"
+              class="asset-row"
+              :class="{ active: activeAsset?.key === asset.key, selected: selectedKeys.includes(asset.key), readonly: isReadOnly(asset) }"
+              @click="activeAsset = asset"
+            >
+              <span class="row-type">{{ typeCode(asset) }}</span>
+              <strong>{{ asset.title }}</strong>
+              <em>{{ asset.typeLabel }}</em>
+              <i>{{ asset.readiness }}</i>
+              <small>{{ assetSyncStateText(asset) }}</small>
+              <b :class="{ disabled: !canSyncAsset(asset) }" @click.stop="toggleSelect(asset)">
+                {{ selectedKeys.includes(asset.key) ? copy.selected : canSyncAsset(asset) ? copy.select : copy.readOnlyShort }}
+              </b>
+            </button>
+            <div v-if="!filteredAssets.length" class="empty-state">{{ loading ? copy.readingAssets : copy.noMatchedAssets }}</div>
+          </div>
+        </main>
+
+        <aside class="asset-detail">
+          <template v-if="activeAsset">
+            <div class="detail-title">
+              <span>{{ activeAsset.subtype }}</span>
+              <h2>{{ activeAsset.title }}</h2>
+              <p>{{ activeAsset.summary }}</p>
+            </div>
+            <div class="detail-tags">
+              <b>{{ statusText(activeAsset) }}</b>
+              <b>{{ activeAsset.format }}</b>
+              <b v-if="isReadOnly(activeAsset)">{{ copy.officialReadOnly }}</b>
+              <b>{{ activeAsset.cloudSaved ? copy.syncedCloud : copy.siteAsset }}</b>
+            </div>
+            <div class="metric-list">
+              <div v-for="(value, key) in activeAsset.metrics || {}" :key="key">
+                <span>{{ key }}</span>
+                <strong>{{ value }}</strong>
+              </div>
+            </div>
+            <div class="detail-actions">
+              <button type="button" class="primary-btn" :disabled="!canSyncAsset(activeAsset) || syncing" @click="syncOne(activeAsset)">
+                {{ syncActionText(activeAsset) }}
+              </button>
+              <button v-if="activeAsset.route" type="button" class="ghost-btn" @click="router.push(activeAsset.route)">
+                {{ copy.goRelatedWorkspace }}
+              </button>
+            </div>
+          </template>
+          <div v-else class="detail-empty">{{ copy.selectAssetHint }}</div>
+        </aside>
+      </div>
     </section>
 
-    <el-dialog v-model="showUpload" title="登记新数据集" width="540px" class="dataset-dialog">
-      <el-form :model="uploadForm" label-position="top">
-        <el-form-item label="数据集名称">
-          <el-input v-model="uploadForm.name" placeholder="例如 defect-detection-v2" />
-        </el-form-item>
-        <el-form-item label="任务类型">
-          <el-select v-model="uploadForm.taskType" style="width: 100%">
-            <el-option label="分类" value="classification" />
-            <el-option label="目标检测" value="detection" />
-            <el-option label="语义分割" value="segmentation" />
-            <el-option label="表格 / 推荐" value="recommendation" />
-            <el-option label="其他" value="other" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="数据格式">
-          <el-select v-model="uploadForm.format" style="width: 100%">
-            <el-option label="COCO JSON" value="coco" />
-            <el-option label="YOLO TXT" value="yolo" />
-            <el-option label="Pascal VOC XML" value="voc" />
-            <el-option label="CSV" value="csv" />
-            <el-option label="Image Folder" value="image_folder" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="说明">
-          <el-input v-model="uploadForm.description" type="textarea" :rows="3" placeholder="描述来源、版本、标注口径或使用限制" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showUpload = false">取消</el-button>
-        <el-button type="primary" :loading="uploading" @click="createDataset">创建记录</el-button>
-      </template>
-    </el-dialog>
+    <section ref="cloudSectionRef" class="cloud-section center-section">
+      <CloudWorkspacePortal
+        variant="page"
+        default-open
+        :title="copy.cloudPortalTitle"
+        :subtitle="copy.cloudPortalSubtitle"
+      />
+    </section>
+
+    <section ref="datasetSectionRef" class="center-section dataset-lab-section">
+      <DatasetRealtimeVisualization embedded />
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
-import { Refresh, Search, Upload } from '@element-plus/icons-vue'
+import DatasetRealtimeVisualization from '@/components/data/DatasetRealtimeVisualization.vue'
+import CloudWorkspacePortal from '@/components/cloud/CloudWorkspacePortal.vue'
 import { datasetApi } from '@/api'
 import type { DataAsset, DataAssetOverview } from '@/api/modules/data.api'
 
 const router = useRouter()
+const { locale } = useI18n()
+const isZh = computed(() => !locale.value.startsWith('en'))
 
 const loading = ref(false)
 const syncing = ref(false)
-const showUpload = ref(false)
-const uploading = ref(false)
 const search = ref('')
 const activeTab = ref('all')
 const statusFilter = ref('')
 const selectedKeys = ref<string[]>([])
 const overview = ref<DataAssetOverview | null>(null)
 const activeAsset = ref<DataAsset | null>(null)
-const uploadForm = ref({ name: '', taskType: 'classification', format: 'coco', description: '' })
+const datasetSectionRef = ref<HTMLElement | null>(null)
+const cloudSectionRef = ref<HTMLElement | null>(null)
 
 const assets = computed(() => overview.value?.assets || [])
 const summary = computed(() => overview.value?.summary || {
@@ -204,20 +193,211 @@ const summary = computed(() => overview.value?.summary || {
   ready: 0,
 })
 
-const tabs = [
-  { key: 'all', label: '全部资产' },
-  { key: 'dataset', label: '数据集' },
-  { key: 'training', label: '训练数据' },
-  { key: 'run', label: '运行日志' },
-  { key: 'analysis', label: '分析结果' },
-  { key: 'cloud', label: '云端素材' },
-]
+const copy = computed(() => isZh.value
+  ? {
+      title: '推荐数据中心',
+      heroEyebrow: '推荐数据中心',
+      subtitle: '集中管理模型目录数据、用户上传数据集、训练/分析记录和可供 AI 使用的工作素材。',
+      syncing: '同步中',
+      refreshAssets: '刷新资产',
+      datasetViz: '推荐数据可视化',
+      cloudLibrary: '素材库',
+      assetIndex: '数据资产索引',
+      assetSyncTitle: '数据资产台账',
+      assetSyncDesc: '查看用户数据、训练任务、运行日志、分析结果和工作素材；模型目录数据保持只读，用户资产可加入素材库供 AI 和图表使用。',
+      updated: '更新：',
+      waitingSync: '待同步',
+      assetScope: '资产范围',
+      itemsUnit: '项',
+      cloudLinkage: '素材联动',
+      cloudStoredUnit: '项已沉淀',
+      cloudLinkageDesc: '加入素材库后的文件、数据和视图可供 AI 对话和图表工作台读取。',
+      searchPlaceholder: '搜索名称、类型、状态、摘要...',
+      statusFilter: '状态筛选',
+      allStatus: '全部状态',
+      readyStatus: '可用 / 已保存',
+      pendingStatus: '待处理',
+      errorStatus: '异常',
+      selectedPrefix: '已选择',
+      syncSelected: '加入素材库',
+      syncVisible: '加入当前筛选',
+      clearSelection: '清空选择',
+      officialReadOnly: '内置只读',
+      synced: '已同步',
+      unsynced: '未同步',
+      selected: '已选',
+      select: '选择',
+      readOnlyShort: '只读',
+      readingAssets: '正在读取数据资产...',
+      noMatchedAssets: '暂无匹配的数据资产',
+      syncedCloud: '已入素材库',
+      siteAsset: '站内资产',
+      goRelatedWorkspace: '前往相关工作区',
+      selectAssetHint: '选择一个资产查看详情和素材库操作',
+      cloudPortalTitle: '数据中心素材库',
+      cloudPortalSubtitle: '文件夹、上传、下载、重命名、删除、拖拽移动和复制摘要都可直接使用，也能给 AI 与图表工作台复用。',
+      pipeModel: '模型目录',
+      pipeModelHint: '9 个推荐模型扫描结果',
+      pipeUser: '用户资产',
+      pipeUserHint: '上传数据与训练记录',
+      pipeCloud: '素材复用',
+      pipeCloudHint: 'AI 与分析工作台读取',
+      pipeReadonly: '内置只读',
+      pipeReadonlyHint: '不在普通页面误同步',
+      allAssets: '全部资产',
+      dataset: '数据集',
+      trainingData: '训练数据',
+      runLogs: '运行日志',
+      analysisResults: '分析结果',
+      cloudMaterials: '工作素材',
+      totalAssets: '资产总数',
+      managedObjects: '已纳入管理的数据对象',
+      reusable: '可复用',
+      reusableHint: '可训练、可分析或已保存',
+      trainingLogs: '训练 / 日志',
+      trainingLogsHint: '训练任务与运行记录',
+      cloudStored: '素材库',
+      cloudStoredHint: '可被 AI 与工作区读取',
+      readFailed: '数据资产读取失败，请确认后端与登录状态正常',
+      readonlyAdminOnly: '内置资产只能在管理后台维护',
+      cannotSync: '当前资产不可同步',
+      noSyncableAssets: '没有可同步的资产',
+      syncedCountPrefix: '已加入',
+      syncedCountSuffix: '项到素材库',
+      alreadySynced: '当前资产已在素材库，无需重复加入',
+      syncFailed: '加入素材库失败',
+      syncActionReadonly: '内置只读',
+      syncActionCloud: '已入素材库',
+      syncActionDisabled: '不可同步',
+      syncAction: '加入素材库',
+      statusLabels: {
+        ready: '可用',
+        saved: '已保存',
+        completed: '已完成',
+        ingested: '已解析',
+        running: '运行中',
+        queued: '排队中',
+        created: '已创建',
+        uploading: '上传中',
+        processing: '处理中',
+        error: '异常',
+        failed: '失败',
+        unknown: '未知',
+      } as Record<string, string>,
+    }
+  : {
+      title: 'Recommendation Data Center',
+      heroEyebrow: 'Recommendation Data Center',
+      subtitle: 'Manage model-directory data, user-uploaded datasets, training and analysis records, and AI-readable work materials.',
+      syncing: 'Syncing',
+      refreshAssets: 'Refresh assets',
+      datasetViz: 'Recommendation data visualization',
+      cloudLibrary: 'Material library',
+      assetIndex: 'Data asset index',
+      assetSyncTitle: 'Data asset ledger',
+      assetSyncDesc: 'Read backend-registered datasets, training jobs, run logs, analysis records, and work materials. Built-in model-directory assets are read-only; user assets can be added to the material library.',
+      updated: 'Updated: ',
+      waitingSync: 'waiting',
+      assetScope: 'Asset scope',
+      itemsUnit: 'items',
+      cloudLinkage: 'Material linkage',
+      cloudStoredUnit: 'stored items',
+      cloudLinkageDesc: 'Materials added here can be read by AI conversations and the chart workspace.',
+      searchPlaceholder: 'Search by name, type, status, or summary...',
+      statusFilter: 'Status filter',
+      allStatus: 'All statuses',
+      readyStatus: 'Ready / saved',
+      pendingStatus: 'Pending',
+      errorStatus: 'Error',
+      selectedPrefix: 'Selected',
+      syncSelected: 'Add selected',
+      syncVisible: 'Add current filter',
+      clearSelection: 'Clear selection',
+      officialReadOnly: 'Built-in read-only',
+      synced: 'Synced',
+      unsynced: 'Not synced',
+      selected: 'Selected',
+      select: 'Select',
+      readOnlyShort: 'Read-only',
+      readingAssets: 'Reading data assets...',
+      noMatchedAssets: 'No matching data assets',
+      syncedCloud: 'In material library',
+      siteAsset: 'Site asset',
+      goRelatedWorkspace: 'Open related workspace',
+      selectAssetHint: 'Select an asset to inspect details and material-library actions',
+      cloudPortalTitle: 'Data Center Material Library',
+      cloudPortalSubtitle: 'Folders, upload, download, rename, delete, drag-to-move, and copy summary are available for reuse in AI or chart analysis.',
+      pipeModel: 'Model directory',
+      pipeModelHint: '9 recommender scans',
+      pipeUser: 'User assets',
+      pipeUserHint: 'Uploads and training records',
+      pipeCloud: 'Cloud reuse',
+      pipeCloudHint: 'Readable by AI and analysis',
+      pipeReadonly: 'Built-in read-only',
+      pipeReadonlyHint: 'No misleading sync',
+      allAssets: 'All assets',
+      dataset: 'Datasets',
+      trainingData: 'Training data',
+      runLogs: 'Run logs',
+      analysisResults: 'Analysis results',
+      cloudMaterials: 'Work materials',
+      totalAssets: 'Total assets',
+      managedObjects: 'Managed data objects',
+      reusable: 'Reusable',
+      reusableHint: 'Ready for training, analysis, or saved use',
+      trainingLogs: 'Training / logs',
+      trainingLogsHint: 'Training jobs and run records',
+      cloudStored: 'Material library',
+      cloudStoredHint: 'Readable by AI and workspaces',
+      readFailed: 'Failed to read data assets. Check backend and login status.',
+      readonlyAdminOnly: 'Built-in assets can only be maintained in the admin console',
+      cannotSync: 'This asset cannot be synced',
+      noSyncableAssets: 'No syncable assets',
+      syncedCountPrefix: 'Added',
+      syncedCountSuffix: 'items to the material library',
+      alreadySynced: 'These assets are already in the material library',
+      syncFailed: 'Failed to add materials',
+      syncActionReadonly: 'Built-in read-only',
+      syncActionCloud: 'Already added',
+      syncActionDisabled: 'Cannot sync',
+      syncAction: 'Add to library',
+      statusLabels: {
+        ready: 'Ready',
+        saved: 'Saved',
+        completed: 'Completed',
+        ingested: 'Ingested',
+        running: 'Running',
+        queued: 'Queued',
+        created: 'Created',
+        uploading: 'Uploading',
+        processing: 'Processing',
+        error: 'Error',
+        failed: 'Failed',
+        unknown: 'Unknown',
+      } as Record<string, string>,
+    })
+
+const tabs = computed(() => [
+  { key: 'all', label: copy.value.allAssets },
+  { key: 'dataset', label: copy.value.dataset },
+  { key: 'training', label: copy.value.trainingData },
+  { key: 'run', label: copy.value.runLogs },
+  { key: 'analysis', label: copy.value.analysisResults },
+  { key: 'cloud', label: copy.value.cloudMaterials },
+])
 
 const summaryCards = computed(() => [
-  { label: '资产总数', value: summary.value.total, hint: '已纳入管理的数据对象' },
-  { label: '可复用', value: summary.value.ready, hint: '可训练、可分析或已保存' },
-  { label: '训练 / 日志', value: summary.value.training + summary.value.runs, hint: '训练任务与运行记录' },
-  { label: '云端沉淀', value: summary.value.cloud, hint: '可被 AI 与工作区读取' },
+  { label: copy.value.totalAssets, value: summary.value.total, hint: copy.value.managedObjects },
+  { label: copy.value.reusable, value: summary.value.ready, hint: copy.value.reusableHint },
+  { label: copy.value.trainingLogs, value: summary.value.training + summary.value.runs, hint: copy.value.trainingLogsHint },
+  { label: copy.value.cloudStored, value: summary.value.cloud, hint: copy.value.cloudStoredHint },
+])
+
+const pipelineCards = computed(() => [
+  { label: copy.value.pipeModel, value: 9, hint: copy.value.pipeModelHint },
+  { label: copy.value.pipeUser, value: summary.value.datasets + summary.value.training + summary.value.runs, hint: copy.value.pipeUserHint },
+  { label: copy.value.pipeCloud, value: summary.value.cloud, hint: copy.value.pipeCloudHint },
+  { label: copy.value.pipeReadonly, value: assets.value.filter(isReadOnly).length, hint: copy.value.pipeReadonlyHint },
 ])
 
 const filteredAssets = computed(() => {
@@ -229,7 +409,14 @@ const filteredAssets = computed(() => {
       || (activeTab.value === 'cloud' && asset.type === 'cloud_item')
       || asset.type === activeTab.value
     const statusMatched = !statusFilter.value || statusBucket(asset) === statusFilter.value
-    const haystack = `${asset.title} ${asset.typeLabel} ${asset.subtype} ${asset.status} ${asset.summary} ${asset.readiness}`.toLowerCase()
+    const haystack = [
+      asset.title,
+      asset.typeLabel,
+      asset.subtype,
+      asset.status,
+      asset.summary,
+      asset.readiness,
+    ].join(' ').toLowerCase()
     return tabMatched && statusMatched && (!keyword || haystack.includes(keyword))
   })
 })
@@ -255,7 +442,7 @@ async function loadAssets() {
       activeAsset.value = filteredAssets.value[0] || assets.value[0] || null
     }
   } catch (error: any) {
-    ElMessage.error(error?.response?.data?.message || '数据资产读取失败，请确认后端与登录状态正常')
+    ElMessage.error(error?.response?.data?.message || copy.value.readFailed)
   } finally {
     loading.value = false
   }
@@ -284,32 +471,32 @@ function canSyncAsset(asset: DataAsset) {
 }
 
 function syncActionText(asset: DataAsset) {
-  if (isReadOnly(asset)) return '官方只读'
-  if (asset.cloudSaved) return '已入云端'
-  if (!canSyncAsset(asset)) return '不可同步'
-  return '同步云端'
+  if (isReadOnly(asset)) return copy.value.syncActionReadonly
+  if (asset.cloudSaved) return copy.value.syncActionCloud
+  if (!canSyncAsset(asset)) return copy.value.syncActionDisabled
+  return copy.value.syncAction
 }
 
 function statusText(asset: DataAsset) {
-  const labels: Record<string, string> = {
-    ready: '可用',
-    saved: '已保存',
-    completed: '已完成',
-    ingested: '已解析',
-    running: '运行中',
-    queued: '排队中',
-    created: '已创建',
-    uploading: '上传中',
-    processing: '处理中',
-    error: '异常',
-    failed: '失败',
-    unknown: '未知',
-  }
-  return labels[asset.status] || asset.status || '未知'
+  return copy.value.statusLabels[asset.status] || asset.status || copy.value.statusLabels.unknown
+}
+
+function assetSyncStateText(asset: DataAsset) {
+  if (isReadOnly(asset)) return copy.value.officialReadOnly
+  return asset.cloudSaved ? copy.value.synced : copy.value.unsynced
 }
 
 function typeCode(asset: DataAsset) {
-  const codes: Record<string, string> = {
+  const zhCodes: Record<string, string> = {
+    dataset: '数据',
+    training: '训练',
+    run: '运行',
+    run_log: '日志',
+    analysis_result: '分析',
+    saved_view: '视图',
+    cloud_item: '素材',
+  }
+  const enCodes: Record<string, string> = {
     dataset: 'DATA',
     training: 'TRAIN',
     run: 'RUN',
@@ -318,24 +505,22 @@ function typeCode(asset: DataAsset) {
     saved_view: 'VIEW',
     cloud_item: 'CLD',
   }
-  return codes[asset.type] || 'ASSET'
+  return (isZh.value ? zhCodes : enCodes)[asset.type] || (isZh.value ? '资产' : 'ASSET')
 }
 
 function toggleSelect(asset: DataAsset) {
   if (!canSyncAsset(asset)) {
-    ElMessage.info(isReadOnly(asset) ? '官方资产只能在管理后台维护' : '当前资产不可同步')
+    ElMessage.info(isReadOnly(asset) ? copy.value.readonlyAdminOnly : copy.value.cannotSync)
     return
   }
-  if (selectedKeys.value.includes(asset.key)) {
-    selectedKeys.value = selectedKeys.value.filter((key) => key !== asset.key)
-  } else {
-    selectedKeys.value = [...selectedKeys.value, asset.key]
-  }
+  selectedKeys.value = selectedKeys.value.includes(asset.key)
+    ? selectedKeys.value.filter((key) => key !== asset.key)
+    : [...selectedKeys.value, asset.key]
 }
 
 async function syncOne(asset: DataAsset) {
   if (!canSyncAsset(asset)) {
-    ElMessage.info(isReadOnly(asset) ? '官方资产只能在管理后台维护' : '当前资产不可同步')
+    ElMessage.info(isReadOnly(asset) ? copy.value.readonlyAdminOnly : copy.value.cannotSync)
     return
   }
   await syncAssets([asset.key])
@@ -347,7 +532,7 @@ async function syncSelected() {
     return asset && canSyncAsset(asset)
   })
   if (!allowed.length) {
-    ElMessage.info('没有可同步的资产')
+    ElMessage.info(copy.value.noSyncableAssets)
     return
   }
   await syncAssets(allowed)
@@ -363,236 +548,276 @@ async function syncAssets(keys: string[]) {
   try {
     const response = await datasetApi.syncAssetsToCloud({ assetKeys: keys })
     const count = response.data.data?.savedCount || 0
-    ElMessage.success(count ? `已同步 ${count} 项到云端` : '当前资产已在云端，无需重复同步')
+    ElMessage.success(count ? `${copy.value.syncedCountPrefix} ${count} ${copy.value.syncedCountSuffix}` : copy.value.alreadySynced)
     selectedKeys.value = selectedKeys.value.filter((key) => !keys.includes(key))
     await loadAssets()
   } catch (error: any) {
-    ElMessage.error(error?.response?.data?.message || '云端同步失败')
+    ElMessage.error(error?.response?.data?.message || copy.value.syncFailed)
   } finally {
     syncing.value = false
   }
 }
 
-async function createDataset() {
-  uploading.value = true
-  try {
-    const response = await datasetApi.create({
-      name: uploadForm.value.name || '新数据集',
-      taskType: uploadForm.value.taskType,
-      format: uploadForm.value.format,
-      description: uploadForm.value.description,
-      status: 'uploading',
-      sampleCount: 0,
-      fileSizeMb: 0,
-      splitRatio: '7:2:1',
-    })
-    if (response.data.code === 200) {
-      ElMessage.success('已创建数据集记录')
-      showUpload.value = false
-      uploadForm.value = { name: '', taskType: 'classification', format: 'coco', description: '' }
-      await loadAssets()
-    }
-  } catch (error: any) {
-    ElMessage.error(error?.response?.data?.message || '创建数据集失败')
-  } finally {
-    uploading.value = false
-  }
+function scrollToDataset() {
+  datasetSectionRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+function scrollToCloud() {
+  cloudSectionRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 onMounted(loadAssets)
 </script>
 
 <style scoped>
-.data-page {
+.data-center-page {
   width: min(1520px, 100%);
   min-height: calc(100dvh - var(--header-height, 72px));
   margin: 0 auto;
-  padding: 18px 24px 24px;
-  overflow-x: hidden;
-  overflow-y: visible;
-  overscroll-behavior-x: contain;
+  padding: 22px;
+  color: var(--text-primary);
+  --data-glass-bg:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.018)),
+    color-mix(in srgb, rgba(var(--glass-bg-rgb), var(--glass-opacity)) 78%, transparent);
+  --data-card-bg:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), transparent),
+    color-mix(in srgb, var(--panel-bg) 84%, transparent);
 }
 
-.data-hero,
-.summary-card,
-.asset-sidebar,
-.asset-main,
-.asset-detail {
-  position: relative;
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--primary-color) 8%, rgba(255, 255, 255, 0.16));
-  background: var(--workbench-shell-bg);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.2),
-    inset 0 -18px 44px rgba(0, 0, 0, 0.18),
-    var(--workbench-shadow),
-    0 0 0 1px rgba(var(--primary-rgb), 0.035);
-  backdrop-filter: blur(24px) saturate(135%);
-  -webkit-backdrop-filter: blur(24px) saturate(135%);
+.data-center-hero,
+.asset-section {
+  border: 1px solid color-mix(in srgb, var(--primary-color) 12%, var(--border-color));
+  border-radius: 8px;
+  background: var(--data-glass-bg);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  transition:
+    border-color var(--motion-hover) var(--ease-liquid),
+    background var(--motion-medium) var(--ease-smooth),
+    box-shadow var(--motion-medium) var(--ease-smooth);
 }
 
-.data-hero::before,
-.summary-card::before,
-.asset-sidebar::before,
-.asset-main::before,
-.asset-detail::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.16), transparent) top / 100% 1px no-repeat;
-  opacity: 0.28;
-  pointer-events: none;
-}
-
-.data-hero {
+.data-center-hero {
   display: flex;
-  align-items: flex-end;
+  align-items: stretch;
   justify-content: space-between;
   gap: 18px;
-  min-height: 156px;
-  margin-bottom: 12px;
-  padding: 20px 22px;
-  border-radius: 26px;
+  margin-bottom: 16px;
+  padding: 22px;
 }
 
-.hero-copy,
-.hero-actions,
-.summary-card > *,
-.asset-sidebar > *,
-.asset-main > *,
-.asset-detail > * {
-  position: relative;
-  z-index: 1;
+.hero-copy {
+  min-width: 0;
 }
 
 .hero-copy span,
+.section-head span,
 .side-head span,
 .cloud-brief span,
-.summary-card span,
-.detail-title span {
+.detail-title span,
+.summary-grid span {
   color: var(--primary-color);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: var(--font-weight-title);
-  letter-spacing: 0.16em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .hero-copy h1 {
-  margin: 6px 0;
-  color: var(--text-primary);
-  font-size: clamp(30px, 4vw, 54px);
-  font-weight: var(--font-weight-title);
-  letter-spacing: -0.065em;
+  margin: 8px 0;
+  font-size: clamp(32px, 4.4vw, 58px);
+  line-height: 1;
+  letter-spacing: -0.06em;
 }
 
-.hero-copy p {
-  max-width: 850px;
+.hero-copy p,
+.section-head p {
+  max-width: 900px;
   margin: 0;
   color: var(--text-secondary);
-  font-size: 14px;
-  line-height: 1.8;
+  line-height: 1.75;
+}
+
+.pipeline-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.pipeline-strip article {
+  min-width: 0;
+  min-height: 82px;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-2) 68%, transparent);
+}
+
+.pipeline-strip span,
+.pipeline-strip strong,
+.pipeline-strip em {
+  display: block;
+}
+
+.pipeline-strip span {
+  color: var(--primary-color);
+  font-size: 11px;
+  font-weight: var(--font-weight-title);
+}
+
+.pipeline-strip strong {
+  margin: 7px 0 4px;
+  font-size: 24px;
+}
+
+.pipeline-strip em {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .hero-actions,
 .detail-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 10px;
+}
+
+.hero-actions {
+  flex: 0 1 460px;
+  align-content: flex-end;
+  align-items: flex-end;
+  justify-content: flex-end;
 }
 
 .primary-btn,
 .ghost-btn,
-.selection-bar button,
-.cloud-brief button {
+.selection-bar button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 9px;
+  max-width: 100%;
   min-height: 40px;
-  min-width: 96px;
-  padding: 0 17px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 999px;
+  min-width: 0;
+  padding: 0 16px;
+  border: 1px solid rgba(var(--primary-rgb), 0.26);
+  border-radius: 8px;
+  background: var(--workbench-control-bg);
   color: var(--text-primary);
   font-size: 12px;
   font-weight: var(--font-weight-title);
-  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    border-color var(--motion-hover) var(--ease-liquid),
+    background var(--motion-medium) var(--ease-smooth),
+    box-shadow var(--motion-medium) var(--ease-smooth),
+    transform var(--motion-hover) var(--ease-liquid);
 }
 
 .primary-btn {
-  background: rgba(var(--primary-rgb), 0.13);
   color: var(--primary-color);
+  background: rgba(var(--primary-rgb), 0.12);
 }
 
-.ghost-btn,
-.selection-bar button,
-.cloud-brief button {
-  background: rgba(var(--glass-bg-rgb), 0.26);
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.center-section {
+  margin-top: 16px;
+}
+
+.asset-section {
+  padding: 18px;
+}
+
+.section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 14px;
+}
+
+.section-head > div:first-child {
+  min-width: 0;
+}
+
+.section-head strong {
+  display: block;
+  margin: 7px 0;
+  font-size: 24px;
+}
+
+.asset-updated {
+  flex: 0 0 auto;
+  align-self: start;
+  max-width: min(320px, 100%);
+  overflow: hidden;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
   color: var(--text-secondary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.primary-btn:hover,
-.ghost-btn:hover,
-.selection-bar button:not(:disabled):hover,
-.cloud-brief button:hover {
-  transform: translateY(-1px);
-  border-color: rgba(255, 255, 255, 0.24);
-  background: rgba(var(--primary-rgb), 0.1);
-}
-
-.asset-command-grid {
+.summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
-.summary-card {
-  min-height: 94px;
-  padding: 14px 16px;
-  border-radius: 22px;
+.summary-grid article {
+  min-height: 96px;
+  padding: 15px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--data-card-bg);
 }
 
-.summary-card strong {
+.summary-grid strong {
   display: block;
   margin-top: 7px;
-  color: var(--text-primary);
   font-size: 28px;
-  font-weight: var(--font-weight-title);
 }
 
-.summary-card em {
+.summary-grid em {
   color: var(--text-muted);
   font-size: 12px;
   font-style: normal;
 }
 
 .asset-workbench {
-  --asset-workbench-height: clamp(680px, 74dvh, 780px);
   display: grid;
-  grid-template-columns: 240px minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1fr) minmax(280px, 0.88fr);
   gap: 14px;
-  min-height: 0;
-  height: var(--asset-workbench-height);
-  overflow: visible;
-  overscroll-behavior: none;
 }
 
 .asset-sidebar,
 .asset-main,
 .asset-detail {
-  border-radius: 24px;
+  min-width: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--data-card-bg);
 }
 
 .asset-sidebar,
 .asset-detail {
-  height: 100%;
-  max-height: none;
-  padding: 12px;
-  align-self: start;
-  overflow: hidden;
-  overscroll-behavior: none;
+  padding: 13px;
 }
 
 .side-head {
@@ -600,12 +825,6 @@ onMounted(loadAssets)
   align-items: flex-end;
   justify-content: space-between;
   margin-bottom: 10px;
-}
-
-.side-head strong {
-  color: var(--text-primary);
-  font-size: 18px;
-  font-weight: var(--font-weight-title);
 }
 
 .asset-tab {
@@ -616,117 +835,85 @@ onMounted(loadAssets)
   margin-bottom: 7px;
   padding: 10px 11px;
   border: 1px solid var(--border-color);
-  border-radius: 15px;
-  background: var(--workbench-panel-bg);
+  border-radius: 8px;
+  background: var(--data-card-bg);
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: var(--font-weight-title);
   text-align: left;
+  transition:
+    border-color var(--motion-hover) var(--ease-liquid),
+    background var(--motion-medium) var(--ease-smooth),
+    transform var(--motion-hover) var(--ease-liquid);
 }
 
-.asset-tab.active {
-  border-color: rgba(255, 255, 255, 0.24);
-  background: rgba(var(--primary-rgb), 0.1);
-  color: var(--primary-color);
+.asset-tab span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .asset-tab b {
-  color: inherit;
+  flex: 0 0 auto;
+}
+
+.asset-tab.active {
+  border-color: rgba(var(--primary-rgb), 0.42);
+  background: rgba(var(--primary-rgb), 0.1);
+  color: var(--primary-color);
 }
 
 .cloud-brief {
   margin-top: 12px;
   padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 18px;
-  background: var(--workbench-panel-bg-strong);
+  border: 1px solid rgba(var(--primary-rgb), 0.18);
+  border-radius: 8px;
+  background: var(--data-card-bg);
 }
 
 .cloud-brief strong {
   display: block;
   margin-top: 6px;
-  color: var(--text-primary);
-  font-size: 15px;
 }
 
 .cloud-brief p {
-  margin: 7px 0 10px;
+  margin: 7px 0 0;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.55;
 }
 
-.readonly-note {
-  margin-top: 10px;
-  padding: 11px;
-  border: 1px solid rgba(251, 191, 36, 0.2);
-  border-radius: 16px;
-  background: color-mix(in srgb, rgba(251, 191, 36, 0.14) 70%, var(--workbench-control-bg));
-}
-
-.readonly-note span {
-  color: #fbbf24;
-  font-size: 10px;
-  font-weight: var(--font-weight-title);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.readonly-note p {
-  margin: 5px 0 0;
-  color: var(--text-muted);
-  font-size: 11px;
-  line-height: 1.5;
-}
-
 .asset-main {
-  min-width: 0;
-  min-height: 0;
-  height: 100%;
-  max-height: none;
-  padding: 14px;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
-  overflow: hidden;
-  overscroll-behavior: contain;
+  padding: 14px;
 }
 
 .asset-toolbar {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) 160px;
+  grid-template-columns: minmax(220px, 1fr) 170px;
   gap: 10px;
   margin-bottom: 12px;
 }
 
-.search-shell {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.search-shell input,
+.asset-toolbar select {
+  width: 100%;
   height: 40px;
-  padding: 0 13px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
   background: var(--workbench-control-bg);
-  color: var(--text-muted);
+  color: var(--text-primary);
+  outline: none;
 }
 
 .search-shell input {
-  width: 100%;
-  height: 100%;
-  border: 0;
-  outline: none;
-  background: transparent;
-  color: var(--text-primary);
-  font-size: 12px;
+  padding: 0 14px;
 }
 
-.asset-toolbar :deep(.el-select__wrapper) {
-  min-height: 40px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 999px;
-  background: var(--workbench-control-bg);
-  box-shadow: none;
-  color: var(--text-primary);
+.asset-toolbar select {
+  padding: 0 12px;
 }
 
 .selection-bar {
@@ -737,358 +924,264 @@ onMounted(loadAssets)
   margin-bottom: 12px;
   padding: 12px;
   border: 1px solid var(--border-color);
-  border-radius: 16px;
-  background: var(--workbench-panel-bg);
+  border-radius: 8px;
+  background: var(--data-card-bg);
 }
 
 .selection-bar span {
-  margin-right: clamp(8px, 1vw, 18px);
   flex: 1 1 160px;
+  min-width: 0;
+  overflow: hidden;
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: var(--font-weight-title);
-}
-
-.selection-bar button:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
-}
-
-.detail-actions button:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
-  transform: none;
-}
-
-.detail-tags {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.detail-tags b {
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: rgba(var(--primary-rgb), 0.1);
-  color: var(--primary-color);
-  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .asset-table {
   display: grid;
   gap: 8px;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  max-height: 520px;
+  overflow: auto;
   padding-right: 4px;
 }
 
 .asset-row {
+  width: 100%;
   display: grid;
-  grid-template-columns: 62px minmax(180px, 1fr) 88px minmax(120px, 0.7fr) 78px 56px;
-  align-items: center;
+  grid-template-columns: 58px minmax(0, 1fr) 110px 110px 84px 62px;
   gap: 10px;
-  min-height: 62px;
-  padding: 10px;
+  align-items: center;
+  padding: 11px;
   border: 1px solid var(--border-color);
-  border-radius: 16px;
-  background: var(--workbench-panel-bg);
+  border-radius: 8px;
+  background: var(--data-card-bg);
   color: var(--text-secondary);
   text-align: left;
+  transition:
+    border-color var(--motion-hover) var(--ease-liquid),
+    background var(--motion-medium) var(--ease-smooth),
+    transform var(--motion-hover) var(--ease-liquid);
 }
 
-.asset-row:hover,
-.asset-row.active {
-  border-color: rgba(255, 255, 255, 0.22);
-  background: rgba(var(--primary-rgb), 0.075);
-}
-
+.asset-row.active,
 .asset-row.selected {
-  border-color: rgba(66, 230, 164, 0.72);
-}
-
-.asset-row.readonly {
-  border-color: rgba(251, 191, 36, 0.24);
+  border-color: rgba(var(--primary-rgb), 0.42);
+  background: rgba(var(--primary-rgb), 0.1);
 }
 
 .row-type {
-  width: 52px;
-  height: 38px;
-  display: grid;
-  place-items: center;
-  border-radius: 13px;
-  background: rgba(var(--primary-rgb), 0.13);
   color: var(--primary-color);
-  font-size: 10px;
-  font-weight: var(--font-weight-title);
+  font-size: 11px;
+  font-weight: 900;
 }
 
-.asset-row strong,
-.asset-row i {
+.asset-row strong {
+  min-width: 0;
   overflow: hidden;
+  color: var(--text-primary);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.asset-row strong {
-  color: var(--text-primary);
-  font-size: 13px;
-}
-
 .asset-row em,
 .asset-row i,
-.asset-row small,
-.asset-row b {
-  color: var(--text-muted);
-  font-size: 11px;
+.asset-row small {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 12px;
   font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .asset-row b {
   color: var(--primary-color);
+  font-size: 12px;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .asset-row b.disabled {
   color: var(--text-muted);
-  cursor: not-allowed;
 }
 
-.asset-detail {
-  display: grid;
-  gap: 10px;
-  grid-auto-rows: max-content;
+.empty-state,
+.detail-empty {
+  padding: 22px;
+  color: var(--text-muted);
+  text-align: center;
 }
 
 .detail-title h2 {
-  margin: 6px 0;
-  color: var(--text-primary);
-  font-size: 20px;
-  font-weight: var(--font-weight-title);
-  line-height: 1.2;
+  margin: 8px 0;
+  overflow-wrap: anywhere;
+  font-size: 24px;
 }
 
 .detail-title p {
-  margin: 0;
   color: var(--text-secondary);
-  font-size: 12px;
-  line-height: 1.58;
+  line-height: 1.65;
+}
+
+.detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.detail-tags b {
+  padding: 6px 9px;
+  border: 1px solid rgba(var(--primary-rgb), 0.22);
+  border-radius: 8px;
+  color: var(--primary-color);
+  font-size: 11px;
 }
 
 .metric-list {
   display: grid;
-  gap: 7px;
+  gap: 8px;
+  margin-bottom: 14px;
 }
 
 .metric-list div {
   display: flex;
-  align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 8px 10px;
+  min-width: 0;
+  padding: 10px;
   border: 1px solid var(--border-color);
-  border-radius: 14px;
-  background: var(--workbench-panel-bg);
+  border-radius: 8px;
 }
 
 .metric-list span {
-  color: var(--text-muted);
-  font-size: 11px;
-  font-weight: var(--font-weight-title);
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .metric-list strong {
-  color: var(--text-primary);
-  font-size: 12px;
-  font-weight: var(--font-weight-title);
+  min-width: 0;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.detail-actions {
-  display: grid;
-  gap: 8px;
+.cloud-section :deep(.cloud-portal) {
+  width: 100%;
 }
 
-.detail-empty,
-.empty-state {
-  min-height: 180px;
-  display: grid;
-  place-items: center;
-  color: var(--text-muted);
-  font-size: 13px;
+.cloud-section :deep(.cloud-workspace) {
+  min-height: 0;
 }
 
-:global(html.light .data-page .data-hero),
-:global(html.light .data-page .summary-card),
-:global(html.light .data-page .asset-sidebar),
-:global(html.light .data-page .asset-main),
-:global(html.light .data-page .asset-detail) {
-  border-color: rgba(20, 49, 60, 0.12);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(244, 251, 249, 0.58) 48%, rgba(28, 75, 88, 0.025)),
-    radial-gradient(circle at 12% 0%, rgba(var(--primary-rgb), 0.075), transparent 34%),
-    radial-gradient(circle at 92% 12%, rgba(77, 201, 240, 0.06), transparent 30%),
-    rgba(var(--glass-bg-rgb), 0.68);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.82),
-    inset 0 -1px 0 rgba(28, 75, 88, 0.035),
-    0 14px 34px rgba(31, 56, 68, 0.08),
-    0 0 0 1px rgba(var(--primary-rgb), 0.025);
+.cloud-section {
+  scroll-margin-top: calc(var(--header-height, 72px) + 16px);
 }
 
-:global(html.light .data-page .data-hero::before),
-:global(html.light .data-page .summary-card::before),
-:global(html.light .data-page .asset-sidebar::before),
-:global(html.light .data-page .asset-main::before),
-:global(html.light .data-page .asset-detail::before) {
-  background: linear-gradient(90deg, transparent, rgba(var(--primary-rgb), 0.16), transparent) top / 100% 1px no-repeat;
-  opacity: 0.4;
+.dataset-lab-section {
+  scroll-margin-top: calc(var(--header-height, 72px) + 16px);
 }
 
-:global(html.light .data-page .primary-btn),
-:global(html.light .data-page .ghost-btn),
-:global(html.light .data-page .selection-bar button),
-:global(html.light .data-page .cloud-brief button) {
-  border-color: rgba(20, 49, 60, 0.13);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(236, 247, 244, 0.6)),
-    rgba(var(--glass-bg-rgb), 0.5);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.72),
-    0 8px 20px rgba(31, 56, 68, 0.055);
+@media (hover: hover) and (pointer: fine) {
+  .data-center-hero:hover,
+  .asset-section:hover,
+  .summary-grid article:hover,
+  .asset-sidebar:hover,
+  .asset-main:hover,
+  .asset-detail:hover {
+    border-color: color-mix(in srgb, var(--primary-color) 34%, var(--border-color));
+    box-shadow: var(--shadow-hover);
+  }
+
+  .primary-btn:hover,
+  .ghost-btn:hover,
+  .selection-bar button:hover,
+  .asset-tab:hover,
+  .asset-row:hover {
+    border-color: color-mix(in srgb, var(--primary-color) 42%, var(--border-color));
+    background: rgba(var(--primary-rgb), 0.1);
+    transform: translate3d(0, -1px, 0);
+  }
 }
 
-:global(html.light .data-page .primary-btn) {
-  border-color: rgba(var(--primary-rgb), 0.24);
-  background:
-    linear-gradient(135deg, rgba(var(--primary-rgb), 0.2), rgba(77, 201, 240, 0.1)),
-    rgba(255, 255, 255, 0.58);
-}
-
-:global(html.light .data-page .primary-btn:hover),
-:global(html.light .data-page .ghost-btn:hover),
-:global(html.light .data-page .selection-bar button:not(:disabled):hover),
-:global(html.light .data-page .cloud-brief button:hover) {
-  border-color: rgba(var(--primary-rgb), 0.32);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(228, 246, 241, 0.66)),
-    rgba(var(--primary-rgb), 0.055);
-}
-
-:global(html.light .data-page .asset-tab),
-:global(html.light .data-page .cloud-brief),
-:global(html.light .data-page .selection-bar),
-:global(html.light .data-page .search-shell),
-:global(html.light .data-page .asset-toolbar .el-select__wrapper),
-:global(html.light .data-page .metric-list div) {
-  border-color: rgba(20, 49, 60, 0.11);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.68), rgba(238, 248, 245, 0.5)),
-    rgba(var(--glass-bg-rgb), 0.48);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.72),
-    inset 0 -1px 0 rgba(28, 75, 88, 0.025);
-}
-
-:global(html.light .data-page .asset-tab.active) {
-  border-color: rgba(var(--primary-rgb), 0.28);
-  background:
-    linear-gradient(180deg, rgba(237, 255, 249, 0.8), rgba(221, 247, 241, 0.56)),
-    rgba(var(--primary-rgb), 0.08);
-}
-
-:global(html.light .data-page .asset-row) {
-  border-color: rgba(20, 49, 60, 0.11);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(240, 249, 246, 0.48) 46%, rgba(28, 75, 88, 0.018)),
-    radial-gradient(circle at 18% 0%, rgba(var(--primary-rgb), 0.055), transparent 34%),
-    rgba(var(--glass-bg-rgb), 0.5);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.72),
-    0 10px 24px rgba(31, 56, 68, 0.055);
-}
-
-:global(html.light .data-page .asset-row:hover),
-:global(html.light .data-page .asset-row.active) {
-  border-color: rgba(var(--primary-rgb), 0.28);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(232, 248, 244, 0.62)),
-    rgba(var(--primary-rgb), 0.055);
-}
-
-:global(html.light .data-page .readonly-note) {
-  border-color: rgba(191, 127, 20, 0.22);
-  background:
-    linear-gradient(180deg, rgba(255, 250, 232, 0.72), rgba(248, 239, 209, 0.46)),
-    rgba(255, 255, 255, 0.42);
+@media (prefers-reduced-motion: reduce) {
+  .data-center-hero,
+  .asset-section,
+  .primary-btn,
+  .ghost-btn,
+  .selection-bar button,
+  .asset-tab,
+  .asset-row {
+    transition: none;
+    transform: none !important;
+  }
 }
 
 @media (max-width: 1280px) {
   .asset-workbench {
-    grid-template-columns: 220px minmax(0, 1fr);
-    height: auto;
+    grid-template-columns: minmax(220px, 0.55fr) minmax(0, 1fr);
   }
 
   .asset-detail {
     grid-column: 1 / -1;
-    height: auto;
-    overflow: visible;
   }
 
-  .asset-main {
-    height: var(--asset-workbench-height);
-  }
-
-}
-
-@media (max-width: 900px) {
-  .data-hero,
-  .asset-toolbar {
-    display: grid;
-  }
-
-  .asset-command-grid {
+  .summary-grid,
+  .pipeline-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .asset-workbench {
-    grid-template-columns: 1fr;
-    height: auto;
-    overflow: visible;
-  }
-
-  .asset-sidebar,
-  .asset-main,
-  .asset-detail {
-    height: auto;
-    max-height: none;
-    overflow: visible;
-  }
-
-  .asset-table {
-    max-height: none;
-    overflow: visible;
-  }
-
   .asset-row {
-    grid-template-columns: 52px 1fr;
+    grid-template-columns: 58px minmax(0, 1fr) 90px;
   }
 
-  .asset-row em,
   .asset-row i,
   .asset-row small,
   .asset-row b {
-    grid-column: 2;
+    display: none;
   }
 }
 
-@media (max-width: 620px) {
-  .data-page {
-    height: auto;
-    overflow: visible;
-    padding: 16px;
+@media (max-width: 980px) {
+  .asset-workbench {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .data-center-page {
+    padding: 14px;
   }
 
-  .asset-command-grid {
+  .data-center-hero,
+  .section-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .hero-actions {
+    flex-basis: auto;
+    justify-content: stretch;
+  }
+
+  .hero-actions button,
+  .detail-actions button,
+  .selection-bar button {
+    flex: 1 1 150px;
+  }
+
+  .summary-grid,
+  .pipeline-strip,
+  .asset-toolbar {
     grid-template-columns: 1fr;
   }
 }

@@ -1,6 +1,7 @@
 package com.deepinsight.backend.security;
 
 import com.deepinsight.backend.common.Constants;
+import jakarta.servlet.DispatcherType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -77,6 +78,7 @@ public class SecurityConfig {
 
             // 配置接口权限
             .authorizeHttpRequests(auth -> auth
+                .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
                 // 认证模块、论坛浏览和静态资源等公开接口无需认证即可访问
                 .requestMatchers(Constants.PUBLIC_PATHS).permitAll()
                 // 官方模型列表是训练页的只读入口，匿名只允许读取，不能创建或修改模型

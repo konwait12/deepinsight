@@ -25,6 +25,12 @@ public interface AiConfigService {
         }
     }
 
+    interface ChatStreamSink {
+        void status(String message);
+        void reasoning(String delta);
+        void content(String delta);
+    }
+
     List<AiConfig> findAll();
     AiConfig getActive();
     AiConfig getById(Long id);
@@ -38,4 +44,18 @@ public interface AiConfigService {
     }
 
     Map<String, Object> chat(String message, List<Map<String, String>> history, ChatOptions options);
+
+    default Map<String, Object> chatStream(
+        String message,
+        List<Map<String, String>> history,
+        ChatOptions options,
+        ChatStreamSink sink
+    ) {
+        Map<String, Object> result = chat(message, history, options);
+        String reasoning = String.valueOf(result.getOrDefault("reasoning", ""));
+        if (!reasoning.isBlank() && sink != null) sink.reasoning(reasoning);
+        String content = String.valueOf(result.getOrDefault("content", ""));
+        if (!content.isBlank() && sink != null) sink.content(content);
+        return result;
+    }
 }

@@ -43,7 +43,7 @@ public class VisualAnalysisService {
     public record ImportToChatRequest(Long batchId, List<Long> resultIds, String message) {}
 
     private static final Set<String> SUPPORTED_MODULES = Set.of(
-        "scalars", "images", "audio", "text", "histograms", "embeddings", "prCurves", "hparams", "graphs", "profiler"
+        "scalars", "text", "histograms", "prCurves", "hparams", "graphs", "profiler"
     );
     private static final DateTimeFormatter PANEL_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -541,13 +541,13 @@ public class VisualAnalysisService {
         Map<String, Object> metrics = new LinkedHashMap<>();
         if (steps.isEmpty()) {
             if (job.getCurrentLoss() == null && job.getCurrentAccuracy() == null) {
-                return noData("scalars", "该训练任务还没有写入标量步记录，也没有可用的当前损失或准确率。");
+                return noData("scalars", "该训练任务还没有写入推荐指标或标量步记录，也没有可用的当前指标摘要。");
             }
             metrics.put("latestLoss", job.getCurrentLoss());
             metrics.put("latestAccuracy", job.getCurrentAccuracy());
             return new AnalysisOutcome("ready", scoreFromAccuracy(job.getCurrentAccuracy(), job.getCurrentLoss()), 1L,
                 Long.valueOf(job.getCurrentEpoch() == null ? 0 : job.getCurrentEpoch()),
-                "已从训练任务记录中读取当前损失和准确率，可作为临时训练状态判断。", metrics);
+                "已从训练任务记录中读取当前指标摘要，可作为临时模型状态判断。", metrics);
         }
         TrainingStep latest = steps.get(steps.size() - 1);
         Double firstLoss = firstNonNull(steps.stream().map(TrainingStep::getTrainLoss).toList());
@@ -561,19 +561,19 @@ public class VisualAnalysisService {
         metrics.put("bestValAccuracy", bestValAcc);
         metrics.put("latestLearningRate", latest.getLearningRate());
         return new AnalysisOutcome("ready", scoreFromAccuracy(bestValAcc != null ? bestValAcc : bestAcc, latestLoss), (long) steps.size(),
-            Long.valueOf(latest.getEpoch()), "已基于 training_steps 表中的真实训练步记录分析损失、准确率和学习率变化。", metrics);
+            Long.valueOf(latest.getEpoch()), "已基于 training_steps 表中的真实训练步记录分析推荐指标、误差和学习率变化。", metrics);
     }
 
     private AnalysisOutcome analyzeTrainingDistribution(List<TrainingStep> steps) {
         List<Double> losses = steps.stream().map(TrainingStep::getTrainLoss).filter(v -> v != null).toList();
-        if (losses.isEmpty()) return noData("histograms", "没有可用于生成分布直方图的训练损失记录。");
+        if (losses.isEmpty()) return noData("histograms", "没有可用于生成分布直方图的指标或误差记录。");
         Map<String, Object> metrics = new LinkedHashMap<>();
         metrics.put("min", losses.stream().min(Double::compareTo).orElse(null));
         metrics.put("max", losses.stream().max(Double::compareTo).orElse(null));
         metrics.put("mean", losses.stream().mapToDouble(Double::doubleValue).average().orElse(0));
         metrics.put("source", "training_steps.train_loss");
         return new AnalysisOutcome("ready", 1.0 / Math.max(1.0, (Double) metrics.get("mean")), (long) losses.size(),
-            Long.valueOf(steps.get(steps.size() - 1).getEpoch()), "已用真实训练损失记录生成分布统计，便于观察损失是否集中或波动异常。", metrics);
+            Long.valueOf(steps.get(steps.size() - 1).getEpoch()), "已用真实指标记录生成分布统计，便于观察误差是否集中或波动异常。", metrics);
     }
 
     private AnalysisOutcome analyzeTrainingHParams(TrainingJob job) {
@@ -601,13 +601,13 @@ public class VisualAnalysisService {
     private AnalysisOutcome analyzeUpload(ResolvedRun run, String module) {
         return switch (module) {
             case "scalars" -> analyzeTable(run.id(), "scalar_logs", "已从上传运行数据中分析标量日志。");
-            case "images" -> analyzeTable(run.id(), "image_logs", "已从上传运行数据中分析图像样本和可视化记录。");
-            case "audio" -> analyzeTable(run.id(), "audio_logs", "已从上传运行数据中分析音频波形或频谱记录。");
+            case "images" -> analyzeTable(run.id(), "image_logs", "已从上传运行数据中分析样本预览和可视化记录。");
+            case "audio" -> analyzeTable(run.id(), "audio_logs", "已从上传运行数据中分析序列片段和时间记录。");
             case "text" -> analyzeTable(run.id(), "text_logs", "已从上传运行数据中分析文本日志和预测片段。");
             case "histograms" -> analyzeTable(run.id(), "histogram_data", "已从上传运行数据中分析权重、梯度或标量分布记录。");
             case "embeddings" -> analyzeTable(run.id(), "embedding_data", "已从上传运行数据中分析向量投影和嵌入记录。");
             case "prCurves" -> analyzeEvalCurves(run.id());
-            case "hparams" -> analyzeTable(run.id(), "hparam_data", "已从上传运行数据中分析超参数记录。");
+            case "hparams" -> analyzeTable(run.id(), "hparam_data", "已从上传运行数据中分析模型参数记录。");
             case "profiler" -> analyzeTable(run.id(), "profiler_data", "已从上传运行数据中分析性能剖析记录。");
             case "graphs" -> noData("graphs", "上传运行暂未接入模型拓扑表，当前无法生成结构图分析。");
             default -> noData(module, "暂不支持该分析模块。");
@@ -631,10 +631,10 @@ public class VisualAnalysisService {
     }
 
     private AnalysisOutcome analyzeEvalCurves(Long runId) {
-        AnalysisOutcome pr = analyzeTable(runId, "pr_curve_data", "已从上传运行数据中分析 PR 曲线记录。");
-        AnalysisOutcome roc = analyzeTable(runId, "roc_curve_data", "已从上传运行数据中分析 ROC 曲线记录。");
+        AnalysisOutcome pr = analyzeTable(runId, "pr_curve_data", "已从上传运行数据中分析命中曲线记录。");
+        AnalysisOutcome roc = analyzeTable(runId, "roc_curve_data", "已从上传运行数据中分析排序曲线记录。");
         if ("no_data".equals(pr.status()) && "no_data".equals(roc.status())) {
-            return noData("prCurves", "没有找到 PR 或 ROC 曲线记录，暂时无法做阈值评估对比。");
+            return noData("prCurves", "没有找到命中或排序曲线记录，暂时无法做 Top-K 评估对比。");
         }
         Map<String, Object> metrics = new LinkedHashMap<>();
         metrics.put("prRecords", pr.recordCount());
@@ -644,7 +644,7 @@ public class VisualAnalysisService {
         return new AnalysisOutcome("ready", Math.log10(pr.recordCount() + roc.recordCount() + 1),
             pr.recordCount() + roc.recordCount(),
             Math.max(pr.latestStep() == null ? 0 : pr.latestStep(), roc.latestStep() == null ? 0 : roc.latestStep()),
-            "已合并上传运行中的 PR/ROC 评估曲线记录，可用于比较阈值、精确率和召回率。", metrics);
+            "已合并上传运行中的命中/排序评估曲线记录，可用于比较 Top-K、HR、NDCG 和 MRR。", metrics);
     }
 
     private AnalysisOutcome noData(String module, String summary) {
@@ -786,10 +786,10 @@ public class VisualAnalysisService {
             );
         }
         if ("scalars".equals(module)) {
-            return List.of("把多个模型的验证损失放在一起比较，优先观察是否稳定下降。", "同时看损失变化和最佳准确率，避免只盯单个指标。", "如果验证损失持续回升，建议启用早停或降低学习率。");
+            return List.of("把多个模型的 HR、NDCG、MRR 放在一起比较，优先确认指标是否来自真实日志。", "同时看数据规模和日志来源，避免只盯单个最高值。", "如果指标缺失，先补评估日志或明确标注为未记录。");
         }
         if ("profiler".equals(module)) {
-            return List.of("优先按单步耗时排序，定位最慢算子或数据阶段。", "把不同模型的 GPU 利用率并排比较，判断瓶颈是否来自模型结构。", "优化算子前先检查数据加载和预处理是否拖慢训练。");
+            return List.of("优先按接口耗时和数据加载耗时排序，定位最慢环节。", "把不同模型的服务状态并排比较，区分后端代理、模型服务和数据准备问题。", "优化推理链路前先检查输入序列、Top-K 和模型服务是否可达。");
         }
         return List.of("把这个结果和其他已选模型放在同一矩阵里比较，不要孤立判断。", "记录数本身就是数据质量信号，记录太少时先补齐日志。", "进入详情面板确认趋势和样本，再决定是否调整训练策略。");
     }
@@ -843,16 +843,13 @@ public class VisualAnalysisService {
 
     private Map<String, ModuleDefinition> moduleDefinitions() {
         Map<String, ModuleDefinition> defs = new LinkedHashMap<>();
-        defs.put("scalars", new ModuleDefinition("scalars", "标量趋势", "分析损失、准确率、学习率和收敛信号。", List.of("ResNet-50", "EfficientNet-B4", "ViT-B/16")));
-        defs.put("images", new ModuleDefinition("images", "图像样本", "分析样本图、特征图和视觉中间输出。", List.of("ResNet-50", "Swin-T", "DeepLabV3-RN50")));
-        defs.put("audio", new ModuleDefinition("audio", "音频波形", "分析音频模型的波形、频谱和声音样本。", List.of("Whisper-Tiny", "Wav2Vec2-Base", "AST-Base")));
-        defs.put("text", new ModuleDefinition("text", "文本日志", "分析提示词轨迹、预测文本和语言模型日志。", List.of("BERT-Base", "GPT-2", "T5-Small")));
-        defs.put("histograms", new ModuleDefinition("histograms", "分布直方图", "分析权重、梯度和标量分布。", List.of("ResNet-101", "ConvNeXt-T", "DenseNet-201")));
-        defs.put("embeddings", new ModuleDefinition("embeddings", "向量投影", "分析向量投影、聚类结构和表示质量。", List.of("ViT-B/16", "BERT-Base", "CLIP-ViT-B/32")));
-        defs.put("prCurves", new ModuleDefinition("prCurves", "PR/ROC 评估", "比较阈值、精确率、召回率和 ROC 表现。", List.of("YOLOv8n", "YOLOv8s", "DeepLabV3-RN50")));
-        defs.put("hparams", new ModuleDefinition("hparams", "超参数对比", "比较学习率、批次大小、优化器和配置差异。", List.of("MobileNetV3-L", "EfficientNet-B4", "ResNet-50")));
-        defs.put("graphs", new ModuleDefinition("graphs", "模型结构", "分析架构、层级和拓扑关系。", List.of("ResNet-50", "Swin-T", "LLaMA-7B")));
-        defs.put("profiler", new ModuleDefinition("profiler", "性能剖析", "分析运行时、算子耗时和吞吐瓶颈。", List.of("YOLOv8n", "MobileNetV3-L", "Whisper-Tiny")));
+        defs.put("scalars", new ModuleDefinition("scalars", "推荐指标趋势", "读取 training_steps 或当前训练摘要中的 loss、accuracy、HR/NDCG 等标量证据。", List.of("BSARec", "FMLP-Rec", "BERT4Rec")));
+        defs.put("histograms", new ModuleDefinition("histograms", "误差分布", "用真实训练步记录统计 loss 分布，判断收敛波动和异常区间。", List.of("BSARec Job", "DuoRec", "FEARec")));
+        defs.put("hparams", new ModuleDefinition("hparams", "训练配置", "读取训练任务中的学习率、批次大小、轮次、优化器和设备配置。", List.of("DuoRec", "FEARec", "TiSASRec")));
+        defs.put("graphs", new ModuleDefinition("graphs", "模型结构", "读取模型架构元数据，匹配 9 个推荐系统模型的家族和接入状态。", List.of("BERT4Rec", "SASRec", "TiSASRec")));
+        defs.put("prCurves", new ModuleDefinition("prCurves", "排序评估曲线", "合并上传运行中的 PR/ROC 记录，用于 Top-K、HR、NDCG、MRR 对比。", List.of("BSARec", "FMLP-Rec", "BSARec Job")));
+        defs.put("text", new ModuleDefinition("text", "日志文本", "读取上传运行的训练日志、评估摘要和配置文本，不再伪装成媒体数据。", List.of("BSARec", "FMLP-Rec", "RecBole")));
+        defs.put("profiler", new ModuleDefinition("profiler", "服务性能", "分析推荐服务耗时、数据加载、评估循环和吞吐瓶颈。", List.of("BSARec Job", "RecBole", "FMLP-Rec")));
         return defs;
     }
 
@@ -862,10 +859,15 @@ public class VisualAnalysisService {
 
     private void ensureOfficialExampleModels() {
         List<OfficialExampleModel> examples = List.of(
-            new OfficialExampleModel("Whisper-Tiny", "audio", 39.0, "audio", "pytorch", "用于音频可视化的语音识别基线模型。"),
-            new OfficialExampleModel("Wav2Vec2-Base", "audio", 95.0, "16kHz audio", "pytorch", "自监督语音表征模型，适合波形和嵌入分析。"),
-            new OfficialExampleModel("AST-Base", "audio", 86.0, "spectrogram", "pytorch", "音频频谱 Transformer，适合音频分类和频谱分析。"),
-            new OfficialExampleModel("CLIP-ViT-B/32", "multimodal", 151.0, "224x224x3 + text", "pytorch", "视觉语言嵌入模型，适合跨模态向量投影。")
+            new OfficialExampleModel("BSARec Job", "recommendation", 0.0, "user-item sequence", "pytorch", "岗位序列推荐模型，登记后端推荐代理。"),
+            new OfficialExampleModel("BSARec", "recommendation", 0.0, "user-item sequence", "pytorch", "多数据集序列推荐模型，拥有权重和评估日志。"),
+            new OfficialExampleModel("BERT4Rec", "recommendation", 0.0, "user-item sequence", "tensorflow", "双向序列推荐模型，代码和真实数据已接入。"),
+            new OfficialExampleModel("DuoRec", "recommendation", 0.0, "user-item sequence", "pytorch", "对比序列推荐模型，ml-100k 数据已接入。"),
+            new OfficialExampleModel("FEARec", "recommendation", 0.0, "user-item sequence", "pytorch", "频域增强序列推荐模型，ml-100k 数据已接入。"),
+            new OfficialExampleModel("FMLP-Rec", "recommendation", 0.0, "user-item sequence", "pytorch", "滤波增强推荐模型，拥有 Beauty 权重和指标日志。"),
+            new OfficialExampleModel("RecBole", "recommendation", 0.0, "atomic recommendation data", "pytorch", "推荐系统实验框架，使用配置驱动评估。"),
+            new OfficialExampleModel("SASRec", "recommendation", 0.0, "user-item sequence", "tensorflow", "自注意力序列推荐模型，包含多份真实交互数据。"),
+            new OfficialExampleModel("TiSASRec", "recommendation", 0.0, "user-item-time sequence", "tensorflow", "时间间隔序列推荐模型，包含 ML-1M 时间戳数据。")
         );
         for (OfficialExampleModel model : examples) {
             Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM model_registry WHERE name = ?", Integer.class, model.name());
@@ -891,12 +893,11 @@ public class VisualAnalysisService {
 
     private String familyOf(String modelName) {
         if (modelName == null) return "unknown";
-        if (modelName.contains("ResNet")) return "residual-cnn";
-        if (modelName.contains("YOLO")) return "detector";
-        if (modelName.contains("BERT") || modelName.contains("GPT") || modelName.contains("T5") || modelName.contains("LLaMA")) return "language-model";
-        if (modelName.contains("Whisper") || modelName.contains("Wav2Vec") || modelName.contains("AST")) return "audio-model";
-        if (modelName.contains("ViT") || modelName.contains("Swin")) return "transformer-vision";
-        return "deep-learning";
+        if (modelName.contains("BSARec")) return "bsarec-family";
+        if (modelName.contains("BERT4Rec") || modelName.contains("SASRec") || modelName.contains("TiSASRec")) return "transformer-recommender";
+        if (modelName.contains("DuoRec") || modelName.contains("FEARec") || modelName.contains("FMLP")) return "enhanced-recommender";
+        if (modelName.contains("RecBole")) return "recommender-framework";
+        return "recommender-system";
     }
 
     private Double firstNonNull(List<Double> values) {

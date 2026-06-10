@@ -8,11 +8,11 @@ export const predictionApi = {
     return apiClient.get<ApiResponse<ModelOption[]>>(API_ENDPOINTS.PREDICTION.MODELS)
   },
 
-  classify(data: { model: string }) {
-    return apiClient.post<ApiResponse<any>>(API_ENDPOINTS.PREDICTION.CLASSIFY, data)
-  },
-
   recommend(data: { user_history: number[]; user_id?: string; top_k?: number; include_job_info?: boolean }) {
     return apiClient.post<ApiResponse<any>>(API_ENDPOINTS.PREDICTION.RECOMMEND, data)
+  },
+
+  health() {
+    return apiClient.get<ApiResponse<Record<string, unknown>>>(`${API_ENDPOINTS.PREDICTION.HEALTH}`)
   },
 }

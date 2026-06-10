@@ -40,7 +40,11 @@
       </button>
     </div>
 
-    <div class="kg-hint">{{ knowledgeHint }}</div>
+    <div v-if="theme.isDarkMode" class="kg-hint">{{ knowledgeHint }}</div>
+    <div v-else class="kg-light-tools" @mousedown.stop @wheel.stop @click.stop>
+      <span>{{ knowledgeHint }}</span>
+      <button type="button" @click="resetLightAtlas">归位</button>
+    </div>
   </div>
 </template>
 
@@ -50,7 +54,7 @@ import { useThemeStore } from '@/stores/theme.store';
 import { useI18n } from 'vue-i18n';
 const theme = useThemeStore();
 const { t: tt } = useI18n();
-const knowledgeHint = computed(() => theme.isDarkMode ? tt('kg3d.hint') : '滚轮缩放 · 拖动画布 · 拖动节点调整关系');
+const knowledgeHint = computed(() => theme.isDarkMode ? tt('kg3d.hint') : '滚轮缩放 · 拖动画布 · 拖动节点');
 const emit = defineEmits<{ openArticle: [article: any] }>();
 const box = ref<HTMLDivElement>(); const cv = ref<HTMLCanvasElement>();
 const sel = ref<any>(null); const panelOpen = ref(false);
@@ -654,17 +658,28 @@ const nodeCanvasAlpha = (rn: RNode) => {
   return 0.32;
 };
 
+const lightLabelFont = (rn: Pick<RNode, 'depth'>) => `800 ${rn.depth === 0 ? 14 : rn.depth === 1 ? 12 : 10.5}px "Microsoft YaHei","PingFang SC","Noto Sans SC",Inter,system-ui,sans-serif`;
+const lightMetaFont = '700 9px "Microsoft YaHei","PingFang SC","Noto Sans SC",Inter,system-ui,sans-serif';
+const estimateTextWidth = (text: string, fontSize: number) => Array.from(text).reduce((sum, ch) => sum + (/[\u4e00-\u9fa5]/.test(ch) ? fontSize : fontSize * 0.62), 0);
+const measureLightText = (text: string, font: string, fallbackFontSize: number) => {
+  if (!c) return estimateTextWidth(text, fallbackFontSize);
+  c.save();
+  c.font = font;
+  const width = c.measureText(text).width;
+  c.restore();
+  return width;
+};
+
 const lightAtlasBounds = (rn: RNode) => {
   const hover = hoveredNodeId === rn.id && !focusNodeId;
   const focus = focusNodeId === rn.id || selectedNodeId === rn.id;
-  const baseWidth = rn.depth === 0
-    ? 178
-    : rn.depth === 1
-      ? Math.max(116, Math.min(156, 78 + rn.label.length * 6.4))
-      : Math.max(74, Math.min(126, 54 + rn.label.length * 5.2));
-  const height = rn.depth === 0 ? 54 : rn.depth === 1 ? 42 : 30;
+  const labelSize = rn.depth === 0 ? 14 : rn.depth === 1 ? 12 : 10.5;
+  const labelWidth = measureLightText(rn.label, lightLabelFont(rn), labelSize);
+  const metaWidth = rn.depth === 0 ? measureLightText(rn.cat, lightMetaFont, 9) : 0;
+  const baseWidth = Math.max(68, Math.ceil(Math.max(labelWidth, metaWidth) + 58));
+  const height = rn.depth === 0 ? 52 : rn.depth === 1 ? 39 : 28;
   const scale = focus ? 1.08 : hover ? 1.045 : 1;
-  const zoomScale = theme.isDarkMode ? 1 : clamp(lightZoom, 0.82, 1.18);
+  const zoomScale = theme.isDarkMode ? 1 : clamp(lightZoom, 1, 1.18);
   const width = baseWidth * scale * zoomScale;
   const cardHeight = height * scale * zoomScale;
   return {
@@ -678,13 +693,60 @@ const lightAtlasBounds = (rn: RNode) => {
 
 const getLightAtlasStage = () => {
   const compact = W < 980;
-  const left = compact ? W * 0.08 : clamp(W * 0.34, 470, 560);
-  const right = compact ? W * 0.92 : W - clamp(W * 0.08, 142, 210);
-  const top = compact ? clamp(H * 0.36, 250, 330) : clamp(H * 0.15, 105, 150);
-  const bottom = H - (compact ? 138 : 118);
+  const left = compact ? W * 0.08 : clamp(W * 0.12, 150, 220);
+  const right = compact ? W * 0.92 : W - clamp(W * 0.04, 70, 120);
+  const top = compact ? clamp(H * 0.34, 240, 320) : clamp(H * 0.12, 88, 132);
+  const bottom = H - (compact ? 122 : 92);
   const width = Math.max(280, right - left);
   const height = Math.max(250, bottom - top);
   return { compact, left, right, top, bottom, width, height };
+};
+
+type AtlasRatio = { x: number; y: number };
+const lightAtlasPreset: Record<string, AtlasRatio> = {
+  d: { x: 0.52, y: 0.24 },
+  'ai-training': { x: 0.2, y: 0.53 },
+  metrics: { x: 0.35, y: 0.51 },
+  platform: { x: 0.56, y: 0.53 },
+  'bsarec-family': { x: 0.71, y: 0.43 },
+  'enhanced-rec': { x: 0.64, y: 0.75 },
+  'transformer-rec': { x: 0.8, y: 0.72 },
+  'rec-data': { x: 0.71, y: 0.86 },
+  'hr-k': { x: 0.27, y: 0.38 },
+  'ndcg-k': { x: 0.37, y: 0.35 },
+  mrr: { x: 0.44, y: 0.4 },
+  readiness: { x: 0.39, y: 0.65 },
+  'model-overview': { x: 0.47, y: 0.42 },
+  'access-test': { x: 0.52, y: 0.65 },
+  visualization: { x: 0.58, y: 0.41 },
+  'dataset-viz': { x: 0.62, y: 0.61 },
+  'ai-workspace': { x: 0.64, y: 0.5 },
+  'bsarec-job': { x: 0.63, y: 0.29 },
+  bsarec: { x: 0.78, y: 0.31 },
+  duorec: { x: 0.54, y: 0.8 },
+  fearec: { x: 0.61, y: 0.91 },
+  fmlprec: { x: 0.69, y: 0.65 },
+  recbole: { x: 0.72, y: 0.8 },
+  bert4rec: { x: 0.75, y: 0.57 },
+  sasrec: { x: 0.9, y: 0.56 },
+  tisasrec: { x: 0.91, y: 0.8 },
+  'job-data': { x: 0.61, y: 0.92 },
+  'beauty-data': { x: 0.73, y: 0.96 },
+  'ml100k-data': { x: 0.85, y: 0.91 },
+  'ml1m-data': { x: 0.94, y: 0.84 },
+};
+
+const getLightPresetPoint = (rn: RNode, stage = getLightAtlasStage()) => {
+  const preset = lightAtlasPreset[rn.id];
+  if (!preset) return null;
+  const baseBounds = lightAtlasBounds({ ...rn, sx: 0, sy: 0 });
+  const sidePad = stage.compact ? Math.max(30, baseBounds.width * 0.5) : Math.max(58, baseBounds.width * 0.5 + 8);
+  const topPad = rn.depth === 0 ? 18 : 20;
+  const bottomPad = 26;
+  return {
+    x: clamp(W * preset.x, stage.left + sidePad, stage.right - sidePad),
+    y: clamp(H * preset.y, stage.top + topPad, stage.bottom - bottomPad),
+  };
 };
 
 const lightAtlasPoint = (rn: RNode) => {
@@ -693,10 +755,12 @@ const lightAtlasPoint = (rn: RNode) => {
   const count = Math.max(1, siblings.length);
   const root = nodeMap.get(rn.parentId || '');
   const stage = getLightAtlasStage();
+  const preset = getLightPresetPoint(rn, stage);
+  if (preset) return preset;
   if (rn.depth === 0) {
     return {
-      x: stage.compact ? W * 0.5 : stage.left + stage.width * 0.12,
-      y: stage.compact ? stage.top - 48 : stage.top + stage.height * 0.42,
+      x: stage.compact ? W * 0.5 : stage.left + stage.width * 0.44,
+      y: stage.compact ? stage.top - 30 : stage.top + stage.height * 0.22,
     };
   }
   if (rn.depth === 1) {
@@ -760,6 +824,36 @@ const lightScreenDeltaToWorld = (dx: number, dy: number) => ({
   x: dx / Math.max(0.001, lightZoom),
   y: dy / Math.max(0.001, lightZoom),
 });
+
+const clampLightPan = () => {
+  const limitX = Math.max(120, W * (lightZoom <= 1 ? 0.22 : 0.36 * lightZoom));
+  const limitY = Math.max(96, H * (lightZoom <= 1 ? 0.2 : 0.34 * lightZoom));
+  lightPanX = clamp(lightPanX, -limitX, limitX);
+  lightPanY = clamp(lightPanY, -limitY, limitY);
+};
+
+const clampLightNodeOffset = (rn: RNode, nextOffset: { x: number; y: number }) => {
+  const stage = getLightAtlasStage();
+  const base = lightAtlasPoint(rn);
+  const bounds = lightAtlasBounds({ ...rn, sx: base.x, sy: base.y });
+  const padX = Math.max(34, bounds.width * 0.45);
+  const padY = Math.max(28, bounds.height * 0.5);
+  const worldX = clamp(base.x + nextOffset.x, stage.left - padX, stage.right + padX);
+  const worldY = clamp(base.y + nextOffset.y, stage.top - padY, stage.bottom + padY);
+  return { x: worldX - base.x, y: worldY - base.y };
+};
+
+const resetLightAtlas = () => {
+  lightPanX = 0;
+  lightPanY = 0;
+  lightZoom = 1;
+  lightDragMode = 'none';
+  lightDragNodeId = null;
+  lightDragged = false;
+  suppressLightClick = false;
+  lightNodeOffsets.clear();
+  clampLightPan();
+};
 
 const lightNodeScreenPoint = (rn: RNode) => {
   const base = lightAtlasPoint(rn);
@@ -954,23 +1048,16 @@ const renderLightAtlas = (colors: ThemeCanvasColors) => {
     c!.strokeStyle = 'rgba(255,255,255,0.76)';
     c!.stroke();
 
-    c!.font = `800 ${rn.depth === 0 ? 14 : rn.depth === 1 ? 12 : 10.5}px "Microsoft YaHei","PingFang SC","Noto Sans SC",Inter,system-ui,sans-serif`;
+    c!.font = lightLabelFont(rn);
     c!.textAlign = 'left';
     c!.textBaseline = 'middle';
     c!.fillStyle = colors.text;
-    const textX = bounds.x + 34;
-    const maxWidth = Math.max(34, bounds.width - 44);
-    c!.fillText(rn.label, textX, bounds.y + bounds.height / 2 - (rn.depth === 0 ? 7 : 0), maxWidth);
+    const textX = bounds.x + 36;
+    c!.fillText(rn.label, textX, bounds.y + bounds.height / 2 - (rn.depth === 0 ? 7 : 0));
     if (rn.depth === 0) {
-      c!.font = '700 9px "Microsoft YaHei","PingFang SC","Noto Sans SC",Inter,system-ui,sans-serif';
+      c!.font = lightMetaFont;
       c!.fillStyle = colors.muted;
-      c!.fillText(rn.cat, textX, bounds.y + bounds.height / 2 + 12, maxWidth);
-    }
-    if (rn.expanded && rn.childIds.length > 0) {
-      c!.font = '800 8.5px Inter,system-ui,sans-serif';
-      c!.textAlign = 'center';
-      c!.fillStyle = colorWithAlpha(tone.core, 0.9);
-      c!.fillText(String(rn.childIds.length), bounds.x + bounds.width - 14, bounds.y + 14);
+      c!.fillText(rn.cat, textX, bounds.y + bounds.height / 2 + 12);
     }
     if (focus) {
       c!.strokeStyle = colorWithAlpha(tone.core, 0.42);
@@ -985,7 +1072,7 @@ const renderLightAtlas = (colors: ThemeCanvasColors) => {
       c!.font = '700 9px "Microsoft YaHei","PingFang SC","Noto Sans SC",Inter,system-ui,sans-serif';
       c!.textAlign = 'center';
       c!.fillStyle = colors.muted;
-      c!.fillText(rn.cat, bounds.x + bounds.width / 2, bounds.y + bounds.height + 15, bounds.width + 36);
+      c!.fillText(rn.cat, bounds.x + bounds.width / 2, bounds.y + bounds.height + 15);
     }
     c!.restore();
   });
@@ -1240,15 +1327,18 @@ const onMv = (e: MouseEvent) => {
     if (lightDragMode === 'canvas') {
       lightPanX = lightDragStartPanX + dx;
       lightPanY = lightDragStartPanY + dy;
+      clampLightPan();
       setHoveredNode(null);
       return;
     }
     if (lightDragMode === 'node' && lightDragNodeId) {
       const worldDelta = lightScreenDeltaToWorld(dx, dy);
-      lightNodeOffsets.set(lightDragNodeId, {
+      const rn = nodeMap.get(lightDragNodeId);
+      const nextOffset = {
         x: lightDragStartNodeX + worldDelta.x,
         y: lightDragStartNodeY + worldDelta.y,
-      });
+      };
+      lightNodeOffsets.set(lightDragNodeId, rn ? clampLightNodeOffset(rn, nextOffset) : nextOffset);
       setHoveredNode(lightDragNodeId);
       return;
     }
@@ -1282,6 +1372,7 @@ const onWh = (e: WheelEvent) => {
     lightPanX = pos.x - ((pos.x - W / 2 - lightPanX) / prevZoom) * nextZoom - W / 2;
     lightPanY = pos.y - ((pos.y - H / 2 - lightPanY) / prevZoom) * nextZoom - H / 2;
     lightZoom = nextZoom;
+    clampLightPan();
     return;
   }
   e.preventDefault(); tzm = Math.max(0.35, Math.min(3.5, tzm - e.deltaY * 0.0015));
@@ -1413,6 +1504,7 @@ const fit = () => {
   cv.value.height = Math.round(H * ratio);
   c = cv.value.getContext('2d');
   c?.setTransform(ratio, 0, 0, ratio, 0, 0);
+  clampLightPan();
 };
 
 onMounted(async () => {
@@ -1451,16 +1543,69 @@ canvas { display: block; width: 100%; height: 100%; }
     linear-gradient(180deg, rgba(250, 252, 255, 0.28), rgba(238, 247, 248, 0.18));
 }
 .kg-hint { position: absolute; bottom: 20px; left: 24px; font-size: 9px; font-weight: var(--font-weight-body); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; pointer-events: none; z-index: 20; max-width: 280px; line-height: 1.4; opacity: 0.42; }
-:global(.light .kg-hint) {
-  color: color-mix(in srgb, var(--text-secondary) 82%, var(--primary-color));
-  opacity: 0.74;
-  padding: 8px 12px;
+.kg-light-tools {
+  position: absolute;
+  left: clamp(18px, 3.5vw, 44px);
+  bottom: 22px;
+  z-index: 28;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(420px, calc(100vw - 36px));
+  padding: 7px;
   border: 1px solid rgba(var(--primary-rgb), 0.12);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.58);
-  box-shadow: 0 10px 28px rgba(68, 84, 118, 0.08);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.8), rgba(246,249,255,0.54)),
+    rgba(255,255,255,0.54);
+  color: color-mix(in srgb, var(--text-secondary) 82%, var(--primary-color));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.86),
+    0 12px 34px rgba(68, 84, 118, 0.1);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+}
+.kg-light-tools span {
+  padding: 0 4px 0 8px;
+  white-space: nowrap;
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+.kg-light-tools button {
+  height: 27px;
+  min-width: 48px;
+  border: 0;
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(var(--primary-rgb), 0.16), rgba(var(--primary-rgb), 0.09));
+  color: var(--primary-color);
+  font-size: 11px;
+  font-weight: var(--font-weight-label);
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.72);
+  transition: transform .18s cubic-bezier(0.2, 0.8, 0.2, 1), background .18s ease, box-shadow .18s ease;
+}
+.kg-light-tools button:hover {
+  transform: translateY(-1px);
+  background:
+    linear-gradient(180deg, rgba(var(--primary-rgb), 0.2), rgba(var(--primary-rgb), 0.12));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.78),
+    0 8px 18px rgba(var(--primary-rgb), 0.12);
+}
+.kg-light-tools button:active { transform: translateY(0) scale(0.98); }
+@media (max-width: 640px) {
+  .kg-light-tools {
+    left: 14px;
+    right: 14px;
+    bottom: 14px;
+    justify-content: space-between;
+  }
+  .kg-light-tools span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
 .kg-controls { position: absolute; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 5px; z-index: 20; }

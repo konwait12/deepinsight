@@ -1,5 +1,3 @@
-import type { Status } from '../common'
-
 export interface Dataset {
   id: number
   name: string
@@ -8,10 +6,11 @@ export interface Dataset {
   sampleCount: number
   fileSizeMb: number
   splitRatio: string
-  status: Status
+  status: string
   description?: string
   classCount?: number
   filePath?: string
+  createdAt?: string
 }
 
 export interface DatasetForm {
@@ -23,4 +22,6 @@ export interface DatasetForm {
   sampleCount: number
   fileSizeMb: number
   splitRatio: string
+  classCount?: number
+  filePath?: string
 }

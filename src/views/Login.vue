@@ -9,12 +9,12 @@
       <form class="login-form" @submit.prevent="handleSubmit">
         <label>
           <span>{{ t('login.username') }}</span>
-          <input v-model="loginForm.username" type="text" placeholder="User ID / Username" autocomplete="username" />
+          <input v-model="loginForm.username" type="text" :placeholder="loginCopy.usernamePlaceholder" autocomplete="username" />
         </label>
 
         <label>
           <span>{{ t('login.password') }}</span>
-          <input v-model="loginForm.password" type="password" placeholder="Password" autocomplete="current-password" />
+          <input v-model="loginForm.password" type="password" :placeholder="loginCopy.passwordPlaceholder" autocomplete="current-password" />
         </label>
 
         <div class="verify-track" :class="{ done: isVerified }">
@@ -51,17 +51,29 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowRight, Check, LoaderCircle } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth.store'
 import DeepLogo from '@/components/common/DeepLogo.vue'
+import { ROUTES } from '@/constants'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const authStore = useAuthStore()
 const router = useRouter()
+const route = useRoute()
+const isZh = computed(() => !locale.value.startsWith('en'))
+const loginCopy = computed(() => isZh.value
+  ? {
+      usernamePlaceholder: '用户 ID / 用户名',
+      passwordPlaceholder: '密码',
+    }
+  : {
+      usernamePlaceholder: 'User ID / Username',
+      passwordPlaceholder: 'Password',
+    })
 
 const isRegisterMode = ref(false)
 const loginForm = reactive({
@@ -71,6 +83,10 @@ const loginForm = reactive({
 const sliderValue = ref(0)
 const isVerified = ref(false)
 const isLoading = ref(false)
+const redirectPath = computed(() => {
+  const raw = typeof route.query.redirect === 'string' ? route.query.redirect : ''
+  return raw.startsWith('/') && !raw.startsWith('//') ? raw : ROUTES.TRAINING
+})
 
 function checkSlider() {
   if (sliderValue.value >= 100) {
@@ -106,7 +122,7 @@ async function handleSubmit() {
       await authStore.login(loginForm)
       ElMessage.success(t('login.success'))
     }
-    router.push('/dashboard')
+    router.push(redirectPath.value)
   } catch (error: any) {
     console.error('Auth request failed:', error)
     const msg = error.response?.data?.message || t('login.errorFailed')

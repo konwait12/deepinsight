@@ -1,14 +1,28 @@
 package com.deepinsight.backend.controller;
 
 import com.deepinsight.backend.common.Result;
-import com.deepinsight.backend.repository.*;
 import com.deepinsight.backend.entity.User;
+import com.deepinsight.backend.repository.DatasetRepository;
+import com.deepinsight.backend.repository.ForumCommentRepository;
+import com.deepinsight.backend.repository.ForumPostRepository;
+import com.deepinsight.backend.repository.KnowledgeArticleRepository;
+import com.deepinsight.backend.repository.KnowledgeNodeRepository;
+import com.deepinsight.backend.repository.TrainingJobRepository;
+import com.deepinsight.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Principal;
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/admin")
@@ -16,8 +30,6 @@ import java.util.*;
 public class AdminController {
 
     private final UserRepository userRepo;
-    private final ModelRegistryRepository modelRepo;
-    private final ModelArticleRepository modelArticleRepo;
     private final KnowledgeNodeRepository nodeRepo;
     private final KnowledgeArticleRepository articleRepo;
     private final ForumPostRepository postRepo;
@@ -35,14 +47,11 @@ public class AdminController {
         return isAdmin(p) ? null : Result.error(403, "需要管理员权限");
     }
 
-    // ========== 系统状态 ==========
     @GetMapping("/status")
     public Result<Map<String, Object>> status(Principal p) {
         Result<?> check = adminOnly(p); if (check != null) return (Result<Map<String, Object>>) check;
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("users", userRepo.count());
-        m.put("models", modelRepo.count());
-        m.put("modelArticles", modelArticleRepo.count());
         m.put("knowledgeNodes", nodeRepo.count());
         m.put("knowledgeArticles", articleRepo.count());
         m.put("forumPosts", postRepo.count());
@@ -52,7 +61,6 @@ public class AdminController {
         return Result.success(m);
     }
 
-    // ========== 用户管理 ==========
     @GetMapping("/users")
     public Result<List<User>> users(Principal p) {
         Result<?> check = adminOnly(p); if (check != null) return (Result<List<User>>) check;
@@ -76,32 +84,6 @@ public class AdminController {
         return Result.success("已删除");
     }
 
-    // ========== 模型管理 ==========
-    @GetMapping("/models")
-    public Result<List<Map<String, Object>>> models(Principal p) {
-        Result<?> check = adminOnly(p); if (check != null) return (Result<List<Map<String, Object>>>) check;
-        return Result.success(modelRepo.findAll().stream().map(m -> {
-            Map<String, Object> map = new LinkedHashMap<>();
-            map.put("id", m.getId()); map.put("name", m.getName());
-            map.put("displayNameZh", m.getDisplayNameZh());
-            map.put("taskType", m.getTaskType()); map.put("paramCountM", m.getParamCountM());
-            map.put("taskTypeZh", m.getTaskTypeZh());
-            map.put("framework", m.getFramework()); map.put("isOfficial", m.getIsOfficial());
-            map.put("createdBy", m.getCreatedBy());
-            return map;
-        }).toList());
-    }
-
-    @DeleteMapping("/models/{id}")
-    @Transactional
-    public Result<String> deleteModel(@PathVariable Long id, Principal p) {
-        Result<?> check = adminOnly(p); if (check != null) return (Result<String>) check;
-        modelArticleRepo.findByModelId(id).ifPresent(modelArticleRepo::delete);
-        modelRepo.deleteById(id);
-        return Result.success("已删除");
-    }
-
-    // ========== 知识库 ==========
     @GetMapping("/knowledge-nodes")
     public Result<?> knowledgeNodes(Principal p) {
         Result<?> check = adminOnly(p); if (check != null) return check;
@@ -121,7 +103,6 @@ public class AdminController {
         return Result.success("已删除");
     }
 
-    // ========== 论坛 ==========
     @GetMapping("/forum-posts")
     public Result<?> forumPosts(Principal p) {
         Result<?> check = adminOnly(p); if (check != null) return check;
@@ -137,7 +118,6 @@ public class AdminController {
         return Result.success("已删除");
     }
 
-    // ========== 数据集 / 训练任务 ==========
     @GetMapping("/datasets")
     public Result<?> datasets(Principal p) {
         Result<?> check = adminOnly(p); if (check != null) return check;

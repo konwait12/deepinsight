@@ -1,11 +1,11 @@
 <template>
-  <header class="topbar" :class="{ landing: isLanding && !isScrolled }">
+  <header class="topbar" :class="{ landing: isLanding && !isScrolled, 'lang-en': themeStore.lang === 'en' }">
     <button class="brand" type="button" @click="goHome">
-      <DeepLogo :scale="0.9" />
-      <span class="brand-status">{{ t('header.brandStatus') }}</span>
+      <DeepLogo :scale="1" />
+      <span class="brand-status">{{ brandStatus }}</span>
     </button>
 
-    <nav v-if="showTopNav" class="top-nav" aria-label="Primary navigation">
+    <nav v-if="showTopNav" class="top-nav" :aria-label="headerCopy.primaryNavigation">
       <div
         v-for="item in navItems"
         :key="item.path"
@@ -14,6 +14,7 @@
         <button
           type="button"
           :class="{ active: isActive(item) }"
+          :title="navLabel(item.path)"
           @click="navigateTo(item.path)"
         >
           <component :is="item.icon" :size="15" stroke-width="2.3" />
@@ -24,8 +25,12 @@
       <div
         ref="exploreWrapRef"
         class="nav-item-wrap has-children explore-wrap"
+        :class="{ open: exploreMenuOpen }"
         @mouseenter="exploreMenuOpen = true"
         @mouseleave="exploreMenuOpen = false"
+        @pointerenter="exploreMenuOpen = true"
+        @pointerleave="exploreMenuOpen = false"
+        @mouseover="exploreMenuOpen = true"
         @focusin="exploreMenuOpen = true"
         @focusout="closeExploreOnFocusOut"
       >
@@ -34,6 +39,7 @@
           :class="{ active: isExploreActive }"
           aria-haspopup="menu"
           :aria-expanded="exploreMenuOpen ? 'true' : 'false'"
+          :title="t('nav.exploreCenter')"
           @click="navigateExplore"
         >
           <Compass :size="15" stroke-width="2.3" />
@@ -59,7 +65,7 @@
     </nav>
 
     <div class="top-actions">
-      <div class="palette-switcher" aria-label="Palette">
+      <div class="palette-switcher" :aria-label="paletteCopy.paletteAria">
         <div class="palette-strip">
           <button
             v-for="palette in featuredPalettes"
@@ -122,15 +128,15 @@
       <button
         class="icon-btn theme-btn"
         type="button"
-        :aria-label="themeStore.isDarkMode ? 'Switch to day theme' : 'Switch to night theme'"
-        :title="themeStore.isDarkMode ? 'Day theme' : 'Night theme'"
+        :aria-label="themeStore.isDarkMode ? headerCopy.switchToDay : headerCopy.switchToNight"
+        :title="themeStore.isDarkMode ? headerCopy.dayTheme : headerCopy.nightTheme"
         @click="themeStore.toggleDarkMode"
       >
         <Sun v-if="themeStore.isDarkMode" :size="17" stroke-width="2.4" />
         <Moon v-else :size="17" stroke-width="2.4" />
       </button>
 
-      <button v-if="route.path !== '/'" class="icon-btn" type="button" aria-label="Toggle navigation" @click="themeStore.toggleMenuMode">
+      <button v-if="route.path !== '/'" class="icon-btn" type="button" :aria-label="headerCopy.toggleNavigation" @click="themeStore.toggleMenuMode">
         <PanelLeftClose v-if="themeStore.isHorizontalMenu" :size="17" stroke-width="2.4" />
         <PanelTop v-else :size="17" stroke-width="2.4" />
       </button>
@@ -151,7 +157,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useThemeStore, type Palette } from '@/stores/theme.store'
 import { useAuthStore } from '@/stores/auth.store'
-import { APP_EVENTS } from '@/constants'
+import { APP_EVENTS, ROUTES } from '@/constants'
 import DeepLogo from '@/components/common/DeepLogo.vue'
 import {
   exploreNavItems,
@@ -187,8 +193,27 @@ const exploreItems = exploreNavItems
 const featuredPalettes = computed(() => themeStore.palettes.slice(0, 4))
 const visiblePalettes = computed(() => themeStore.palettes)
 const langLabel = computed(() => themeStore.lang === 'zh' ? 'EN' : '中')
+const brandStatus = computed(() => themeStore.lang === 'zh' ? '推荐系统' : 'Recommender')
+const headerCopy = computed(() => themeStore.lang === 'zh'
+  ? {
+      primaryNavigation: '主导航',
+      switchToDay: '切换到日间主题',
+      switchToNight: '切换到夜间主题',
+      dayTheme: '日间主题',
+      nightTheme: '夜间主题',
+      toggleNavigation: '切换导航布局',
+    }
+  : {
+      primaryNavigation: 'Primary navigation',
+      switchToDay: 'Switch to day theme',
+      switchToNight: 'Switch to night theme',
+      dayTheme: 'Day theme',
+      nightTheme: 'Night theme',
+      toggleNavigation: 'Toggle navigation layout',
+    })
 const paletteCopy = computed(() => themeStore.lang === 'zh'
   ? {
+      paletteAria: '主题色',
       title: '主题色',
       slider: '自定义色相',
       sliderAria: '拖动选择自定义主题色',
@@ -206,6 +231,7 @@ const paletteCopy = computed(() => themeStore.lang === 'zh'
       },
     }
   : {
+      paletteAria: 'Palette',
       title: 'Theme Color',
       slider: 'Custom Hue',
       sliderAria: 'Drag to choose a custom theme color',
@@ -242,7 +268,7 @@ const navigateTo = (path: string) => {
 }
 const navigateExplore = () => {
   exploreMenuOpen.value = false
-  router.push(exploreItems[0]?.path || '/knowledge')
+  router.push(exploreItems[0]?.path || ROUTES.KNOWLEDGE)
 }
 const handleAccount = () => router.push(authStore.isAuthenticated ? '/profile' : '/login')
 const navLabel = (path: string) => t(navLabelKey(path))
@@ -279,7 +305,7 @@ onUnmounted(() => {
   top: 14px;
   left: 14px;
   right: 14px;
-  z-index: 100;
+  z-index: 320;
   height: 58px;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -289,13 +315,17 @@ onUnmounted(() => {
   border: 1px solid var(--border-color);
   border-radius: 14px;
   background: var(--nav-bg);
-  backdrop-filter: blur(14px) saturate(115%);
+  backdrop-filter: blur(18px) saturate(122%);
   box-shadow:
     0 1px 4px rgba(0, 0, 0, 0.08),
     0 4px 12px rgba(0, 0, 0, 0.04),
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     inset 0 -1px 0 rgba(0, 0, 0, 0.06);
-  transition: background 240ms ease, border-color 240ms ease, transform 240ms ease;
+  transition:
+    background var(--motion-medium) var(--ease-smooth),
+    border-color var(--motion-quick) ease,
+    box-shadow var(--motion-medium) var(--ease-smooth),
+    transform var(--motion-medium) var(--ease-smooth);
 }
 
 .topbar.landing {
@@ -313,22 +343,31 @@ onUnmounted(() => {
   align-items: center;
   gap: 12px;
   min-width: 0;
+  min-height: 46px;
   border: 0;
-  padding: 0;
+  padding: 0 2px 0 0;
   background: transparent;
   color: inherit;
   cursor: pointer;
+  overflow: visible;
 }
 
 .brand-status {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   padding-left: 12px;
   border-left: 1px solid var(--border-color);
-  color: var(--text-muted);
-  font-size: 11px;
+  color: var(--primary-color);
+  font-size: 13px;
   font-weight: var(--font-weight-title);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-label);
+  text-transform: none;
+  letter-spacing: 0;
   white-space: nowrap;
+}
+
+.topbar.lang-en .brand-status {
+  max-width: 104px;
 }
 
 .brand:hover .brand-status {
@@ -341,6 +380,8 @@ onUnmounted(() => {
   align-items: center;
   gap: 4px;
   min-width: 0;
+  max-width: 100%;
+  overflow: visible;
   padding: 4px;
   border: 1px solid var(--border-color);
   border-radius: 10px;
@@ -362,6 +403,7 @@ onUnmounted(() => {
 
 .nav-item-wrap {
   position: relative;
+  min-width: 0;
 }
 
 .top-nav button,
@@ -376,6 +418,8 @@ onUnmounted(() => {
 
 .top-nav button {
   height: 38px;
+  min-width: 0;
+  max-width: 100%;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -385,16 +429,42 @@ onUnmounted(() => {
   color: var(--text-secondary);
   font-size: 14px;
   font-weight: 600;
-  transition: background 180ms ease, color 180ms ease, transform 180ms ease;
+  transition:
+    background var(--motion-quick) ease,
+    color var(--motion-quick) ease,
+    transform var(--motion-medium) var(--ease-liquid);
+}
+
+.top-nav button svg {
+  flex: 0 0 auto;
+}
+
+.top-nav button span {
+  min-width: 0;
+  max-width: 18ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar.lang-en .top-nav button span {
+  max-width: 10.5ch;
+}
+
+.topbar.lang-en .top-nav button {
+  gap: 6px;
+  padding: 0 11px;
 }
 
 .nav-chevron {
+  flex: 0 0 auto;
   opacity: 0.72;
   transition: transform 180ms ease;
 }
 
 .has-children:hover .nav-chevron,
-.has-children:focus-within .nav-chevron {
+.has-children:focus-within .nav-chevron,
+.has-children.open .nav-chevron {
   transform: rotate(180deg);
 }
 
@@ -402,7 +472,7 @@ onUnmounted(() => {
 .top-nav button.active {
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-primary);
-  transform: translateY(-0.5px);
+  transform: translateY(-1px);
 }
 
 :global(html.light .top-nav button:hover),
@@ -480,7 +550,8 @@ onUnmounted(() => {
 }
 
 .has-children:hover .top-nav-submenu,
-.has-children:focus-within .top-nav-submenu {
+.has-children:focus-within .top-nav-submenu,
+.has-children.open .top-nav-submenu {
   opacity: 1;
   pointer-events: auto;
   transform: translate(-50%, 0);
@@ -532,6 +603,9 @@ onUnmounted(() => {
 }
 
 .top-actions {
+  min-width: 0;
+  flex: 0 0 auto;
+  justify-self: end;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -868,8 +942,16 @@ onUnmounted(() => {
 .avatar-btn {
   gap: 8px;
   padding: 0 14px;
+  max-width: 156px;
   font-size: 14px;
   font-weight: 600;
+}
+
+.avatar-btn span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .icon-btn:hover,
@@ -889,9 +971,30 @@ onUnmounted(() => {
 }
 
 @media (max-width: 1180px) {
-  .brand-status,
   .top-nav > .nav-item-wrap > button span {
     display: none;
+  }
+}
+
+@media (max-width: 1360px) {
+  .topbar {
+    gap: 10px;
+    padding-right: 8px;
+  }
+
+  .top-nav button {
+    gap: 6px;
+    padding: 0 10px;
+    font-size: 13px;
+  }
+
+  .top-actions {
+    gap: 5px;
+  }
+
+  .avatar-btn {
+    max-width: 128px;
+    padding: 0 10px;
   }
 }
 
@@ -900,7 +1003,9 @@ onUnmounted(() => {
     top: 8px;
     left: 8px;
     right: 8px;
+    height: 56px;
     grid-template-columns: auto 1fr;
+    gap: 8px;
   }
 
   .top-nav {
@@ -909,6 +1014,31 @@ onUnmounted(() => {
 
   .palette-switcher {
     display: none;
+  }
+
+  .top-actions {
+    overflow: hidden;
+  }
+
+  .brand {
+    gap: 10px;
+  }
+
+  .brand-status {
+    max-width: 88px;
+    padding-left: 10px;
+    font-size: 12px;
+  }
+
+  .icon-btn,
+  .lang-btn,
+  .avatar-btn {
+    height: 36px;
+    border-radius: 9px;
+  }
+
+  .icon-btn {
+    width: 36px;
   }
 }
 

@@ -44,7 +44,7 @@
   border-radius: inherit;
   background: linear-gradient(90deg, transparent, rgba(var(--primary-rgb), 0.18), transparent) top / 100% 1px no-repeat;
   opacity: 0;
-  transition: opacity 420ms ease;
+  transition: opacity var(--motion-medium) ease;
 }
 
 .el-card::after {
@@ -56,7 +56,7 @@
   border-radius: inherit;
   padding: 1.5px;
   background:
-    linear-gradient(135deg, var(--primary-color), var(--accent-glow), var(--tone-violet), var(--primary-color)) border-box;
+    var(--glass-border-gradient) border-box;
   opacity: 0;
   filter: saturate(1.2) brightness(1.05);
   transition: opacity 0.2s ease-out;
@@ -80,7 +80,7 @@
   opacity: 0.5;
 }
 .el-card.edge-glow-active::after {
-  opacity: clamp(0, calc((var(--edge-proximity, 0) - 20) / 80), 0.7);
+  opacity: clamp(0, calc((var(--edge-proximity, 0) - 20) / 80), 0.46);
 }
 
 .el-card > :where(.el-card__header, .el-card__body) {
@@ -123,7 +123,12 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     inset 0 -1px 0 rgba(0, 0, 0, 0.06),
     0 2px 6px rgba(0, 0, 0, 0.06) !important;
-  transition: transform 180ms var(--ease-smooth), border-color 180ms ease, background 180ms ease, box-shadow 180ms ease, color 180ms ease !important;
+  transition:
+    transform var(--motion-hover) var(--ease-liquid),
+    border-color 260ms ease,
+    background 300ms var(--ease-smooth),
+    box-shadow 360ms var(--ease-liquid),
+    color 220ms ease !important;
 }
 
 .light .el-button {
@@ -150,7 +155,7 @@
   border-radius: inherit;
   background: none;
   opacity: 0;
-  transition: opacity 420ms ease;
+  transition: opacity var(--motion-medium) ease;
 }
 
 .el-button::after {
@@ -162,7 +167,7 @@
   border-radius: inherit;
   padding: 1.5px;
   background:
-    linear-gradient(135deg, var(--primary-color), var(--accent-glow), var(--tone-violet), var(--primary-color)) border-box;
+    var(--glass-border-gradient) border-box;
   opacity: 0;
   filter: saturate(1.2) brightness(1.05);
   transition: opacity 0.2s ease-out;
@@ -181,7 +186,7 @@
   opacity: 0.5;
 }
 .el-button.edge-glow-active::after {
-  opacity: clamp(0, calc((var(--edge-proximity, 0) - 20) / 80), 0.7);
+  opacity: clamp(0, calc((var(--edge-proximity, 0) - 20) / 80), 0.46);
 }
 
 .el-button:hover {
@@ -198,7 +203,7 @@
 }
 
 .el-button:active {
-  transform: translateY(0) scale(0.985);
+  transform: translate3d(0, 0.5px, 0) scale(0.992);
 }
 
 .el-button.is-disabled,
@@ -249,6 +254,18 @@
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
     0 2px 8px rgba(251, 113, 133, 0.08) !important;
+}
+
+.el-button {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.el-button > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .el-input__wrapper,
@@ -410,9 +427,17 @@
 }
 
 .el-tag {
+  max-width: 100%;
   border-radius: var(--radius-sm) !important;
   font-weight: var(--font-weight-body) !important;
   letter-spacing: var(--tracking-body) !important;
+}
+
+.el-tag__content {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .el-menu {
@@ -512,6 +537,66 @@
   max-width: var(--page-max-width) !important;
   margin-inline: auto !important;
   padding: var(--page-padding) !important;
+}
+
+.workspace-page-enter-active :where(
+  .page-header,
+  .training-hero,
+  .prediction-hero,
+  .data-hero,
+  .viz-hero,
+  .hero-panel,
+  .toolbar,
+  .control-bar,
+  .section-card,
+  .chart-card,
+  .result-card,
+  .summary-card,
+  .asset-card,
+  .model-card,
+  .panel-card,
+  .glass-panel,
+  .el-card
+),
+.admin-page-enter-active :where(
+  .page-title,
+  .el-table,
+  .el-card,
+  .sub,
+  .el-form,
+  .toolbar,
+  .control-card
+) {
+  animation: page-layer-rise 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--layer-delay, 0ms);
+}
+
+.workspace-page-enter-active :where(.el-card:nth-of-type(2), .section-card:nth-of-type(2), .chart-card:nth-of-type(2), .summary-card:nth-of-type(2)),
+.admin-page-enter-active :where(.el-card:nth-of-type(2), .el-table:nth-of-type(2), .sub:nth-of-type(2)) {
+  --layer-delay: 24ms;
+}
+
+.workspace-page-enter-active :where(.el-card:nth-of-type(3), .section-card:nth-of-type(3), .chart-card:nth-of-type(3), .summary-card:nth-of-type(3)),
+.admin-page-enter-active :where(.el-card:nth-of-type(3), .el-table:nth-of-type(3), .sub:nth-of-type(3)) {
+  --layer-delay: 48ms;
+}
+
+.workspace-page-enter-active :where(.el-card:nth-of-type(4), .section-card:nth-of-type(4), .chart-card:nth-of-type(4), .summary-card:nth-of-type(4)),
+.admin-page-enter-active :where(.el-card:nth-of-type(4), .el-table:nth-of-type(4), .sub:nth-of-type(4)) {
+  --layer-delay: 72ms;
+}
+
+@keyframes page-layer-rise {
+  from {
+    opacity: 0;
+    filter: blur(3px) saturate(0.98);
+    transform: translate3d(0, 7px, 0) scale(0.997);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0) saturate(1);
+    transform: translate3d(0, 0, 0) scale(1);
+  }
 }
 
 .page-header {
@@ -634,7 +719,7 @@
   border-radius: inherit;
   background: linear-gradient(90deg, transparent, rgba(var(--primary-rgb), 0.16), transparent) top / 100% 1px no-repeat;
   opacity: 0;
-  transition: opacity 420ms ease;
+  transition: opacity var(--motion-medium) ease;
 }
 
 .toolbar::after,
@@ -657,7 +742,7 @@
   border-radius: inherit;
   padding: 1.5px;
   background:
-    linear-gradient(135deg, var(--primary-color), var(--accent-glow), var(--tone-violet), var(--primary-color)) border-box;
+    var(--glass-border-gradient) border-box;
   opacity: 0;
   filter: saturate(1.2) brightness(1.05);
   transition: opacity 0.2s ease-out;
@@ -859,7 +944,7 @@
   border-radius: inherit;
   background: linear-gradient(90deg, transparent, rgba(var(--primary-rgb), 0.16), transparent) top / 100% 1px no-repeat;
   opacity: 0;
-  transition: opacity 420ms ease;
+  transition: opacity var(--motion-medium) ease;
 }
 
 .model-chip:hover::after,
@@ -1025,7 +1110,7 @@
   line-height: 1.4;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 180ms ease, border-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
+  transition: background 300ms var(--ease-smooth), border-color 260ms ease, color 220ms ease, box-shadow 360ms var(--ease-liquid), transform var(--motion-hover) var(--ease-liquid);
 
   &:hover {
     background: var(--surface-3);
@@ -1087,7 +1172,7 @@
   font-weight: 550;
   cursor: pointer;
   z-index: 2;
-  transition: background 180ms ease, border-color 180ms ease, color 180ms ease;
+  transition: background 300ms var(--ease-smooth), border-color 260ms ease, color 220ms ease, transform var(--motion-hover) var(--ease-liquid);
 
   &:hover,
   &.picked,
@@ -1118,11 +1203,254 @@
   font-size: 11px;
   font-weight: 550;
   cursor: pointer;
-  transition: background 180ms ease, border-color 180ms ease, color 180ms ease;
+  transition: background 300ms var(--ease-smooth), border-color 260ms ease, color 220ms ease, transform var(--motion-hover) var(--ease-liquid);
 
   &:hover {
     background: var(--surface-3);
     border-color: rgba(var(--primary-rgb), 0.25);
     color: var(--text-primary);
+  }
+}
+
+
+/* Gentle kinetic feedback for clickable surfaces. Large cards get depth; compact controls stay restrained. */
+:where(
+  button,
+  a[href],
+  [role="button"],
+  .el-button,
+  .model-row,
+  .asset-row,
+  .dataset-card-button,
+  .asset-tab,
+  .module-chip,
+  .mode-tabs button,
+  .task-tabs button,
+  .top-nav button,
+  .mini-row,
+  .cloud-folder-dock
+) {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  transform-origin: center;
+  will-change: transform, box-shadow, border-color;
+  transition:
+    transform 260ms var(--ease-liquid),
+    box-shadow 380ms var(--ease-liquid),
+    border-color 260ms ease,
+    background 320ms var(--ease-smooth),
+    color 220ms ease;
+}
+
+:where(
+  button,
+  a[href],
+  [role="button"],
+  .el-button,
+  .model-row,
+  .asset-row,
+  .dataset-card-button,
+  .asset-tab,
+  .module-chip,
+  .mode-tabs button,
+  .task-tabs button,
+  .top-nav button,
+  .mini-row,
+  .cloud-folder-dock
+).kinetic-tilt-active:not(:disabled):not(.is-disabled) {
+  border-color: color-mix(in srgb, var(--primary-color) 22%, var(--border-color)) !important;
+  transform:
+    perspective(1400px)
+    rotateX(var(--tilt-rx, 0deg))
+    rotateY(var(--tilt-ry, 0deg))
+    translate3d(0, var(--tilt-lift, -0.6px), 0)
+    scale(var(--tilt-scale, 1.004));
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.105),
+    0 0 0 1px rgba(var(--primary-rgb), 0.055),
+    0 0 calc(14px * var(--edge-glow-strength, 0.28)) var(--edge-glow-soft),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+}
+
+:where(
+  button,
+  a[href],
+  [role="button"],
+  .el-button,
+  .model-row,
+  .asset-row,
+  .dataset-card-button,
+  .asset-tab,
+  .module-chip,
+  .mode-tabs button,
+  .task-tabs button,
+  .top-nav button,
+  .mini-row,
+  .cloud-folder-dock
+).kinetic-tilt-active:not(:disabled):not(.is-disabled)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(255, 255, 255, 0.14), transparent 0 14%, transparent 38%),
+    linear-gradient(112deg, transparent 0 40%, rgba(255, 255, 255, 0.075) 48%, transparent 60%),
+    radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(var(--primary-rgb), 0.08), transparent 0 46%);
+  opacity: var(--tilt-glint, 0.16);
+  transform: translateZ(0.5px);
+  transition: opacity 360ms var(--ease-smooth);
+}
+
+:where(
+  button,
+  a[href],
+  [role="button"],
+  .el-button,
+  .model-row,
+  .asset-row,
+  .dataset-card-button,
+  .asset-tab,
+  .module-chip,
+  .mode-tabs button,
+  .task-tabs button,
+  .top-nav button,
+  .mini-row,
+  .cloud-folder-dock
+).kinetic-tilt-active:not(:disabled):not(.is-disabled) > :where(span, strong, b, em, small, svg, .el-icon, div) {
+  position: relative;
+  z-index: 1;
+  transform: translateZ(2px);
+}
+
+:where(
+  button,
+  a[href],
+  [role="button"],
+  .el-button,
+  .model-row,
+  .asset-row,
+  .dataset-card-button,
+  .asset-tab,
+  .module-chip,
+  .mode-tabs button,
+  .task-tabs button,
+  .top-nav button,
+  .mini-row,
+  .cloud-folder-dock
+).kinetic-tilt-compact:not(:disabled):not(.is-disabled) > :where(span, strong, b, em, small, svg, .el-icon, div) {
+  transform: translateZ(0.75px);
+}
+
+:where(
+  button,
+  a[href],
+  [role="button"],
+  .el-button,
+  .model-row,
+  .asset-row,
+  .dataset-card-button,
+  .asset-tab,
+  .module-chip,
+  .mode-tabs button,
+  .task-tabs button,
+  .top-nav button,
+  .mini-row,
+  .cloud-folder-dock
+):active:not(:disabled):not(.is-disabled) {
+  transform: perspective(1400px) rotateX(0deg) rotateY(0deg) translate3d(0, 0.5px, 0) scale(0.992) !important;
+  transition-duration: 150ms !important;
+}
+
+@media (hover: none), (pointer: coarse), (prefers-reduced-motion: reduce) {
+  .kinetic-tilt-active {
+    transform: none !important;
+    box-shadow: inherit !important;
+  }
+
+  .kinetic-tilt-active::before {
+    opacity: 0 !important;
+  }
+}
+
+/* ========== accessibility and interaction guardrails ========== */
+:where(
+  button,
+  a[href],
+  [role="button"],
+  input,
+  textarea,
+  select,
+  .el-button,
+  .el-input__wrapper,
+  .el-select__wrapper,
+  .conversation-item,
+  .resource-item,
+  .related-item,
+  .asset-row,
+  .asset-tab,
+  .folder-row,
+  .table-row,
+  .task-tabs button,
+  .metric-groups button,
+  .prompt-grid button
+):focus-visible {
+  outline: 2px solid rgba(var(--primary-rgb), 0.58) !important;
+  outline-offset: 3px !important;
+  box-shadow:
+    0 0 0 5px rgba(var(--primary-rgb), 0.1),
+    0 10px 28px rgba(var(--primary-rgb), 0.1) !important;
+}
+
+:where(
+  button:disabled,
+  button[aria-disabled="true"],
+  .el-button.is-disabled,
+  .el-button.is-disabled:hover
+) {
+  cursor: not-allowed !important;
+  opacity: 0.52 !important;
+  transform: none !important;
+  filter: saturate(0.82);
+}
+
+:where(
+  button:disabled,
+  button[aria-disabled="true"],
+  .el-button.is-disabled
+):hover {
+  border-color: var(--border-color) !important;
+  box-shadow: none !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :where(
+    .conversation-item,
+    .resource-item,
+    .related-item,
+    .asset-row,
+    .asset-tab,
+    .folder-row,
+    .table-row,
+    .task-tabs button,
+    .metric-groups button,
+    .prompt-grid button
+  ):hover:not(:disabled):not(.is-disabled) {
+    transform: translateY(-1px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }

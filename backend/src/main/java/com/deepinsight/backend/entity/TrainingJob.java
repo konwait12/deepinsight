@@ -29,7 +29,7 @@ public class TrainingJob {
     @Column(name = "dataset_id")
     private Long datasetId;
 
-    /** 训练配置（JSON格式：超参数等） */
+    /** 训练配置（JSON格式：推荐模型参数等） */
     @Column(name = "config_json", columnDefinition = "TEXT")
     private String configJson;
 

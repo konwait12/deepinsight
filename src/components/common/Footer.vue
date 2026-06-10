@@ -3,16 +3,16 @@
     <div class="footer-main">
       <div class="footer-brand">
         <DeepLogo :scale="0.72" />
-        <p>Deep learning platform for training management, visual analysis, prediction, and knowledge records.</p>
+        <p>{{ copy.desc }}</p>
       </div>
 
-      <nav class="footer-links" aria-label="Footer resources">
-        <button v-for="item in resources" :key="item" type="button">{{ item }}</button>
+      <nav class="footer-links" :aria-label="copy.resourcesAria">
+        <button v-for="item in copy.resources" :key="item" type="button">{{ item }}</button>
       </nav>
 
       <div class="footer-status">
-        <span>Runtime</span>
-        <strong>Online</strong>
+        <span>{{ copy.runtime }}</span>
+        <strong>{{ copy.online }}</strong>
         <div class="status-bar"><i></i></div>
       </div>
     </div>
@@ -25,9 +25,27 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import DeepLogo from '@/components/common/DeepLogo.vue'
 
-const resources = ['Documentation', 'API Reference', 'Help Center']
+const { locale } = useI18n()
+const isZh = computed(() => !locale.value.startsWith('en'))
+const copy = computed(() => isZh.value
+  ? {
+      desc: '面向推荐系统模型接入、数据预览、性能可视化和知识记录的 DeepInsight 工作台。',
+      resourcesAria: '页脚资源',
+      resources: ['功能指南', '接口状态', '使用支持'],
+      runtime: '运行状态',
+      online: '在线',
+    }
+  : {
+      desc: 'DeepInsight workspace for recommender model access, data preview, visual analysis, and knowledge records.',
+      resourcesAria: 'Footer resources',
+      resources: ['Feature Guide', 'API Status', 'Support'],
+      runtime: 'Runtime',
+      online: 'Online',
+    })
 </script>
 
 <style scoped>
@@ -65,13 +83,17 @@ const resources = ['Documentation', 'API Reference', 'Help Center']
 }
 
 .footer-links button {
-  width: fit-content;
+  width: max-content;
+  max-width: 100%;
+  overflow: hidden;
   border: 0;
   padding: 0;
   background: transparent;
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: var(--font-weight-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
   cursor: pointer;
   transition: color 160ms ease, transform 160ms ease;
 }

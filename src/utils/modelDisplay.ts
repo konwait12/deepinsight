@@ -9,45 +9,25 @@ type MetricCopy = {
 }
 
 const taskTypeZh: Record<string, string> = {
-  classification: '图像分类',
-  detection: '目标检测',
-  segmentation: '语义分割',
   recommendation: '推荐系统',
-  nlp: '自然语言处理',
   other: '其他任务',
 }
 
 const taskTypeEn: Record<string, string> = {
-  classification: 'Classification',
-  detection: 'Detection',
-  segmentation: 'Segmentation',
   recommendation: 'Recommendation',
-  nlp: 'NLP',
   other: 'Other',
 }
 
 const modelNameZh: Record<string, string> = {
-  'ResNet-50': '残差网络 50 层',
-  'ResNet-101': '残差网络 101 层',
-  'VGG-19': 'VGG 19 层卷积网络',
-  'EfficientNet-B4': '高效卷积网络 B4',
-  'ViT-B/16': '视觉 Transformer 基础版',
-  'Swin-T': 'Swin Transformer 轻量版',
-  'ConvNeXt-T': '现代化卷积网络轻量版',
-  'MobileNetV3-L': '移动端高效网络大版',
-  'DenseNet-201': '密集连接卷积网络 201 层',
-  YOLOv8n: 'YOLOv8 Nano 实时检测',
-  YOLOv8s: 'YOLOv8 Small 目标检测',
-  YOLOv8: 'YOLOv8 目标检测',
-  'DeepLabV3-RN50': 'DeepLabV3 语义分割',
-  DeepFM: '深度因子分解推荐模型',
-  'Wide&Deep': '宽深联合推荐模型',
-  NCF: '神经协同过滤模型',
-  DIN: '深度兴趣网络',
-  'BERT-Base': 'BERT 文本理解基础版',
-  'GPT-2': 'GPT-2 文本生成模型',
-  'T5-Small': 'T5 文本到文本小型版',
-  'LLaMA-7B': 'LLaMA 7B 大语言模型',
+  'BSARec-Job': 'BSARec 岗位推荐模型',
+  BSARec: 'BSARec 序列推荐模型',
+  BERT4Rec: 'BERT4Rec 双向序列推荐模型',
+  DuoRec: 'DuoRec 对比学习序列推荐模型',
+  FEARec: 'FEARec 频域增强序列推荐模型',
+  'FMLP-Rec': 'FMLP-Rec 滤波增强 MLP 推荐模型',
+  RecBole: 'RecBole 推荐算法框架',
+  SASRec: 'SASRec 自注意力序列推荐模型',
+  TiSASRec: 'TiSASRec 时间间隔感知推荐模型',
 }
 
 export const metricCopy = {
@@ -60,7 +40,7 @@ export const metricCopy = {
     en: { label: 'Training Accuracy', shortLabel: 'Accuracy', description: 'Share of correct predictions. Higher is better.' },
   },
   valLoss: {
-    zh: { label: '验证损失 Val Loss', shortLabel: '验证损失', description: '验证集预测误差，用来观察泛化能力。' },
+    zh: { label: '验证损失 Val Loss', shortLabel: '验证损失', description: '验证集误差，用来观察泛化能力。' },
     en: { label: 'Validation Loss', shortLabel: 'Val Loss', description: 'Validation-set error used to monitor generalization.' },
   },
   valAccuracy: {
@@ -68,7 +48,7 @@ export const metricCopy = {
     en: { label: 'Validation Accuracy', shortLabel: 'Val Accuracy', description: 'Validation-set correctness used to watch overfitting.' },
   },
   learningRate: {
-    zh: { label: '学习率 Learning Rate', shortLabel: '学习率', description: '每次参数更新的步长，过大易震荡，过小会变慢。' },
+    zh: { label: '学习率 Learning Rate', shortLabel: '学习率', description: '每次参数更新的步长。' },
     en: { label: 'Learning Rate', shortLabel: 'LR', description: 'Step size for parameter updates.' },
   },
   prCurve: {
@@ -76,16 +56,16 @@ export const metricCopy = {
     en: { label: 'Precision/Recall Curve', shortLabel: 'PR Curve', description: 'Tradeoff between precision and recall across thresholds.' },
   },
   embedding: {
-    zh: { label: '嵌入投影 Embedding', shortLabel: '嵌入投影', description: '把高维特征压到二维/三维，观察类别聚类和分离。' },
+    zh: { label: '嵌入投影 Embedding', shortLabel: '嵌入投影', description: '把高维特征压到二维或三维，观察聚类结构。' },
     en: { label: 'Embedding Projection', shortLabel: 'Embedding', description: 'Projects high-dimensional features to inspect clusters.' },
   },
   histogram: {
-    zh: { label: '权重/梯度直方图 Histogram', shortLabel: '直方图', description: '查看权重或梯度分布，定位饱和、异常值和梯度问题。' },
+    zh: { label: '权重/梯度直方图 Histogram', shortLabel: '直方图', description: '查看权重或梯度分布，定位异常值和梯度问题。' },
     en: { label: 'Weight/Gradient Histogram', shortLabel: 'Histogram', description: 'Shows weight or gradient distribution.' },
   },
   profiler: {
-    zh: { label: '性能剖析 Profiler', shortLabel: '性能剖析', description: '定位算子耗时、数据拷贝和 GPU 利用率瓶颈。' },
-    en: { label: 'Profiler', shortLabel: 'Profiler', description: 'Finds operator, copy, and GPU utilization bottlenecks.' },
+    zh: { label: '性能剖析 Profiler', shortLabel: '性能剖析', description: '定位算子耗时、数据拷贝和吞吐瓶颈。' },
+    en: { label: 'Profiler', shortLabel: 'Profiler', description: 'Finds operator, copy, and utilization bottlenecks.' },
   },
 } as const
 

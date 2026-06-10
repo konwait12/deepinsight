@@ -5,7 +5,7 @@
       <strong>{{ currentSection }}</strong>
     </div>
 
-    <nav class="sidebar-nav" aria-label="Workspace navigation">
+    <nav class="sidebar-nav" :aria-label="t('sidebar.navigation')">
       <template v-for="item in navItems" :key="item.path">
         <button
           type="button"
@@ -14,6 +14,7 @@
         >
           <component :is="item.icon" :size="17" stroke-width="2.25" />
           <span>{{ navLabel(item.path) }}</span>
+          <ChevronRight v-if="isNavActive(item)" class="nav-arrow" :size="15" stroke-width="2.6" />
         </button>
       </template>
     </nav>
@@ -30,6 +31,7 @@
       >
         <component :is="item.icon" :size="16" stroke-width="2.2" />
         <span>{{ navLabel(item.path) }}</span>
+        <ChevronRight v-if="isExploreNavActive(route.path, item)" class="nav-arrow" :size="14" stroke-width="2.6" />
       </button>
     </div>
 
@@ -50,6 +52,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { ChevronRight } from 'lucide-vue-next'
 import {
   exploreNavItems,
   isExploreNavActive,
@@ -58,6 +61,7 @@ import {
   navLabelKey,
   type NavItem,
 } from '@/constants/navigation'
+import { ROUTES } from '@/constants'
 
 const route = useRoute()
 const router = useRouter()
@@ -67,7 +71,8 @@ const exploreItems = exploreNavItems
 
 const currentSection = computed(() => {
   const direct = [...navItems, ...exploreItems].find((item) => item.path === route.path)
-  if (route.path.startsWith('/viz')) return t('nav.analysis')
+  if (route.path === ROUTES.VIZ || route.path === '/viz') return t('nav.analysis')
+  if (route.path === ROUTES.DATASET_VIZ || route.path === '/dataset-viz') return t('nav.datasetViz')
   return direct ? navLabel(direct.path) : 'DeepInsight'
 })
 
@@ -92,6 +97,7 @@ function handleNavClick(item: NavItem) {
   z-index: 90;
   padding: 18px 12px;
   overflow-y: auto;
+  overflow-x: hidden;
   overscroll-behavior: contain;
   border: 1px solid var(--border-color);
   border-radius: 14px;
@@ -140,6 +146,9 @@ function handleNavClick(item: NavItem) {
   margin-top: 6px;
   font-size: 20px;
   color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sidebar-nav,
@@ -151,9 +160,10 @@ function handleNavClick(item: NavItem) {
 .sidebar-nav button,
 .mini-row {
   width: 100%;
+  min-width: 0;
   height: 42px;
   border: 1px solid transparent;
-  border-radius: 9px;
+  border-radius: 13px;
   display: grid;
   grid-template-columns: 22px 1fr auto;
   align-items: center;
@@ -169,13 +179,23 @@ function handleNavClick(item: NavItem) {
   transition: background 180ms ease, color 180ms ease, border-color 180ms ease, transform 180ms ease;
 }
 
+.sidebar-nav button span,
+.mini-row span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .sidebar-nav button:hover,
 .mini-row:hover,
 .sidebar-nav button.active,
 .mini-row.active {
   color: var(--text-primary);
   border-color: rgba(var(--primary-rgb), 0.2);
-  background: rgba(var(--primary-rgb), 0.09);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 13%, transparent), transparent 78%),
+    rgba(var(--primary-rgb), 0.09);
 }
 
 .sidebar-nav button.active,
@@ -183,12 +203,10 @@ function handleNavClick(item: NavItem) {
   color: var(--primary-color);
 }
 
-.chevron {
-  transition: transform 180ms ease;
-}
-
-.chevron.open {
-  transform: rotate(90deg);
+.nav-arrow {
+  justify-self: end;
+  color: currentColor;
+  opacity: 0.78;
 }
 
 .sidebar-section {
@@ -239,5 +257,28 @@ function handleNavClick(item: NavItem) {
   color: var(--text-muted);
   font-size: 11px;
   font-weight: var(--font-weight-body);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-height: 760px) {
+  .sidebar-shell {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  .sidebar-head {
+    padding-bottom: 12px;
+    margin-bottom: 10px;
+  }
+
+  .sidebar-section {
+    margin-top: 16px;
+  }
+
+  .status-panel {
+    display: none;
+  }
 }
 </style>

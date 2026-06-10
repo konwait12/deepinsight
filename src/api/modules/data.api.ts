@@ -39,6 +39,18 @@ export interface DataAssetOverview {
   updatedAt: string
 }
 
+export interface DatasetPreview {
+  datasetId?: number
+  kind: string
+  columns: string[]
+  rows: string[][]
+  totalRows: number
+  statsRows: number
+  featureCount: number
+  seed: number[]
+  message?: string
+}
+
 export const datasetApi = {
   list() {
     return apiClient.get<ApiResponse<Dataset[]>>(API_ENDPOINTS.DATASETS)
@@ -50,6 +62,22 @@ export const datasetApi = {
 
   create(data: DatasetForm) {
     return apiClient.post<ApiResponse<Dataset>>(API_ENDPOINTS.DATASETS, data)
+  },
+
+  upload(file: File, data: { name?: string; description?: string; taskType?: string }) {
+    const form = new FormData()
+    form.append('file', file)
+    if (data.name) form.append('name', data.name)
+    if (data.description) form.append('description', data.description)
+    if (data.taskType) form.append('taskType', data.taskType)
+    return apiClient.post<ApiResponse<Dataset>>(`${API_ENDPOINTS.DATASETS}/upload`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 30000,
+    })
+  },
+
+  preview(id: number) {
+    return apiClient.get<ApiResponse<DatasetPreview>>(`${API_ENDPOINTS.DATASETS}/${id}/preview`)
   },
 
   delete(id: number) {
